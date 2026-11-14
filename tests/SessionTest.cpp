@@ -937,6 +937,29 @@ void testTheSessionPartnerOnTheStationList()
     stations.setPartner("", false, T0 + 4000);
     CHECK_EQ(stations.status(*stations.find("KC2G"), T0 + 4000).word, std::string("QRV"));
     CHECK(stations.partner().empty());
+
+    // A session with KC2G drops in a fade: its QRL naming us was heard, its
+    // QRV never comes. Once ours has ended it isn't busy for us, so Ping and
+    // Call aren't greyed (Jeff, 2026-11-14).
+    stations.setPartner("KC2G", true, T0 + 5000);
+    protocol::Record qrl;
+    qrl.header = {"KC2G", 1, 0};
+    protocol::Status withUs;
+    withUs.state = protocol::Status::State::Qrl;
+    withUs.partner = "ag7ew";
+    qrl.body = withUs;
+    stations.onRecord(qrl, T0 + 6000);
+    CHECK_EQ(stations.status(*stations.find("KC2G"), T0 + 6000).word, std::string("QSO w/ AG7EW"));
+    stations.setPartner("", false, T0 + 7000);
+    broadcast::StatusView after = stations.status(*stations.find("KC2G"), T0 + 8000);
+    CHECK_EQ(after.word, std::string("QRV"));
+    CHECK(after.how.find("named us") != std::string::npos);
+    // A QRL naming another station is still busy.
+    qrl.header.callsign = "G4XYZ";
+    withUs.partner = "W1AW";
+    qrl.body = withUs;
+    stations.onRecord(qrl, T0 + 9000);
+    CHECK_EQ(stations.status(*stations.find("G4XYZ"), T0 + 9000).word, std::string("QSO w/ W1AW"));
 }
 
 void testTheLogCarriesOn()

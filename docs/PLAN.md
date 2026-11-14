@@ -224,6 +224,7 @@ A quiet link is still a session: only Leave, a lost link, or the far end leaving
 | In a session | ● QSO w/ KC2G | Its QRL message, or its busy answer to our CONNECT |
 | In a session, partner unknown | ● QRL | Overheard session bursts from it (needs the host report) |
 | In a session with you | ● QSO w/ AG7EW (our own call, so every session reads alike; your ask, 2026-10-23) | Our own session |
+| Free again after our session | ● QRV | Its QRL named us, but our session with it has ended, though its QRV hasn't come (a fade took it; Jeff, 2026-11-14: Ping stayed greyed) |
 | Probably free again | ○ QRL? 25 min ago | A QRL older than 20 minutes with no session bursts heard since |
 | Not taking sessions | ○ No sessions | Its announce says Accept sessions is off |
 | Automatic services | Badge: board, mail, pages | Its signed announce |
