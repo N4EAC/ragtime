@@ -470,6 +470,8 @@ void testTheFarEndLeavesOrIsLost()
     lost.say("DISCONNECTED\r");
     CHECK(lost.chat.ending() == Ending::LinkLost);
     CHECK_EQ(lost.chat.strip(lost.now).text, std::string("Link lost at 00:03 after 3 min without contact"));
+    // And the red line under the typing says to try broadcasting.
+    CHECK_EQ(lost.chat.strip(lost.now).hint, std::string(SessionChat::LOST_HINT));
 
     // Five minutes with nothing either way: data2g-host hangs up.
     Rig idle;
@@ -481,6 +483,7 @@ void testTheFarEndLeavesOrIsLost()
     CHECK_EQ(idle.chat.strip(idle.now).text,
              std::string("data2g-host closed the quiet session with W1AW at 00:05: it hangs up after 5 minutes "
                          "with nothing sent either way"));
+    CHECK(idle.chat.strip(idle.now).hint.empty());
     // Later than that, it was the link.
     Rig gone;
     Far far6("W1AW");
@@ -488,6 +491,7 @@ void testTheFarEndLeavesOrIsLost()
     gone.advance(SessionChat::HOST_IDLE_CLOSE_MS + SessionChat::HOST_IDLE_LATE_MS + 60000);
     gone.say("DISCONNECTED\r");
     CHECK_EQ(gone.chat.strip(gone.now).text, std::string("Link lost at 00:06 after 6 min without contact"));
+    CHECK_EQ(gone.chat.strip(gone.now).hint, std::string(SessionChat::LOST_HINT));
 
     // The next session starts clean, though the last one's stream ended
     // mid-record.
@@ -500,6 +504,7 @@ void testTheFarEndLeavesOrIsLost()
     lost.from(again.opening(lost.now));
     CHECK(lost.chat.greeted() && !lost.chat.foreign());
     CHECK(contains(lost.chat.strip(lost.now).text, "W1AW started a session with you"));
+    CHECK(lost.chat.strip(lost.now).hint.empty());
     CHECK(lost.chat.messages().empty());
 }
 
@@ -550,6 +555,7 @@ void testTheHostSaysWhy()
     peer.say("DISCONNECTED PEER\r");
     CHECK(peer.chat.ending() == Ending::ClosedThere);
     CHECK_EQ(peer.chat.strip(peer.now).text, std::string("W1AW's end closed the session at 00:01"));
+    CHECK(peer.chat.strip(peer.now).hint.empty());
     // Its farewell, the ports racing: a leaving after all.
     peer.advance(SessionChat::AFTERGLOW_MS / 2);
     peer.from(far3.farewell(peer.now));
@@ -563,6 +569,7 @@ void testTheHostSaysWhy()
     lost.say("DISCONNECTED LINK_LOST\r");
     CHECK(lost.chat.ending() == Ending::LinkLost);
     CHECK_EQ(lost.chat.strip(lost.now).text, std::string("Link lost at 00:05 after 5 min without contact"));
+    CHECK_EQ(lost.chat.strip(lost.now).hint, std::string(SessionChat::LOST_HINT));
     Rig failed(T0, 0.0);
     Far far5("W1AW");
     connect(failed, far5);
@@ -570,6 +577,15 @@ void testTheHostSaysWhy()
     CHECK(failed.chat.ending() == Ending::LinkLost);
     CHECK_EQ(failed.chat.strip(failed.now).text,
              std::string("Link failed at 00:00: data2g-host gave up on it (no progress)"));
+    CHECK_EQ(failed.chat.strip(failed.now).hint, std::string(SessionChat::LOST_HINT));
+    // The far end called again: the link is there, so no red line.
+    Rig again(T0, 0.0);
+    Far far8("W1AW");
+    connect(again, far8);
+    again.say("DISCONNECTED PEER_RECONNECTED\r");
+    CHECK(again.chat.ending() == Ending::LinkLost);
+    CHECK(contains(again.chat.strip(again.now).text, "W1AW called again at 00:00"));
+    CHECK(again.chat.strip(again.now).hint.empty());
 
     // CLIENT, but we never left: another program on our host, such as
     // Pat answering the call as a VARA client, sent DISCONNECT.
@@ -582,6 +598,7 @@ void testTheHostSaysWhy()
     CHECK(pat.chat.ending() == Ending::ClosedHere);
     CHECK(contains(pat.chat.strip(pat.now).text, "Another program on data2g-host ended the session with W1AW at 00:00"));
     CHECK(contains(pat.chat.strip(pat.now).text, "Pat"));
+    CHECK(pat.chat.strip(pat.now).hint.empty());
 
     // Our Leave, never acknowledged by the far end.
     Rig left(T0, 0.0);
@@ -596,6 +613,7 @@ void testTheHostSaysWhy()
     CHECK(left.chat.ending() == Ending::Left);
     CHECK_EQ(left.chat.strip(left.now).text,
              std::string("You left the session with W1AW at 00:03, after 3 min \xc2\xb7 W1AW didn't confirm it"));
+    CHECK(left.chat.strip(left.now).hint.empty());
 }
 
 void testCallsThatDontConnect()
