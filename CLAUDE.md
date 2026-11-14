@@ -110,8 +110,10 @@ and the Part 97 check.
   release; 0.1.1-beta adds the session file cancel fix (#49) with the
   same protocol. 0.2.0-beta has everything since (parity repair, rig
   control, the Ear, reactions); it chats with 0.1 but can't repair with
-  it. Stage 1 is done once Jeff has run the two-host bench on
-  Hamlet.
+  it. 0.3.0-beta adds Cool-chic pictures, voice messages, Hands and
+  roll calls, and the thresholds from `MODES`; it chats with 0.2 (new
+  records are skipped, pictures and voice arrive as plain files). Stage
+  1 is done once Jeff has run the two-host bench on Hamlet.
 - Data2G PR #118 (CLEANTXBUFFER, DATA2G ON) gives cuts, for 0.2.0:
   `HostLink` asks for DATA2G ON (WRONG from an older host is fine),
   `SessionChat` cuts and mends the stream from `session::StreamLog`,
@@ -148,9 +150,9 @@ and the Part 97 check.
   `BroadcastChat::answerRollCall`), unless in a ragchew or turned off in
   Settings; the row lists who answered. Net control's traffic round is
   Stage 2, still to build.
-- Data2G PR #186 (open 2026-11-14) puts mode_thresholds.json in the
-  `MODES` answer (`CHANNELS`, then `THRESHOLD name dB...` lines).
-  `HostLink` collects them into `ModeInfo::thresholds`, they win over the
+- Data2G PR #186 (merged at d23a62b on 2026-11-14, after v0.5.0) puts
+  mode_thresholds.json in the `MODES` answer (`CHANNELS`, then
+  `THRESHOLD name dB...` lines). `HostLink` collects them into `ModeInfo::thresholds`, they win over the
   files' in the gearshift (`HostMode::hasThresholds`), and the popup then
   names data2g-host as the source and hides Load thresholds.
 - The dial, the path log and the watch list (2026-10-25,
