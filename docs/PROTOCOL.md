@@ -749,7 +749,10 @@ the host's `MODES` lists them.
   someone already, nor in a slower gear than the sender's floor
   (Ragtime's "Slowest repair gear", none by default) unless it first
   went slower still. A file the operator gave its own repair gear (its
-  menu's Repair gear) goes in that gear, whatever the askers say. A
+  menu's Repair gear) goes in that gear, whatever the askers say, and
+  a station the operator gave its own gear for that file (Repair gear
+  for KC2G) has its requests for it answered in that gear, over the
+  file's; the other askers keep theirs. A
   request with no S/N, or a sender with no ladder, means the gear it
   first went in. This holds whether the operator chose
   the gear or Auto did. The resend goes gear by gear, fastest first,
@@ -772,7 +775,9 @@ the host's `MODES` lists them.
   again.
 - **Closing.** When the operator closes a seal's repairs, or picks a
   file's repair gear, the round's bursts still queued that carry only
-  repairs under that seal are taken back. The one with the host goes
+  repairs under that seal are taken back; picking one station's gear
+  takes back only those carrying nothing but that file's pieces in a
+  gear no other asker wanted them in. The one with the host goes
   on; the round's seals still go, so the next requests are answered in
   the new gear, or refused.
 - **Refusals.** A request under a seal the sender won't serve is

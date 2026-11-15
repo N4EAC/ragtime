@@ -95,7 +95,9 @@ and the Part 97 check.
   `0x42`). Since 2026-10-25 the S/N is the mean of the last 5 bursts,
   repairs have a floor, a per-file gear and an airtime cap
   (`setRepairFloor`, `setRepairGear`, `setRepairCapSeconds`), and a
-  closed share can re-open (`BroadcastFiles::reopen`). Since 2026-10-25 repairs are Reed-Solomon parity
+  closed share can re-open (`BroadcastFiles::reopen`). Since 2026-11-15
+  a file's repairs can have a gear per station (Repair gear for KC2G,
+  with the station picked; `Seals::setStationRepairGear`). Since 2026-10-25 repairs are Reed-Solomon parity
   (`files/Parity`, PROTOCOL.md "Parity"): requests (`0x43`) ask how
   many repair symbols they want, files get parity pieces and sealed
   chat ItemParity (`0x44`), and `Seals::takeRebuilt` hands back lines

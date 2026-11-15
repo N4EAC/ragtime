@@ -2604,6 +2604,12 @@ void MainFrame::broadcastFileAction(uint64_t id, const std::string& action)
         voiceAction("b" + std::to_string(id), action);
     else if (action.rfind("gear:", 0) == 0)
         broadcastFiles_.setRepairGear(id, action.substr(5));
+    else if (action.rfind("stgear:", 0) == 0 && action.find(':', 7) != std::string::npos)
+    {
+        // "stgear:KC2G:qpsk-r1/2", or no mode: as the file goes.
+        size_t colon = action.find(':', 7);
+        broadcastFiles_.setStationRepairGear(id, action.substr(7, colon - 7), action.substr(colon + 1));
+    }
     else if (action == "close")
         broadcastFiles_.closeRepairs(id);
     else if (action == "open" && !f.path.empty())
@@ -2680,18 +2686,67 @@ void MainFrame::reopenRepairs(uint64_t id, uint64_t untilMs)
 
 void MainFrame::repairGearMenu(const broadcast::BroadcastFile& f, FileCard& card)
 {
+    // A gear by its short name and mode, "G3C  (qpsk-r1/2)", and by its
+    // short name alone.
+    auto gearLabel = [this](const std::string& mode) {
+        for (const gearbox::Gear& gear : gearshift_.ladder())
+        {
+            if (gear.mode == mode) return gear.name.empty() ? mode : gear.name + "  (" + mode + ")";
+        }
+        return mode;
+    };
+    auto gearName = [this](const std::string& mode) {
+        for (const gearbox::Gear& gear : gearshift_.ladder())
+        {
+            if (gear.mode == mode && !gear.name.empty()) return gear.name;
+        }
+        return mode;
+    };
+    // The ladder's gears as radio items, action prefix + mode, and the
+    // chosen one though the ladder has changed under it.
+    auto gearItems = [this, &gearLabel](FileCard::Submenu& sub, const std::string& prefix, const std::string& chosen) {
+        bool listed = chosen.empty();
+        for (const gearbox::Gear& gear : gearshift_.ladder())
+        {
+            sub.items.push_back({prefix + gear.mode, gearLabel(gear.mode)});
+            listed = listed || gear.mode == chosen;
+        }
+        if (!listed) sub.items.push_back({prefix + chosen, chosen});
+        sub.chosen = prefix + chosen;
+    };
+
     // Andrew's override (2026-10-25): this file's repairs in one gear,
     // whatever the askers say; Auto goes by their S/N.
-    card.subLabel = "Repair gear";
-    card.sub.push_back({"gear:", "Auto, as the stations that ask hear you"});
-    bool listed = f.repairGear.empty();
-    for (const gearbox::Gear& gear : gearshift_.ladder())
+    FileCard::Submenu file;
+    file.label = "Repair gear";
+    file.items.push_back({"gear:", "Auto, as the stations that ask hear you"});
+    gearItems(file, "gear:", f.repairGear);
+    card.subs.push_back(std::move(file));
+
+    // Jeff's (2026-11-15): the station picked in the list gets a gear of
+    // its own for this file, so its next repairs go in it while the other
+    // askers keep theirs.
+    std::string picked = protocol::normalCallsign(pickedCall());
+    if (!picked.empty() && picked != protocol::normalCallsign(prefs_.callsign))
     {
-        card.sub.push_back({"gear:" + gear.mode, gear.name.empty() ? gear.mode : gear.name + "  (" + gear.mode + ")"});
-        listed = listed || gear.mode == f.repairGear;
+        auto own = f.stationGears.find(picked);
+        std::string chosen = own != f.stationGears.end() ? own->second : std::string();
+        FileCard::Submenu station;
+        station.label = "Repair gear for " + picked;
+        std::string prefix = "stgear:" + picked + ":";
+        station.items.push_back(
+            {prefix, f.repairGear.empty() ? std::string("As the file goes (Auto, as ") + picked + " hears you)"
+                                          : "As the file goes (" + gearName(f.repairGear) + ")"});
+        gearItems(station, prefix, chosen);
+        card.subs.push_back(std::move(station));
     }
-    if (!listed) card.sub.push_back({"gear:" + f.repairGear, f.repairGear});
-    card.subChosen = "gear:" + f.repairGear;
+    else if (!f.askedBy.empty() || !f.stationGears.empty())
+    {
+        card.menu.push_back({"", "Pick a station in the list to give it a repair gear of its own"});
+    }
+    // Stations with gears of their own, on the menu's first line.
+    for (const auto& theirs : f.stationGears)
+        card.title += ", repairs to " + theirs.first + " in " + gearName(theirs.second);
 }
 
 void MainFrame::broadcastFileMenu(const files::FileRow& row, wxMenu& menu)
