@@ -96,6 +96,8 @@ struct Message
         Listening,      // gone, with the window open after it
         Done,           // the window has closed
         NoWindow,       // the host wouldn't open the window: a plain check-in
+        Lost,           // the host's armed window gave up before the check-in
+                        // went (it waits HAND_ARM_EXPIRE_S): no Hands heard
     };
 
     // A station that checked in by Hand to our roll call.

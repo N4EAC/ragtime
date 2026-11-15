@@ -148,7 +148,9 @@ and the Part 97 check.
   record (`0x03`) and a window, and every Ragtime that hears it answers
   by Hand (`protocol/Hands.h`: callsign, square, S/N, flags in 63 bits;
   `BroadcastChat::answerRollCall`), unless in a ragchew or turned off in
-  Settings; the row lists who answered. Net control's traffic round is
+  Settings; the row lists who answered. A window the host gives up on (30 s
+  armed with the burst not gone) is armed again while the burst waits,
+  else the row says no window (`HostLink`'s `HandLost`, `Roll::Lost`). Net control's traffic round is
   Stage 2, still to build.
 - Data2G PR #186 (merged at d23a62b on 2026-11-14, after v0.5.0) puts
   mode_thresholds.json in the `MODES` answer (`CHANNELS`, then

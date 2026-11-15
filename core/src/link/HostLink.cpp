@@ -25,6 +25,7 @@ const char* const CLEAN = "CLEANTXBUFFER";
 const char* const TXPOWER = "TXPOWER";
 const char* const TIMEOUT = "TIMEOUT";
 const char* const HAND_LISTEN = "HAND LISTEN";
+const char* const HAND_REARM = "HAND REARM";    // HAND LISTEN again, for a window that gave up
 
 // A number with one decimal, the way the host writes them, whatever the
 // locale.
@@ -86,6 +87,7 @@ void HostLink::commandDown(uint64_t nowMs)
     awaiting_.clear();
     modeAsked_ = false;
     listenAsked_ = false;
+    window_.reset();
     kissRef_.reset();
     handsSeen_ = false;
     modesComing_.clear();
@@ -161,6 +163,12 @@ void HostLink::kissBytes(const uint8_t* bytes, size_t length, uint64_t nowMs)
             if (burst->tags.empty())
             {
                 lastSentMs_ = std::max<uint64_t>(nowMs, 1);
+                if (window_ && window_->burst == burst->id && !window_->open)
+                {
+                    // Its window opens now (if the host still has it armed).
+                    window_->open = true;
+                    window_->openMs = nowMs;
+                }
                 setBurst(*burst, BurstState::Sent);
                 bursts_.pop_front();
             }
@@ -312,6 +320,18 @@ void HostLink::onLine(const std::string& line, uint64_t nowMs)
                     emit(e);
                 }
                 if (listenAsked_) listenAnswered(ok);
+                break;
+            }
+            if (a.answer == HAND_REARM)
+            {
+                if (!window_ || !window_->rearmAsked) break;
+                window_->rearmAsked = false;
+                if (!ok)
+                {
+                    uint64_t id = window_->burst;
+                    window_.reset();
+                    handLost(id);
+                }
                 break;
             }
             if (a.answer == CLEAN)
@@ -523,18 +543,20 @@ void HostLink::onLine(const std::string& line, uint64_t nowMs)
             emit(e);
             break;
         }
+        case Type::HandEnd:
+            handEnded(nowMs);
+            break;
         case Type::HandSent:
         case Type::HandDropped:
         case Type::Hand:
         case Type::HandShort:
-        case Type::HandEnd:
         {
+            if ((c.type == Type::Hand || c.type == Type::HandShort) && window_) window_->heard = true;
             Event e;
             e.type = c.type == Type::HandSent      ? Event::Type::HandSent
                      : c.type == Type::HandDropped ? Event::Type::HandDropped
                      : c.type == Type::Hand        ? Event::Type::HandHeard
-                     : c.type == Type::HandShort   ? Event::Type::HandShort
-                                                   : Event::Type::HandEnd;
+                                                   : Event::Type::HandShort;
             e.number = c.number;
             e.value = c.value;
             e.snr = c.snr;
@@ -674,6 +696,7 @@ bool HostLink::cancel(uint64_t id)
                 listenAsked_ = false;
                 sendLine("HAND CANCEL", OK, lastMs_);
             }
+            if (window_ && window_->burst == it->id) window_.reset();
         }
         setBurst(*it, BurstState::NotSent);
         bursts_.erase(it);
@@ -734,6 +757,9 @@ void HostLink::setBurst(Burst& burst, BurstState state)
 {
     if (burst.state == state) return;
     burst.state = state;
+    // A burst that didn't go takes its window with it (an armed one the
+    // host still has ends in a HAND END of no window's).
+    if (state == BurstState::NotSent && window_ && window_->burst == burst.id) window_.reset();
     if (state == BurstState::Sent || state == BurstState::NotSent)
     {
         finished_.push_back({burst.id, state});
@@ -774,6 +800,16 @@ void HostLink::listenAnswered(bool ok)
     listenAsked_ = false;
     Burst* burst = current();
     if (burst == nullptr || burst->state != BurstState::Queued || !burst->listen) return;
+    if (ok && !burst->tags.empty())
+    {
+        Window w;
+        w.burst = burst->id;
+        w.delayS = burst->listen->delayS;
+        w.tag = burst->listen->tag;
+        w.ack = burst->tags.front();
+        w.channels = burst->listen->channels;
+        window_ = std::move(w);
+    }
     burst->listen.reset();
     if (ok)
     {
@@ -886,11 +922,66 @@ bool HostLink::handCancel(uint64_t nowMs)
     }
     bool waited = listenAsked_;
     listenAsked_ = false;
+    window_.reset();
     sendLine("HAND CANCEL", OK, nowMs);
     // A burst that waited on its window's OK goes without one.
     Burst* burst = current();
     if (waited && burst != nullptr && burst->state == BurstState::Queued) writeBurst(*burst);
     return true;
+}
+
+void HostLink::handEnded(uint64_t nowMs)
+{
+    Event end;
+    end.type = Event::Type::HandEnd;
+    if (!window_)
+    {
+        emit(end);
+        return;
+    }
+    Window& w = *window_;
+    if (!w.open)
+    {
+        // The host gave the armed listen up while the burst waited (busy,
+        // or held by a ragchew): arm it again, while the burst is the
+        // host's to send.
+        Burst* burst = current();
+        bool waiting = burst != nullptr && burst->id == w.burst
+                       && (burst->state == BurstState::Sending || burst->state == BurstState::Held);
+        if (waiting && commandUp_ && !w.rearmAsked && w.rearms < HAND_REARMS)
+        {
+            w.rearms++;
+            w.rearmAsked = true;
+            sendLine(handListenLine(w.delayS, w.tag, w.ack, w.channels), HAND_REARM, nowMs);
+            return;
+        }
+        uint64_t id = w.burst;
+        window_.reset();
+        handLost(id);
+        return;
+    }
+    // A window's end comes once it has been heard: no sooner than the
+    // delay and the Hand, less the search, after its burst went. An end
+    // sooner than that, with nothing heard, is the armed listen giving up:
+    // the burst went more than HAND_ARM_EXPIRE_S after the window was
+    // armed, and the window never opened. So is one long after it, from a
+    // window armed again only as the burst ended.
+    uint64_t since = nowMs >= w.openMs ? nowMs - w.openMs : 0;
+    uint64_t earliest = (uint64_t)((w.delayS + HAND_SECONDS - HAND_SEARCH_S) * 1000.0);
+    uint64_t latest = (uint64_t)((w.delayS + HAND_SECONDS + HAND_SEARCH_S + HAND_DECODE_MAX_S) * 1000.0);
+    bool lost = !w.heard && (since < earliest || (w.rearms > 0 && since > latest));
+    uint64_t id = w.burst;
+    window_.reset();
+    if (lost) handLost(id);
+    else emit(end);
+}
+
+void HostLink::handLost(uint64_t burst)
+{
+    Event e;
+    e.type = Event::Type::HandLost;
+    e.id = burst;
+    emit(e);
 }
 
 void HostLink::heldChanged()

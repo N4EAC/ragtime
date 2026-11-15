@@ -224,6 +224,8 @@ struct End
     link::KissDecoder kiss;
     double db;                      // how loud the others hear this station
     bool deaf = false;              // hears nothing on the air
+    bool holdBursts = false;        // the host keeps our bursts (the channel busy)
+    std::vector<uint8_t> heldKiss;
     std::vector<std::string> notes;
 
     struct Window
@@ -293,6 +295,10 @@ void step(std::vector<End*> ends)
         if (!replies.empty()) end->say(replies);
 
         std::vector<uint8_t> out = end->link.takeKissOutput();
+        end->heldKiss.insert(end->heldKiss.end(), out.begin(), out.end());
+        if (end->holdBursts) continue;
+        out.swap(end->heldKiss);
+        end->heldKiss.clear();
         std::vector<link::KissFrame> frames;
         end->kiss.feed(out.data(), out.size(), frames);
         bool sent = false;
@@ -338,9 +344,11 @@ void step(std::vector<End*> ends)
 }
 
 // The Hands waiting go into each open window: heard if the tag and
-// channel match, two in one channel lost; then the window ends.
+// channel match, two in one channel lost; then the window ends, the delay
+// and the Hand after the burst.
 void raiseHands(std::vector<End*> ends)
 {
+    now += (uint64_t)((3.0 + link::HAND_SECONDS + link::HAND_SEARCH_S + 0.4) * 1000.0);
     for (End* net : ends)
     {
         if (!net->window || !net->window->open) continue;
@@ -597,6 +605,98 @@ void testNotInARagchew()
     CHECK(!b.hand);
 }
 
+// The host gives an armed window up after 30 s while the check-in waits
+// (data2g-host v0.5.1): Ragtime arms it again, and the round goes on.
+void testWindowArmedAgain()
+{
+    End a("W1AW", "FN31", 9.0);
+    End b("KC2G", "FN20", -6.0);
+    std::vector<End*> all{&a, &b};
+    up(all);
+    b.chat.checkIn("", now);
+    settle(all);
+    a.chat.send("Evening all", "", now);
+    settle(all);
+
+    a.holdBursts = true;
+    a.lines.clear();
+    CHECK(a.chat.checkIn("", now));
+    settle(all);
+    auto listens = [&]() {
+        return std::count_if(a.lines.begin(), a.lines.end(),
+                             [](const std::string& l) { return l.compare(0, 12, "HAND LISTEN ") == 0; });
+    };
+    CHECK_EQ(listens(), 1);
+    const Message* row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::Calling);
+    now += 30500;
+    a.window.reset();
+    a.say("HAND END\r");
+    settle(all);
+    // Armed again, with the same frame named; the row still waits.
+    CHECK_EQ(listens(), 2);
+    CHECK(a.window.has_value());
+    row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::Calling);
+
+    a.holdBursts = false;
+    settle(all);
+    row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::Listening);
+    CHECK(b.hand.has_value());
+    raiseHands(all);
+    settle(all, 2);
+    row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::Done && hasHand(row, "KC2G"));
+}
+
+// A HAND END too soon after the check-in went, with nothing heard, is the
+// armed window giving up, not a round with no Hands: the row says so.
+void testWindowThatNeverOpened()
+{
+    End a("W1AW", "FN31", 9.0);
+    End b("KC2G", "FN20", -6.0);
+    std::vector<End*> all{&a, &b};
+    up(all);
+    b.chat.checkIn("", now);
+    settle(all);
+    a.chat.send("Evening all", "", now);
+    settle(all);
+
+    CHECK(a.chat.checkIn("", now));
+    settle(all);
+    const Message* row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::Listening);
+    now += 1100;
+    a.window.reset();
+    a.say("HAND END\r");
+    settle(all, 2);
+    row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::Lost);
+    if (row != nullptr)
+    {
+        CHECK(rollCallLine(*row).find("no window") != std::string::npos);
+    }
+    // Not still under way: the next one can go.
+    CHECK(a.chat.canCallRoll());
+
+    // A window armed again but refused: lost too.
+    a.holdBursts = true;
+    CHECK(a.chat.checkIn("", now));
+    settle(all);
+    now += 30500;
+    a.say("HAND END\r");
+    a.link.takeCommandOutput();     // the HAND LISTEN again, answered here
+    a.say("WRONG\r");
+    a.events();
+    row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::Lost);
+    a.holdBursts = false;
+    settle(all);
+    row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::Lost);
+}
+
 } // namespace
 
 int main()
@@ -611,5 +711,7 @@ int main()
     testHashedCall();
     testOneHandAtATime();
     testNotInARagchew();
+    testWindowArmedAgain();
+    testWindowThatNeverOpened();
     return ragtime_test::finish();
 }
