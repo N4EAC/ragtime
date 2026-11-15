@@ -34,16 +34,6 @@ void addMemoryHandlers()
     if (wxImage::FindHandler(wxBITMAP_TYPE_PNG) == nullptr) wxImage::AddHandler(new wxPNGHandler);
 }
 
-// The handlers wxImage reads pictures from disk with, each added once (wx
-// keeps one of each, and says so when given another).
-void addReadHandlers()
-{
-    if (wxImage::FindHandler(wxBITMAP_TYPE_JPEG) == nullptr) wxImage::AddHandler(new wxJPEGHandler);
-    if (wxImage::FindHandler(wxBITMAP_TYPE_PNG) == nullptr) wxImage::AddHandler(new wxPNGHandler);
-    if (wxImage::FindHandler(wxBITMAP_TYPE_GIF) == nullptr) wxImage::AddHandler(new wxGIFHandler);
-    if (wxImage::FindHandler(wxBITMAP_TYPE_TIFF) == nullptr) wxImage::AddHandler(new wxTIFFHandler);
-}
-
 bool readAll(const std::string& path, std::vector<uint8_t>& out)
 {
     std::ifstream in(path, std::ios::binary);
@@ -73,6 +63,14 @@ Image fromWxImage(const wxImage& image)
 
 } // namespace
 
+void addPictureReadHandlers()
+{
+    if (wxImage::FindHandler(wxBITMAP_TYPE_JPEG) == nullptr) wxImage::AddHandler(new wxJPEGHandler);
+    if (wxImage::FindHandler(wxBITMAP_TYPE_PNG) == nullptr) wxImage::AddHandler(new wxPNGHandler);
+    if (wxImage::FindHandler(wxBITMAP_TYPE_GIF) == nullptr) wxImage::AddHandler(new wxGIFHandler);
+    if (wxImage::FindHandler(wxBITMAP_TYPE_TIFF) == nullptr) wxImage::AddHandler(new wxTIFFHandler);
+}
+
 bool loadPicture(const std::string& path, Image& out, std::string& error)
 {
     std::vector<uint8_t> bytes;
@@ -85,7 +83,7 @@ bool loadPicture(const std::string& path, Image& out, std::string& error)
     if (loaded == ragtime::image::Load::Done) return true;
     if (loaded == ragtime::image::Load::Failed) return false;
 
-    addReadHandlers();
+    addPictureReadHandlers();
     wxMemoryInputStream stream(bytes.data(), bytes.size());
     wxImage image;
     {
