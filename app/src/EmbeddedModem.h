@@ -25,6 +25,25 @@ struct ModemConstellation
     std::vector<std::complex<float>> points;
 };
 
+struct ModemTelemetry
+{
+    std::string audio;
+    std::string link;
+    std::string mode;
+    bool busy = false;
+    bool ptt = false;
+    std::int64_t rxBytes = 0, txBytes = 0;
+    std::uint64_t overflows = 0, underruns = 0, late = 0, dropped = 0, decodeDropped = 0;
+    double backlogSeconds = 0.0;
+};
+
+struct ModemBurst
+{
+    std::string mode;
+    bool lost;
+    std::optional<double> snrDb;
+};
+
 // The native Data2G station runs in Ragtime's process. It owns the modem
 // threads and speaks the same loopback protocols as a standalone station.
 class EmbeddedModem
@@ -37,8 +56,9 @@ public:
     std::string start(const StationPrefs& prefs);
     void stop();
     void readEarAudio(ragtime::audio::EarAudio& ear);
-    bool running() const { return station_ != nullptr; }
     std::optional<ModemConstellation> takeConstellation();
+    std::optional<ModemTelemetry> telemetry() const;
+    std::optional<ModemBurst> takeLatestBurst();
 
     static int runWithRuntime(int argc, char** argv, int (*run)(int, char**));
     static std::vector<std::string> devices(bool input);

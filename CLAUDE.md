@@ -362,11 +362,11 @@ and the Part 97 check.
 
 **Data2G**
 
-- Never pull Data2G code in: no vendoring, submodule, linking or copied
-  snippets. Ragtime talks to a separately running `data2g-host` over TCP:
-  KISS on 8100, commands on 8300, and the session byte stream on the
-  command port + 1 (8301). `docs/DATA2G.md` sums up the host as Ragtime
-  meets it, read from Data2G's source at a pinned commit.
+- Upstream Ragtime uses an external `data2g-host`. This fork also links
+  Data2G's native station library from a separate checkout for its macOS
+  build. Both paths use TCP with KISS on 8100, commands on 8300, and the
+  session byte stream on the command port + 1 (8301) by default.
+  `docs/DATA2G.md` describes the host protocol as Ragtime uses it.
 - Don't guess how Data2G behaves: read it (Andrew's advice, 2026-10-25).
   `git clone https://github.com/arodland/Data2G` works in a cloud
   session; start with its `docs/broadcast.md`, `docs/arq.md`,
@@ -572,6 +572,9 @@ The bench's fake hosts are POSIX, but `wine ragtime.exe` talks to a Linux
 
 ## Releases
 
+These are upstream release notes for Linux and Windows packaging. This fork's
+macOS beta bundles Data2G and uses its own release tag.
+
 1. A PR sets the version, `project(ragtime VERSION ...)`, and gets a full
    CI run, started by hand on its branch (no `[skip ci]`).
 2. After Jeff merges it, build from the merge commit:
@@ -595,10 +598,11 @@ The bench's fake hosts are POSIX, but `wine ragtime.exe` talks to a Linux
 
 ## Code
 
-- C++17, wxWidgets, CMake, the same toolchain as Glissando. The AppImage
+- C++17, wxWidgets, CMake, the same toolchain as Glissando. The embedded
+  modem bridge uses C++20 for Data2G. The AppImage
   and the Windows zip follow Glissando's recipes (its `docs/APP.md`),
-  simpler for having no audio or codec2. There is no Mac or ARM
-  build yet.
+  simpler for having no audio or codec2. This fork also builds for macOS
+  on Apple Silicon.
 - Engines worth porting from Glissando (logic and tests, adapted to the
   new records): `Data2GLink` (KISS, command lines, `MODES`, session
   stream), `Data2GFileTransfer`, `Data2GBroadcast`, `Sha256`, `HamText`

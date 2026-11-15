@@ -46,8 +46,8 @@
 #include "DrawnIcon.h"
 #include "EarFrame.h"
 #ifdef RAGTIME_EMBED_DATA2G
-#include "ConstellationPane.h"
 #include "EmbeddedModem.h"
+#include "ModemMonitor.h"
 #endif
 #include "FilesPage.h"
 #include "GearshiftDialog.h"
@@ -106,7 +106,7 @@ enum
     ID_GLOBUS,
     ID_EAR,
 #ifdef RAGTIME_EMBED_DATA2G
-    ID_CONSTELLATION,
+    ID_MODEM_MONITOR,
 #endif
     ID_VOICE_DECK,
     ID_TOOLS_ON_TOP,
@@ -285,9 +285,6 @@ MainFrame::MainFrame()
     SetMinSize(wxSize(960, 600));
 
     globusOn_ = loadBool(keys::GLOBUS, true);
-#ifdef RAGTIME_EMBED_DATA2G
-    constellationOn_ = loadBool(keys::CONSTELLATION, true);
-#endif
     toolsOnTop_ = loadBool(keys::TOOLS_ON_TOP, false);
     listWidth_ = std::max(MIN_PANE, loadInt(keys::LIST_WIDTH, listWidth_));
     tableWidth_ = std::max(MIN_PANE, loadInt(keys::TABLE_WIDTH, tableWidth_));
@@ -340,15 +337,11 @@ MainFrame::MainFrame()
 #ifdef RAGTIME_EMBED_DATA2G
     modem_ = std::make_unique<EmbeddedModem>([this](const std::string& error) {
         modemError_ = error;
-        constellationTimer_.Stop();
-        constellation_->clear(false);
+        if (modemMonitor_) modemMonitor_->reset(utf8(error));
         host_->recorder().note(error, HostConnection::nowMs());
         host_->stop();
         rig_->hostLost();
         showConnection();
-    });
-    constellationTimer_.Bind(wxEVT_TIMER, [this](wxTimerEvent&) {
-        if (auto plot = modem_->takeConstellation()) constellation_->setPlot(std::move(*plot));
     });
 #endif
     loadFilesLog();
@@ -426,7 +419,7 @@ MainFrame::~MainFrame()
     rig_.reset();
     host_.reset();
 #ifdef RAGTIME_EMBED_DATA2G
-    constellationTimer_.Stop();
+    delete modemMonitor_;
     modem_.reset();
 #endif
     // The panes go now, while the engines their callbacks read are still
@@ -490,8 +483,8 @@ void MainFrame::buildMenus()
     viewMenu_->AppendCheckItem(ID_GLOBUS, "&Globus\tCtrl+Shift+G");
     viewMenu_->AppendCheckItem(ID_EAR, "&Ear\tCtrl+E", "A waterfall of what the radio hears");
 #ifdef RAGTIME_EMBED_DATA2G
-    viewMenu_->AppendCheckItem(ID_CONSTELLATION, "Data2G &constellation",
-                               "Show the built-in modem's received symbols below Recent work");
+    viewMenu_->AppendCheckItem(ID_MODEM_MONITOR, "Data2G modem &monitor",
+                               "Open the built-in modem's receive constellation and telemetry");
 #endif
     viewMenu_->AppendCheckItem(ID_VOICE_DECK, "&Microphone deck\tCtrl+Shift+M",
                                "Push to talk: record a voice message for the net or the session");
@@ -503,8 +496,7 @@ void MainFrame::buildMenus()
     viewMenu_->AppendSubMenu(columns, "Station &columns",
                              "The station table's columns, shown while Globus is off");
     viewMenu_->AppendCheckItem(ID_TOOLS_ON_TOP, "Keep tool windows on &top",
-                               "The Ear, the microphone deck, the gearshift and pictures stay above the main "
-                               "window, from the next time each opens");
+                               "Tool windows stay above the main window from the next time each opens");
     viewMenu_->AppendSeparator();
     viewMenu_->Append(ID_TAB_BROADCAST, "&Broadcast\tCtrl+1");
     viewMenu_->Append(ID_TAB_SESSION, "&Session\tCtrl+2");
@@ -562,11 +554,7 @@ void MainFrame::buildMenus()
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setGlobus(e.IsChecked()); }, ID_GLOBUS);
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setEar(e.IsChecked()); }, ID_EAR);
 #ifdef RAGTIME_EMBED_DATA2G
-    Bind(wxEVT_MENU, [this](wxCommandEvent& e) {
-        constellationOn_ = e.IsChecked();
-        saveBool(keys::CONSTELLATION, constellationOn_);
-        updateConstellationVisibility();
-    }, ID_CONSTELLATION);
+    Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setModemMonitor(e.IsChecked()); }, ID_MODEM_MONITOR);
 #endif
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setVoiceDeck(e.IsChecked()); }, ID_VOICE_DECK);
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) {
@@ -667,23 +655,9 @@ void MainFrame::buildLayout()
     left_->SetMinimumPaneSize(MIN_PANE);
     left_->SetSashGravity(1.0);
     stationList_ = new StationList(left_, stations_);
-    int lowerHeight = recentHeight_;
-#ifdef RAGTIME_EMBED_DATA2G
-    auto* lower = new wxPanel(left_, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL);
-    auto* lowerSizer = new wxBoxSizer(wxVERTICAL);
-    recent_ = new RecentWorkPane(lower);
-    constellation_ = new ConstellationPane(lower);
-    lowerSizer->Add(recent_, 1, wxEXPAND);
-    lowerSizer->Add(constellation_, 0, wxEXPAND);
-    lower->SetSizer(lowerSizer);
-    constellation_->Show(constellationOn_ && prefs_.usesBuiltInModem());
-    if (constellation_->IsShown()) lowerHeight += constellation_->GetMinHeight();
-#else
     recent_ = new RecentWorkPane(left_);
-    auto* lower = recent_;
-#endif
     recent_->setOrder(recentOrder_);
-    left_->SplitHorizontally(stationList_, lower, -lowerHeight);
+    left_->SplitHorizontally(stationList_, recent_, -recentHeight_);
 
     inner_ = new wxSplitterWindow(outer_, wxID_ANY, wxDefaultPosition, wxDefaultSize,
                                   wxSP_LIVE_UPDATE | wxSP_3DSASH | wxSP_NO_XP_THEME);
@@ -694,7 +668,6 @@ void MainFrame::buildLayout()
     middle_ = new wxPanel(inner_);
     tabs_ = new wxNotebook(middle_, wxID_ANY);
     broadcast_ = new BroadcastPage(tabs_, chat_);
-    // Tab order is fixed: Broadcast, Session, Files (CLAUDE.md).
     tabs_->AddPage(broadcast_, "Broadcast", true);
     sessionPage_ = new SessionPage(tabs_, session_, fileTraffic_);
     tabs_->AddPage(sessionPage_, wxString::FromUTF8("Session \xc2\xb7 none"));
@@ -1003,8 +976,9 @@ void MainFrame::applyPrefs(bool reconnect)
         }
         else
             modem_->stop();
-        constellation_->clear(modem_->running());
-        updateConstellationVisibility();
+        if (!prefs_.usesBuiltInModem()) setModemMonitor(false);
+        GetMenuBar()->Enable(ID_MODEM_MONITOR, prefs_.usesBuiltInModem());
+        if (modemMonitor_) modemMonitor_->reset(utf8(modemError_));
         if (modemError_.empty() && !prefs_.callsign.empty())
 #else
         if (!prefs_.callsign.empty())
@@ -3936,34 +3910,35 @@ void MainFrame::rememberDividers()
             tableWidth_ = left;
     }
     if (inner_->IsSplit()) globusWidth_ = std::max(MIN_PANE, inner_->GetClientSize().x - inner_->GetSashPosition());
-    if (left_->IsSplit())
-    {
-        int height = left_->GetClientSize().y - left_->GetSashPosition();
-#ifdef RAGTIME_EMBED_DATA2G
-        if (constellation_->IsShown()) height -= constellation_->GetSize().y;
-#endif
-        recentHeight_ = std::max(MIN_PANE, height);
-    }
+    if (left_->IsSplit()) recentHeight_ = std::max(MIN_PANE, left_->GetClientSize().y - left_->GetSashPosition());
 }
 
 #ifdef RAGTIME_EMBED_DATA2G
-void MainFrame::updateConstellationVisibility()
+void MainFrame::setModemMonitor(bool open)
 {
-    const bool builtIn = prefs_.usesBuiltInModem();
-    const bool show = constellationOn_ && builtIn;
-    GetMenuBar()->Enable(ID_CONSTELLATION, builtIn);
-    GetMenuBar()->Check(ID_CONSTELLATION, show);
-    if (show != constellation_->IsShown())
+    open = open && prefs_.usesBuiltInModem();
+    if (open && !modemMonitor_)
     {
-        constellation_->Show(show);
-        const int height = constellation_->GetMinHeight();
-        left_->SetSashPosition(left_->GetSashPosition() + (show ? -height : height));
-        constellation_->GetParent()->Layout();
+        modemMonitor_ = new ModemMonitor(this, *modem_, toolsOnTop_);
+        modemMonitor_->reset(utf8(modemError_));
+        modemMonitor_->CentreOnParent();
+        modemMonitor_->Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent& e) {
+            if (e.CanVeto())
+            {
+                e.Veto();
+                setModemMonitor(false);
+            }
+            else
+            {
+                modemMonitor_->setOpen(false);
+                modemMonitor_ = nullptr;
+                GetMenuBar()->Check(ID_MODEM_MONITOR, false);
+                e.Skip();
+            }
+        });
     }
-    if (show && modem_->running())
-        constellationTimer_.Start(150);
-    else
-        constellationTimer_.Stop();
+    if (modemMonitor_) modemMonitor_->setOpen(open);
+    GetMenuBar()->Check(ID_MODEM_MONITOR, open);
 }
 #endif
 

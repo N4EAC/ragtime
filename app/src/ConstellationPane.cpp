@@ -2,25 +2,25 @@
 
 #include <algorithm>
 #include <cmath>
+#include <memory>
 #include <utility>
 
 #include <wx/dcbuffer.h>
+#include <wx/graphics.h>
 #include <wx/settings.h>
-
-#include "Html.h"
 
 ConstellationPane::ConstellationPane(wxWindow* parent)
     : wxPanel(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxFULL_REPAINT_ON_RESIZE)
 {
-    SetName("Data2G constellation");
-    SetMinSize(wxSize(-1, FromDIP(124)));
+    SetName("Data2G receive constellation");
+    SetMinSize(FromDIP(wxSize(220, 220)));
     SetBackgroundStyle(wxBG_STYLE_PAINT);
     Bind(wxEVT_PAINT, &ConstellationPane::paint, this);
 }
 
-void ConstellationPane::clear(bool modemRunning)
+void ConstellationPane::clear()
 {
-    modemRunning_ = modemRunning;
+    if (!plot_) return;
     plot_.reset();
     Refresh();
 }
@@ -36,87 +36,74 @@ void ConstellationPane::paint(wxPaintEvent&)
     wxAutoBufferedPaintDC dc(this);
     dc.SetBackground(wxBrush(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOW)));
     dc.Clear();
+    std::unique_ptr<wxGraphicsContext> graphics(wxGraphicsContext::Create(dc));
+    if (!graphics) return;
+    auto& canvas = *graphics;
+    canvas.SetAntialiasMode(wxANTIALIAS_NONE);
 
     const wxSize size = GetClientSize();
-    const int pad = FromDIP(6);
-    dc.SetFont(GetFont().Bold());
-    dc.SetTextForeground(wxSystemSettings::GetColour(wxSYS_COLOUR_WINDOWTEXT));
-    dc.DrawText("Data2G constellation", pad, pad);
-    const int top = pad * 2 + dc.GetCharHeight();
-    const int side = std::min(size.y - top - pad, size.x / 2 - pad);
+    const int side = std::min(size.x, size.y);
     if (side <= 0) return;
-    dc.SetFont(GetFont());
-    dc.SetTextForeground(secondaryText());
-    wxString status = modemRunning_ ? "Waiting for RX" : "Modem offline";
-    if (plot_)
-    {
-        status = wxString::FromUTF8(plot_->mode);
-        if (plot_->live) status += " (live)";
-        else if (plot_->lost) status += " (lost)";
-    }
-    dc.DrawText(status, pad * 2 + side, top);
+    const int left = (size.x - side) / 2;
+    canvas.Translate(left, 0);
+    canvas.Clip(0, 0, side, side);
+    canvas.SetPen(*wxTRANSPARENT_PEN);
+    canvas.SetBrush(*wxBLACK_BRUSH);
+    canvas.DrawRectangle(0, 0, side, side);
 
-    const wxRect square(pad, top, side, side);
-    wxDCClipper clip(dc, square);
-    dc.SetPen(*wxTRANSPARENT_PEN);
-    dc.SetBrush(wxBrush(wxColour(13, 18, 27)));
-    dc.DrawRectangle(square);
-    const wxPoint center(pad + side / 2, top + side / 2);
-    dc.SetPen(wxPen(wxColour(66, 77, 93)));
-    dc.DrawLine(square.x, center.y, square.GetRight() + 1, center.y);
-    dc.DrawLine(center.x, square.y, center.x, square.GetBottom() + 1);
+    // Follow Data2G v0.5.1 native/gui/constellation.cpp. The station supplies
+    // both the received symbols and the ideal points, including the CPM tone wheel.
+    const double mid = side / 2.0;
+    canvas.SetPen(wxPen(wxColour(60, 60, 60)));
+    canvas.StrokeLine(mid, 0, mid, side);
+    canvas.StrokeLine(0, mid, side, mid);
     if (!plot_) return;
 
-    // Use the modem's ideal points for the scale, so noise does not zoom the plot.
     double reach = 0.0;
     for (const auto& point : plot_->points)
         reach = std::max({reach, double(std::abs(point.real())), double(std::abs(point.imag()))});
-    const double scale = side / (3.0 * (reach > 0 ? reach : 1.0));
-    const auto at = [&](std::complex<float> z) {
-        return wxPoint(center.x + int(std::lround(z.real() * scale)),
-                       center.y - int(std::lround(z.imag() * scale)));
+    const double scale = mid / (reach > 0 ? 1.5 * reach : 1.5);
+    const auto at = [&](std::complex<float> point) {
+        return wxPoint2DDouble(mid + point.real() * scale, mid - point.imag() * scale);
     };
     if (plot_->tones)
     {
-        dc.SetBrush(*wxTRANSPARENT_BRUSH);
-        dc.DrawCircle(center, int(std::lround(scale)));
+        canvas.SetBrush(*wxTRANSPARENT_BRUSH);
+        canvas.DrawEllipse(mid - scale, mid - scale, 2 * scale, 2 * scale);
     }
 
+    canvas.SetPen(*wxTRANSPARENT_PEN);
     const auto count = plot_->symbols.size();
-    constexpr int lastShade = 15;
-    int shade = -1;
-    dc.SetPen(wxPen(wxColour(92, 210, 247), FromDIP(2)));
     for (std::size_t i = 0; i < count; ++i)
     {
-        const auto symbol = plot_->symbols[i];
-        // Reject nonfinite and offscreen points before converting to pixels.
-        if (!(std::abs(symbol.real() * scale) < side / 2.0 &&
-              std::abs(symbol.imag() * scale) < side / 2.0)) continue;
-        if (plot_->tones && count > 1)
-        {
-            // The same early-blue to late-green cue as the Data2G GUI.
-            const int nextShade = int(i * lastShade / (count - 1));
-            if (shade != nextShade)
-            {
-                shade = nextShade;
-                const int tint = 100 * shade / lastShade;
-                dc.SetPen(wxPen(wxColour(70, 132 + tint, 244 - tint), FromDIP(2)));
-            }
-        }
-        dc.DrawPoint(at(symbol));
+        const auto point = at(plot_->symbols[i]);
+        // Outliers and nonfinite estimates cannot contribute a visible pixel.
+        if (!(point.m_x >= 0 && point.m_x < side && point.m_y >= 0 && point.m_y < side)) continue;
+        const double t = plot_->tones && count > 1 ? double(i) / double(count - 1) : 1.0;
+        canvas.SetBrush(wxBrush(wxColour(0, int(120 + 135 * t), int(255 - 135 * t), 140)));
+        canvas.DrawRectangle(std::floor(point.m_x), std::floor(point.m_y), 1, 1);
     }
 
-    dc.SetPen(wxPen(wxColour(255, 135, 122)));
+    canvas.SetPen(wxPen(wxColour(255, 80, 80)));
     for (const auto& point : plot_->points)
     {
         if (plot_->tones)
-            dc.DrawLine(at(point * 1.06f), at(point * 1.16f));
+        {
+            const auto inner = at(point * 1.06f);
+            const auto outer = at(point * 1.16f);
+            canvas.StrokeLine(inner.m_x, inner.m_y, outer.m_x, outer.m_y);
+        }
         else
         {
-            const auto pixel = at(point);
-            const int arm = FromDIP(3);
-            dc.DrawLine(pixel.x - arm, pixel.y, pixel.x + arm + 1, pixel.y);
-            dc.DrawLine(pixel.x, pixel.y - arm, pixel.x, pixel.y + arm + 1);
+            const auto center = at(point);
+            canvas.StrokeLine(center.m_x - 3, center.m_y, center.m_x + 3, center.m_y);
+            canvas.StrokeLine(center.m_x, center.m_y - 3, center.m_x, center.m_y + 3);
         }
     }
+
+    auto label = wxString::FromUTF8(plot_->mode);
+    if (plot_->live) label += " (live)";
+    else if (plot_->lost) label += " (lost)";
+    canvas.SetFont(GetFont(), wxColour(128, 128, 128));
+    canvas.DrawText(label, 4, 2);
 }

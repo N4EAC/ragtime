@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <clocale>
+#include <cmath>
 #include <exception>
 #include <stdexcept>
 #include <utility>
@@ -14,6 +15,8 @@
 #include "app/log.hpp"
 #include "app/station.hpp"
 #include "audio/card.hpp"
+#include "core/arq/modes.hpp"
+#include "core/arq/session.hpp"
 #include "generated/config.hpp"
 #include "ragtime/audio/EarAudio.h"
 #include "ragtime/audio/CoreAudioVoice.h"
@@ -124,6 +127,51 @@ std::optional<ModemConstellation> EmbeddedModem::takeConstellation()
     if (!plot) return std::nullopt;
     return ModemConstellation{std::move(plot->mode), plot->tones, plot->live, plot->lost,
                               std::move(plot->symbols), std::move(plot->points)};
+}
+
+std::optional<ModemTelemetry> EmbeddedModem::telemetry() const
+{
+    if (!station_ || !station_->running() || station_->failed()) return std::nullopt;
+    const auto& args = station_->args();
+    const auto link = station_->link();
+    const auto audio = station_->counters();
+    ModemTelemetry out;
+    out.audio = args.tci ? "TCI · " + args.tci_host : "Core Audio";
+    using data2g::arq::SessionState;
+    switch (link.state)
+    {
+        case SessionState::CONNECTING: out.link = "Connecting to " + link.peer; break;
+        case SessionState::CONNECTED:
+            out.link = "Connected to " + link.peer + " · BW" +
+                       data2g::arq::bw_name(std::clamp(link.cap, 0, 2));
+            break;
+        case SessionState::DISCONNECTING: out.link = "Disconnecting from " + link.peer; break;
+        case SessionState::LISTEN: out.link = "Listening"; break;
+        default: out.link = data2g::arq::state_name(link.state); break;
+    }
+    out.mode = link.mode;
+    if (const auto* mode = data2g::arq::mode(link.mode))
+        out.mode += " · " + std::to_string(std::lround(data2g::arq::width_hz(*mode))) + " Hz";
+    out.busy = station_->busy();
+    out.ptt = station_->ptt();
+    out.rxBytes = link.rx_bytes;
+    out.txBytes = link.tx_bytes;
+    out.overflows = audio.overflows;
+    out.underruns = audio.underruns;
+    out.late = audio.late;
+    out.dropped = audio.dropped;
+    out.decodeDropped = audio.decode_dropped;
+    out.backlogSeconds = audio.backlog_s;
+    return out;
+}
+
+std::optional<ModemBurst> EmbeddedModem::takeLatestBurst()
+{
+    if (!station_) return std::nullopt;
+    auto bursts = station_->take_bursts();
+    if (bursts.empty()) return std::nullopt;
+    auto& burst = bursts.back();
+    return ModemBurst{std::move(burst.mode), burst.lost, burst.snr_db};
 }
 
 std::vector<std::string> EmbeddedModem::devices(bool input)

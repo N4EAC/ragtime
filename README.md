@@ -34,6 +34,16 @@ chats on the D2G broadcast group. Current features include:
   is data, so it goes wherever Data2G runs; at 2,400 it is a gear
   5-and-up feature, and the slower rates take it lower.
 
+## Data2G
+
+Andrew Rodland (KC2G) designed Data2G as a free, open-source HF data modem for
+amateur radio experimentation. It delivers up to 6,400 bit/s net throughput on a
+good channel, with a 2,400 Hz channel for full speed and an optional 500 Hz
+bandwidth cap. It supports connected links with hybrid ARQ and broadcast groups
+with forward error correction. Its VARA HF-compatible command interface and KISS
+ports let applications use the modem for messaging, file transfers, and packet
+radio. [Data2G project README](https://github.com/arodland/Data2G#readme)
+
 ## Screenshots
 
 **Ragtime on macOS.** The Broadcast tab, Globus, the Microphone Deck, and
@@ -41,76 +51,14 @@ the Ear waterfall following the built-in Data2G modem over TCI.
 
 ![Ragtime on macOS with Globus, the Microphone Deck, and the Ear waterfall](docs/images/readme/ragtime-macos.png)
 
-The remaining screenshots were taken on the bench that comes with the build
-(`ragtime_fake_air`, below): fake data2g-hosts and a few chatty bot
-stations, with no radio. The picture of the tower is drawn for the
-occasion.
-
-**The D2G net.** The Broadcast tab, with the stations heard on the
-left, Recent work under them, and Globus on the right drawing the path
-to the station picked in Recent work. Reactions sit under the lines,
-and an `@` message shows its acknowledgement. Further up, a file
-broadcast by W1AW is being repaired: two pieces were lost, and Ragtime
-is asking for them.
-
-![The Broadcast tab with Globus and Recent work](docs/images/readme/broadcast.png)
-
-**A ragchew.** A session with W1AW: a file offered and saved, and a
-picture going out, shown as it is sent.
-
-![A session, with a picture being sent](docs/images/readme/session.png)
-
-**Files.** Everything coming and going, with the repair under way: the
-red gaps in the bar are the pieces still missing.
-
-![The Files tab, a broadcast file asking for two pieces](docs/images/readme/files-repair.png)
-
-**Pictures and voice.** A picture is shrunk and coded as progressive
-JPEG 2000 (or Cool-chic) to fit the airtime you allow. The preview
-plays it as the far end will see it arrive. Voice messages come back
-as cards with a play button and the clip's pitch strip.
-
-<table>
-<tr>
-<td width="32%"><img src="docs/images/readme/picture-dialog.png" alt="The picture dialog, previewing the picture as it arrives"></td>
-<td><img src="docs/images/readme/pictures-and-voice.png" alt="A picture and voice messages in a session"></td>
-</tr>
-</table>
-
-**The microphone deck.** Speech goes through a high-pass, RNNoise,
-a leveller and sotto, with meters all the way. Hold Push to talk (or
-the space bar), let go, and the clip goes to the net or to the station
-you are ragchewing with. The bar along the bottom is the airtime it
-will take at the current gear.
-
-![The microphone deck, recording](docs/images/readme/microphone-deck.png)
-
-**The Ear.** A waterfall and spectrum of what the radio hears,
-recorded alongside data2g-host. It draws Data2G's passband, the rig's
-filter as the rig reports it, and the edges the band's noise really
-shows. With its box ticked in Settings > Rig, you can drag the
-filter's edges, or the notch out of its bay, right on the scope.
-
-![The Ear, three Data2G bursts on the waterfall](docs/images/readme/ear.png)
-
-**The gearshift.** Data2G's modes as gears, plotted by speed and the
-S/N each needs. The black dashed line is the path: the weakest station
-heard in the last 15 minutes, since a broadcast must reach them all.
-Gears in red need more than that, less a 3 dB margin. The blue line is
-the band's noise from the rig's S-meter, with an axis on the right
-saying what each gear's station reads on your S-meter; the blue
-shading is "under the needle", stations you can copy but the S-meter
-can't show.
-
-![The gearshift](docs/images/readme/gearshift.png)
-
 ## Downloads
 
-Releases carry a Linux AppImage (x86_64, glibc 2.39 or newer, as on
-Ubuntu 24.04) and a portable Windows zip (64-bit). Those builds connect
-to a [data2g-host](https://github.com/arodland/Data2G) running on your
-computer or network. Give its address and ports in Settings > Station.
-The macOS source build below also offers an in-process Data2G modem.
+The first macOS beta bundles Data2G v0.5.1 and is available as a DMG or ZIP
+for Apple Silicon with macOS 27 or later. The app is ad hoc signed and has no
+Apple notarization. [Ragtime macOS releases](https://github.com/N4EAC/ragtime-data2g/releases)
+
+Linux and Windows source builds connect to an external `data2g-host`.
+Enter its address and ports under **Settings > Station**.
 
 The gearshift reads Data2G's `data2g/codes_data/mode_thresholds.json`
 from your Data2G clone: from `$DATA2G_HOME`, or a `Data2G` or `data2g`
@@ -179,6 +127,12 @@ shows its outgoing waveform in grey during transmit. You can also select
 a Core Audio input in the Ear's
 **Listen to** menu. On macOS 14.2 and later the Ear can discover a local
 external Data2G sound-card input.
+
+In source builds with the modem monitor, **View > Data2G modem monitor**
+opens a separate window with the built-in
+modem's receive constellation, channel state, session traffic, last-burst SNR,
+and audio and decoder counters. **Help > Open session logs folder** opens the
+per-callsign chat logs.
 
 **Settings > Rig** shows all Hamlib models and can filter by manufacturer.
 For serial connections, pick your radio's `/dev/cu.*` port. The packaged app
@@ -293,22 +247,6 @@ The Windows build cross-compiles on Ubuntu 24.04 with
 Hamlib (which needs `autoconf automake libtool`); with
 Wine installed, `ctest --test-dir build-win` runs the unit tests as
 Windows programs.
-
-### Trying it without Data2G
-
-The build includes a bench of fake data2g-hosts with a few chatty
-stations of its own. Nothing goes on the radio.
-
-    ./build/tests/ragtime_fake_air &
-    ./build/app/ragtime --config /tmp/ragtime-a.conf
-
-Set any callsign and locator in Settings > Station; the address
-127.0.0.1 and ports 8100 and 8300 are the defaults. A second Ragtime
-with its own `--config` file and ports 8110 and 8310 talks to the first.
-
-A tester's report (Help > Save a report) plays back the same way:
-`ragtime_fake_air --replay flight/` gives a Ragtime the host's side of
-the recording, at the spacing the tester saw (docs/FLIGHT_RECORDER.md).
 
 ## Frequencies
 

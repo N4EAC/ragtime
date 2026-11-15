@@ -312,7 +312,7 @@ private:
     // Globus on or off, and the toggle on the tab strip.
     void setGlobus(bool on);
 #ifdef RAGTIME_EMBED_DATA2G
-    void updateConstellationVisibility();
+    void setModemMonitor(bool open);
 #endif
     // The Ear, opened or closed (the ear button, View > Ear).
     void setEar(bool open);
@@ -343,9 +343,7 @@ private:
 #ifdef RAGTIME_EMBED_DATA2G
     std::unique_ptr<class EmbeddedModem> modem_;
     std::string modemError_;
-    class ConstellationPane* constellation_ = nullptr;
-    wxTimer constellationTimer_;
-    bool constellationOn_ = true;
+    class ModemMonitor* modemMonitor_ = nullptr;
 #endif
     std::unique_ptr<RigControl> rig_;
     ragtime::radio::PathLog pathLog_;
@@ -361,7 +359,7 @@ private:
     EarFrame* ear_ = nullptr;               // while the Ear is open
     GearshiftDialog* gearDialog_ = nullptr; // while the gearshift is open
     // View > Keep tool windows on top: the Ear, the deck, the gearshift and
-    // pictures stay above the main window (off by default, Andrew's ask,
+    // pictures and the modem monitor stay above the main window (off by default, Andrew's ask,
     // 2026-11-08). It counts from the next time each opens.
     bool toolsOnTop_ = false;
     VoiceDeck* voiceDeck_ = nullptr;        // while the microphone deck is open
