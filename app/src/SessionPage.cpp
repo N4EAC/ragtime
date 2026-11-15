@@ -520,7 +520,11 @@ void SessionPage::refresh(uint64_t nowMs, long utcOffsetS)
         sendPicture_->Enable(connected);
         compose_->SetHint(connected ? "Message to " + wxString::FromUTF8(session_.peer()) + " in the session"
                                     : wxString("No session: nothing to type into"));
-        if (phase != shownPhase_ && connected && IsShownOnScreen()) CallAfter([this]() { compose_->SetFocus(); });
+        // Only in a window already in front (FrontWindow.h).
+        if (phase != shownPhase_ && connected && IsShownOnScreen())
+            CallAfter([this]() {
+                if (inFrontWindow(this)) compose_->SetFocus();
+            });
         shownPhase_ = phase;
         strip_->Layout();
         strip_->Refresh();

@@ -1179,8 +1179,13 @@ stays lit while it is open. It stacks as any other window, so the main
 window can come in front of it; View > Keep tool windows on top keeps
 it above (off by default; Andrew asked, 2026-11-08), from the next time
 it opens. The same goes for the microphone deck, the gearshift and
-pictures. It listens only while open: closing it stops
-the recording.
+pictures. Nothing heard brings the main window up over it: a tab that
+comes to the front by itself (the Session tab when a ragchew starts)
+takes the focus only if the main window is already in front, since in
+GTK a control taking the focus presents its window (`FrontWindow.h`;
+Jeff, 2026-11-15: the Ear "jumps into the background", 2.5 s after a
+CONNECTED in his flight log). It listens only while open: closing it
+stops the recording.
 
 **What it listens to.** Jeff's call: assume PipeWire (or PulseAudio on
 PipeWire), find the sound card data2g-host records from, and listen to

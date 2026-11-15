@@ -9,6 +9,7 @@
 
 #include <wx/panel.h>
 
+#include "FrontWindow.h"
 #include "ragtime/broadcast/BroadcastChat.h"
 #include "ragtime/broadcast/Seals.h"
 
@@ -76,6 +77,14 @@ void fillFileMenu(wxMenu& menu, const FileCard& card, int firstId, std::function
 class BroadcastPage : public wxPanel
 {
 public:
+    // The notebook gives the page the focus as it shows it: only in a
+    // window already in front, or a tab brought up by something heard
+    // lifts the main window over the Ear (FrontWindow.h).
+    void SetFocus() override
+    {
+        if (inFrontWindow(this)) wxPanel::SetFocus();
+    }
+
     BroadcastPage(wxWindow* parent, const ragtime::broadcast::BroadcastChat& chat);
 
     // Send pressed: true when the text went, and the line is cleared.
