@@ -218,7 +218,8 @@ struct CommandEvent
         HandDropped,    // number: our Hand's channel, not sent (the radio busy past its slot)
         Hand,           // number: channel, handPayload, snr, value: its lateness, ms
         HandShort,      // value: ms of the window's head missed
-        HandEnd,        // the window is over (or never opened)
+        HandEnd,        // the window is over (older hosts also use this for expiry)
+        HandExpired,    // the armed window expired before its anchoring burst
     } type = Type::Other;
 
     bool on = false;

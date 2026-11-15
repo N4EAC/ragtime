@@ -53,9 +53,10 @@ the Ear waterfall following the built-in Data2G modem over TCI.
 
 ## Downloads
 
-The first macOS beta bundles Data2G v0.5.1 and is available as a DMG or ZIP
-for Apple Silicon with macOS 27 or later. The app is ad hoc signed and has no
-Apple notarization. [Ragtime macOS releases](https://github.com/N4EAC/ragtime-data2g/releases)
+Ragtime 0.2.0 beta 2 bundles Data2G v0.5.1 with the upstream Hand timing
+fix. It is available as a DMG or ZIP for Apple Silicon with macOS 27 or
+later. The app is ad hoc signed and has no Apple notarization.
+[Ragtime macOS releases](https://github.com/N4EAC/ragtime-data2g/releases)
 
 Linux and Windows source builds connect to an external `data2g-host`.
 Enter its address and ports under **Settings > Station**.
@@ -79,18 +80,20 @@ On Ubuntu 24.04:
 
 ### macOS
 
-Build the integrated modem against the tested Data2G release, v0.5.1.
-From the Ragtime checkout, clone it beside Ragtime if you do not already
-have that checkout:
+The integrated modem uses Data2G v0.5.1 plus the upstream Hand timing fix
+at commit `fc69e77a69a4e00efd6836b4ffd3c03feb1b6661`. The modem's version
+reply is still `Data2G 0.5.1`. Use a separate checkout for this build.
+[Data2G PR #201](https://github.com/arodland/Data2G/pull/201)
 
-    git clone --branch v0.5.1 https://github.com/arodland/Data2G.git ../Data2G
+    git clone --no-checkout https://github.com/arodland/Data2G.git ../Data2G-ragtime
+    git -C ../Data2G-ragtime checkout --detach fc69e77a69a4e00efd6836b4ffd3c03feb1b6661
 
-Use `-DRAGTIME_DATA2G_SOURCE_DIR=/path/to/Data2G` to use a different checkout
-location. Install the build dependencies with Homebrew:
+Install the build dependencies with Homebrew:
 
     brew install cmake ninja pkg-config wxwidgets hamlib openjpeg webp libheif
     brew install --skip-link qtbase qtsvg qtdeclarative qtwebsockets
     cmake -S . -B build-macos -G Ninja -DCMAKE_BUILD_TYPE=Release \
+        -DRAGTIME_DATA2G_SOURCE_DIR="$PWD/../Data2G-ragtime" \
         -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)" \
         -DQT_ADDITIONAL_PACKAGES_PREFIX_PATH="$(brew --prefix qtwebsockets)"
     cmake --build build-macos --parallel

@@ -597,6 +597,29 @@ void testNotInARagchew()
     CHECK(!b.hand);
 }
 
+void testArmedWindowExpires()
+{
+    End a("W1AW", "FN31", 9.0);
+    End b("KC2G", "FN20", -6.0);
+    std::vector<End*> all{&a, &b};
+    up(all);
+    CHECK(!b.chat.send("Evening all", "", now).empty());
+    settle(all);
+    CHECK(a.chat.canCallRoll());
+    CHECK(a.chat.checkIn("", now));
+    CHECK(a.link.takeCommandOutput().find("HAND LISTEN ") != std::string::npos);
+    a.say("OK\r");
+    a.events();
+    CHECK(!a.chat.canCallRoll());
+
+    // The host accepted HAND LISTEN, but its anchoring burst never aired.
+    a.say("HAND END EXPIRED\r");
+    a.events();
+    const auto* row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::NoWindow);
+    CHECK(a.chat.canCallRoll());
+}
+
 } // namespace
 
 int main()
@@ -611,5 +634,6 @@ int main()
     testHashedCall();
     testOneHandAtATime();
     testNotInARagchew();
+    testArmedWindowExpires();
     return ragtime_test::finish();
 }

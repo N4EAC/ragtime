@@ -141,6 +141,25 @@ if(RAGTIME_EMBED_DATA2G)
     ragtime_warnings(ragtime_modem)
     target_link_libraries(ragtime PRIVATE ragtime_modem)
 
+    # Data2G can keep the same VERSION reply after a post-release fix.
+    if(EXISTS "${RAGTIME_DATA2G_SOURCE_DIR}/.git")
+        find_package(Git QUIET)
+        if(Git_FOUND)
+            execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse HEAD
+                WORKING_DIRECTORY "${RAGTIME_DATA2G_SOURCE_DIR}"
+                RESULT_VARIABLE data2gRevisionResult
+                OUTPUT_VARIABLE data2gRevision
+                OUTPUT_STRIP_TRAILING_WHITESPACE
+                ERROR_QUIET)
+            if(data2gRevisionResult STREQUAL "0")
+                set(data2gRevisionFile "${CMAKE_CURRENT_BINARY_DIR}/generated/Data2G-revision.txt")
+                file(CONFIGURE OUTPUT "${data2gRevisionFile}" CONTENT "${data2gRevision}\n")
+                set_source_files_properties("${data2gRevisionFile}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+                target_sources(ragtime PRIVATE "${data2gRevisionFile}")
+            endif()
+        endif()
+    endif()
+
     foreach(component IN ITEMS Data2G miniaudio pocketfft)
         if(component STREQUAL "Data2G")
             set(license "${RAGTIME_DATA2G_SOURCE_DIR}/LICENSE")

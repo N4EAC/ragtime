@@ -265,6 +265,7 @@ void testHands()
     e = parseCommandLine("HAND SHORT 250");
     CHECK(e.type == Type::HandShort && e.value == 250.0);
     CHECK(parseCommandLine("HAND END").type == Type::HandEnd);
+    CHECK(parseCommandLine("HAND END EXPIRED").type == Type::HandExpired);
 
     // The commands, numbers as the host reads them: no exponent, no comma.
     CHECK_EQ(handSendLine(12, 200, 3.0, 7, 0x123), std::string("HAND SEND 12 200 3.000 7 0000000000000123"));

@@ -273,7 +273,8 @@ design is in Data2G's `docs/hand-burst.md`, the commands in `docs/arq.md`
   either side. Each Hand decoded comes as `HAND c hex16 snr dt` (dt its
   lateness, ms), then `HAND SHORT ms` if our own burst ran into the
   window's head, then `HAND END`; an armed window whose burst never goes
-  gives up after 30 s. Send it before the burst's frames: `HostLink`
+  gives up after 30 s. Hosts with Data2G PR #201 report that expiry as
+  `HAND END EXPIRED`. Send it before the burst's frames: `HostLink`
   holds the burst until the host's OK (`handListen`).
 - **`HAND CANCEL`** stops a waiting Hand and any window, always OK. A
   command client that leaves cancels its own.

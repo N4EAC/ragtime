@@ -528,12 +528,14 @@ void HostLink::onLine(const std::string& line, uint64_t nowMs)
         case Type::Hand:
         case Type::HandShort:
         case Type::HandEnd:
+        case Type::HandExpired:
         {
             Event e;
             e.type = c.type == Type::HandSent      ? Event::Type::HandSent
                      : c.type == Type::HandDropped ? Event::Type::HandDropped
                      : c.type == Type::Hand        ? Event::Type::HandHeard
                      : c.type == Type::HandShort   ? Event::Type::HandShort
+                     : c.type == Type::HandExpired ? Event::Type::HandExpired
                                                    : Event::Type::HandEnd;
             e.number = c.number;
             e.value = c.value;
