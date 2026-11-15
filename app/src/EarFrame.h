@@ -58,8 +58,6 @@ public:
     void setNarrow(bool narrow);
     // data2g-host's PTT: rows heard while it is on are greyed.
     void setTransmitting(bool on);
-    // data2g-host's BUSY, or nothing with no command link.
-    void setHostBusy(std::function<std::optional<bool>()> busy);
     // Asked twice a second what the rig says of its filter.
     void setRig(std::function<EarRig()> rig);
 
@@ -101,7 +99,6 @@ private:
     std::string host_;
     int commandPort_ = 0;
     bool transmitting_ = false;
-    std::function<std::optional<bool>()> hostBusy_;
     bool narrow_ = false;
     EarRig rigNow_;         // asked every few ticks
     int ticks_ = 0;

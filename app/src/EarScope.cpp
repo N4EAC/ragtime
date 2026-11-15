@@ -477,11 +477,11 @@ void EarScope::paint()
     }
 
     // The passband wanted (being dragged, or waiting, or on trial), dashed,
-    // and what of Data2G's it would cut, in red.
+    // and what it would cut of what of Data2G's it must keep, in red.
     const std::optional<ragtime::ear::Span> wanted = drag_ ? drag_ : wanted_;
     if (wanted)
     {
-        const ragtime::ear::Passband pb = narrow_ ? narrow : wide;
+        const ragtime::ear::Passband pb = ragtime::ear::data2gKept(narrow_);
         const wxColour red = dark ? wxColour(255, 90, 80, 110) : wxColour(220, 30, 30, 90);
         gc->SetPen(*wxTRANSPARENT_PEN);
         gc->SetBrush(wxBrush(red));

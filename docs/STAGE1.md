@@ -1369,23 +1369,22 @@ words and the scope.
   (`EdgeFinder::restart`), so the swell is neither measured as the
   passband nor taken for a burst-free moment, and Calibrate's measures
   start after it.
-- **At once, greyed while on the air** (`ear::FilterEdit`). A drag, a
-  notch move, a preset, Disable, Undo or Revert goes to the rig at once.
-  While data2g-host is keyed or says `BUSY` (its own carrier sense: a
-  burst's header, held while the burst's pilots or energy are there),
-  the handles, the notch's bar, the presets, Disable, Revert, Calibrate
-  and Undo are greyed and the line says "On the air: the filter holds
-  still until the burst ends" (Jeff, 2026-10-26: "Rather than holding
-  back, just grey everything out when the modem is BUSY"). Keep, which
-  writes nothing, stays. A change dropped just as a burst begins, or a
-  trial running out during one, waits for it to end. With no command
-  link the noise says when a burst is on: none in the last half second,
-  and the AGC's swell after our own write, made in a quiet moment,
-  counts as quiet. Before, every change waited for the noise to be
-  quiet, and the noise is left out for 7 s after each write (the AGC
-  swell, below), so a second drag, an Undo or a notch move went seconds
-  late and looked like a snap back. `HamlibRig` itself never writes
-  while it is keying or a PTT change is pending.
+- **At once, greyed only while we transmit** (`ear::FilterEdit`). A
+  drag, a notch move, a preset, Disable, Undo or Revert goes to the rig
+  at once, while data2g-host hears a burst too (Jeff, 2026-11-15: "If
+  the modem is receiving data2g, adjustments to the filters must be
+  allowed"). Only while data2g-host is keyed are the handles, the
+  notch's bar, the presets, Disable, Revert, Calibrate and Undo greyed,
+  the line saying "Transmitting: the filter holds still until our burst
+  ends"; Keep, which writes nothing, stays, and a change dropped just as
+  our burst begins, or a trial running out during one, waits for it to
+  end. From 2026-10-26 to 2026-11-15 they were greyed while the host
+  said `BUSY` as well (its carrier sense), with the noise standing in
+  with no command link; before that every change waited for the noise
+  to be quiet, which the AGC's swell after each write made a second
+  drag, an Undo or a notch move go seconds late and look like a snap
+  back. `HamlibRig` itself never writes while it is keying or a PTT
+  change is pending.
 - **On trial.** Once written, the change is on trial for 15 s,
   with a kitchen-timer clock running down beside **Undo** and **Keep**,
   and it goes back when the clock runs out unless kept. More drags during
@@ -1416,9 +1415,17 @@ words and the scope.
   second write before the first is read back (an Undo at once) still
   turns the knob back.
 - **Cutting into Data2G.** A change that cuts more than 10 Hz into
-  Data2G's passband (the wide one, or the 500 Hz one with the 500 Hz
-  switch on) turns the line red, and Keep needs a second press ("Keep
-  anyway"). So does a notch anywhere in Data2G's passband. The warning
+  what of Data2G's passband it must keep (`ear::data2gKept`) turns the
+  line red, and Keep needs a second press ("Keep anyway"). That is the
+  whole wide passband; with the 500 Hz switch on it is only the 200 Hz
+  in the middle, where the narrowest modes sit, so a narrow filter
+  about the 500 Hz modes (a 500 Hz one, whose -6 dB edges fall inside
+  1250 to 1750 Hz, or a 250 Hz one) is no cut (Jeff, 2026-11-15:
+  "narrow filters should not be rejected if 500 Hz mode is selected").
+  Until then the whole 500 Hz passband counted, so every narrow filter
+  needed Keep twice and went back at the end of its trial on one
+  press. A notch anywhere in Data2G's passband (the 500 Hz one with the
+  switch on) still needs Keep twice. The warning
   leads the line ("Cuts into Data2G's 350–2650 Hz: press Keep twice"),
   so a narrow window can't cut it off.
 - **Presets** (Jeff, 2026-10-26). Four along the top. A tap recalls one

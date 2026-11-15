@@ -657,7 +657,7 @@ void EarFilterBar::show(uint64_t nowMs, const ear::EdgeFinder&)
     wxString text;
     bool warn = false;
     const bool trial = state == FilterEdit::State::Trial;
-    const ear::Passband d = ear::data2gPassband(narrow_);
+    const ear::Passband d = ear::data2gKept(narrow_);
     if (calibrating)
     {
         text = utf8(calibration_.stepText());
@@ -732,7 +732,7 @@ void EarFilterBar::show(uint64_t nowMs, const ear::EdgeFinder&)
     }
     else if (!quiet_)
     {
-        text = "On the air: the filter holds still until the burst ends";
+        text = "Transmitting: the filter holds still until our burst ends";
     }
     else if (!calibrated())
     {
