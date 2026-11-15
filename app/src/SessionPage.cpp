@@ -10,7 +10,6 @@
 #include <wx/button.h>
 #include <wx/tglbtn.h>
 #include <wx/clipbrd.h>
-#include <wx/cursor.h>
 #include <wx/datetime.h>
 #include <wx/dnd.h>
 #include <wx/htmllbox.h>
@@ -327,20 +326,9 @@ SessionPage::SessionPage(wxWindow* parent, const SessionChat& session, const rag
                                PAUSED_LINE);
     followThemeText(paused_, secondaryText);
     paused_->Hide();
-    // Once the link is lost, a red line at the very bottom says to try
-    // broadcasting (Jeff, 2026-11-14); a click opens the Broadcast tab with
-    // a message to the partner.
-    lost_ = new wxStaticText(this, wxID_ANY, "");
-    lost_->SetFont(lost_->GetFont().Bold());
-    lost_->SetCursor(wxCursor(wxCURSOR_HAND));
-    followThemeText(lost_, badText);
-    lost_->Hide();
-    lost_->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent& e) {
-        if (onTryBroadcast_) onTryBroadcast_();
-        e.Skip();
-    });
     compose_ = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER | PHRASE_ENTRY_STYLE);
     compose_->SetMaxLength((unsigned long)SessionChat::MAX_TYPED);
+    composeFont_ = compose_->GetFont();
     send_ = new wxButton(this, wxID_ANY, "Send");
     // A floppy disk rather than "Send file...", as on the Broadcast tab.
     sendFile_ = new wxBitmapButton(this, wxID_ANY, floppyIcon(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT)));
@@ -404,7 +392,6 @@ SessionPage::SessionPage(wxWindow* parent, const SessionChat& session, const rag
     sizer->Add(queue_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
     sizer->Add(paused_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
     sizer->Add(row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
-    sizer->Add(lost_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
     sizer->AddSpacer(6);
     SetSizer(sizer);
 
@@ -488,11 +475,6 @@ void SessionPage::refresh(uint64_t nowMs, long utcOffsetS)
         shownStrip_ = strip.text;
         shownAmber_ = strip.amber;
         shownHint_ = strip.hint;
-        lost_->SetLabel(wxString::FromUTF8(strip.hint));
-        lost_->SetToolTip(strip.hint.empty() ? wxString()
-                                             : "Open the Broadcast tab with a message to "
-                                                   + wxString::FromUTF8(session_.peer()));
-        lost_->Show(!strip.hint.empty());
         stripText_->SetLabel(wxString::FromUTF8(strip.text));
         stripText_->SetToolTip(wxString::FromUTF8(strip.text));
         // Amber when the link is quiet; a session that's up stands out from
@@ -514,12 +496,36 @@ void SessionPage::refresh(uint64_t nowMs, long utcOffsetS)
         callAgain_->Show(p == Phase::Ended && !session_.peer().empty());
         callAgain_->SetLabel("Call " + wxString::FromUTF8(session_.peer()) + " again");
         bool connected = p == Phase::Connected;
-        compose_->Enable(connected);
+        // A lost link says so in the typing line itself, in bold red, where
+        // the grey "No session" hint would be (Jeff, 2026-11-15). It is the
+        // line's text, read-only, since a hint can't be coloured and a
+        // disabled line greys its text; anything typed and not sent stays.
+        if (!strip.hint.empty() && !showingLost_ && compose_->IsEmpty())
+        {
+            compose_->ChangeValue(wxString::FromUTF8(strip.hint));
+            highlightPhrases(compose_, std::string(), {});
+            compose_->SetFont(composeFont_.Bold());
+            if (compose_->HasFocus()) list_->SetFocus();   // no caret blinking in words that can't be edited
+            showingLost_ = true;
+        }
+        else if (strip.hint.empty() && showingLost_)
+        {
+            compose_->ChangeValue(wxString());
+            compose_->SetFont(composeFont_);
+            compose_->SetForegroundColour(wxNullColour);
+            showingLost_ = false;
+        }
+        if (showingLost_) compose_->SetForegroundColour(badText());
+        compose_->SetEditable(connected);
+        compose_->Enable(connected || showingLost_);
         send_->Enable(connected);
         sendFile_->Enable(connected);
         sendPicture_->Enable(connected);
-        compose_->SetHint(connected ? "Message to " + wxString::FromUTF8(session_.peer()) + " in the session"
-                                    : wxString("No session: nothing to type into"));
+        // After a session ends any other way than a lost link (Jeff,
+        // 2026-11-15), the grey hint points the same two ways.
+        compose_->SetHint(connected       ? "Message to " + wxString::FromUTF8(session_.peer()) + " in the session"
+                          : p == Phase::Ended ? wxString("No session; try Broadcast, or Call the remote station again.")
+                                              : wxString("No session: nothing to type into"));
         // Only in a window already in front (FrontWindow.h).
         if (phase != shownPhase_ && connected && IsShownOnScreen())
             CallAfter([this]() {
@@ -781,11 +787,12 @@ void SessionPage::setPaused(bool paused, const wxString& why)
 
 void SessionPage::focusCompose()
 {
-    if (compose_->IsEnabled()) compose_->SetFocus();
+    if (compose_->IsEnabled() && !showingLost_) compose_->SetFocus();
 }
 
 void SessionPage::send()
 {
+    if (showingLost_) return;
     std::string typed(compose_->GetValue().utf8_str());
     if (onSend_ && onSend_(typed)) compose_->Clear();
     compose_->SetFocus();
