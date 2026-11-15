@@ -12,7 +12,7 @@ and on which band, each of your friends gets through, so it can tell you
 who is likely around now, and the best time of day to check in to the
 D2G net to find them.
 
-Status: 0.3.0-beta. Ragtime connects to data2g-host,
+Status: 0.3.1-beta. Ragtime connects to data2g-host,
 chats on the D2G broadcast group. Current features include:
 - "Globus," which plots your friend's maidenhead coordinates
    on a globe,
@@ -108,7 +108,7 @@ computer or your network; it never bundles or starts one. Give its
 address and ports in Settings > Station.
 
 The gearshift takes Data2G's thresholds from data2g-host's `MODES`
-answer when the host gives them (Data2G after v0.5.0, PR #186), so no
+answer when the host gives them (Data2G v0.5.1 or newer), so no
 file is needed. With an older host it reads Data2G's
 `data2g/codes_data/mode_thresholds.json` from your Data2G clone: from `$DATA2G_HOME`, or a `Data2G` or `data2g`
 folder in your home folder or its `src`, `git`, `code`, `projects`,
