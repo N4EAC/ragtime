@@ -422,7 +422,7 @@ public:
         std::string text;
         bool amber = false;     // Link quiet
         bool live = false;      // a session is up or being called
-        // Under the typing line, in red, once a session has lost its link:
+        // In the typing line, in red, once a session has lost its link:
         // LOST_HINT. The far end may still hear a broadcast (Jeff,
         // 2026-11-14). Empty otherwise.
         std::string hint;

@@ -314,10 +314,13 @@ keep or change:
   ends as a lost link (`Ending::LinkLost`: "Link lost", "Link failed",
   or an older host's bare `DISCONNECTED` that isn't its idle timeout)
   puts `SessionChat::LOST_HINT` in the strip's `hint`, and the Session
-  tab shows it in red (`badText`) under the typing line until the next
-  call. A click opens the Broadcast tab with "@W1AW " typed, since the
-  far end may still copy a broadcast. Not for `PEER_RECONNECTED`, a
-  farewell, our own Leave or the host's idle hang-up.
+  tab shows it in bold red (`badText`) in the typing line until the next
+  call, in place of the grey "No session" hint (Jeff, 2026-11-15: no
+  separate line). A wx hint can't be coloured and a disabled line greys
+  its text, so it is the line's text, read-only, never sent; a line
+  with something typed in it keeps that instead. Not for
+  `PEER_RECONNECTED`, a farewell, our own Leave or the host's idle
+  hang-up.
 - **A call we stopped stops only itself.** Cancel, or a call given up
   after `CALL_GIVE_UP_MS`, no longer cuts off the next session someone
   else starts with us (before, it was ABORTed as it opened).
