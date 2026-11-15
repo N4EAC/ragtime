@@ -143,12 +143,14 @@ and the Part 97 check.
   until the host's OK) and `handCancel`, with the REF and HAND lines as
   events (docs/DATA2G.md, "Hands"). The fake hosts do references and
   Hands (`--no-hands` for an older one), and collide two in one channel.
-  Check in calls the roll with them (Jeff, 2026-11-12; PROTOCOL.md "Roll
+  Request roll call (Ctrl+I, named Check in until 2026-11-15) calls the roll with them (Jeff, 2026-11-12; PROTOCOL.md "Roll
   calls", STAGE1.md "Check in by Hand"): the Hello goes with a RollCall
   record (`0x03`) and a window, and every Ragtime that hears it answers
   by Hand (`protocol/Hands.h`: callsign, square, S/N, flags in 63 bits;
   `BroadcastChat::answerRollCall`), unless in a ragchew or turned off in
-  Settings; the row lists who answered. A window the host gives up on (30 s
+  Settings; the row lists who answered. Everyone answers every round: no
+  clock check and no `in` list since 2026-11-15, only one roll call of
+  ours at a time. A window the host gives up on (30 s
   armed with the burst not gone) is armed again while the burst waits,
   else the row says no window (`HostLink`'s `HandLost`, `Roll::Lost`). Net control's traffic round is
   Stage 2, still to build.

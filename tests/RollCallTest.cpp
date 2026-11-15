@@ -478,11 +478,11 @@ void testCheckInCallsTheRoll()
     }
     CHECK(!b.notes.empty() && b.notes.back().find("W1AW's roll call") != std::string::npos);
 
-    // Again: those in stay quiet, so nobody answers this round.
+    // Again: everyone answers every round, those already in too.
     CHECK(a.chat.canCallRoll());
     CHECK(a.chat.checkIn("", now));
     settle(all);
-    if (!collide) CHECK(!b.hand && !c.hand);
+    CHECK(b.hand.has_value() && c.hand.has_value());
     raiseHands(all);
     settle(all, 2);
     row = rollRow(a);
@@ -693,6 +693,31 @@ void testWindowThatNeverOpened()
     CHECK(row != nullptr && row->roll == Message::Roll::Lost);
     a.holdBursts = false;
     settle(all);
+    row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::Lost);
+
+    // A host with HAND END EXPIRED (Data2G #200) says so: armed again
+    // while the burst waits, and lost after it went, whenever it comes.
+    a.holdBursts = true;
+    a.lines.clear();
+    CHECK(a.chat.checkIn("", now));
+    settle(all);
+    now += 30500;
+    a.say("HAND END EXPIRED\r");
+    settle(all);
+    CHECK_EQ(std::count_if(a.lines.begin(), a.lines.end(),
+                           [](const std::string& l) { return l.compare(0, 12, "HAND LISTEN ") == 0; }),
+             2);
+    row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::Calling);
+    a.holdBursts = false;
+    settle(all);
+    row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::Listening);
+    now += 20000;
+    a.window.reset();
+    a.say("HAND END EXPIRED\r");
+    settle(all, 2);
     row = rollRow(a);
     CHECK(row != nullptr && row->roll == Message::Roll::Lost);
 }

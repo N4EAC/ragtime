@@ -446,6 +446,10 @@ CommandEvent parseCommandLine(const std::string& line)
     {
         event.type = CommandEvent::Type::HandEnd;
     }
+    else if (verb == "HAND" && w.size() == 3 && arg1 == "END" && upper(w[2]) == "EXPIRED")
+    {
+        event.type = CommandEvent::Type::HandExpired;
+    }
     else if (verb == "HAND" && w.size() == 5 && toInt(w[1], event.number) && event.number >= 0
              && hexDigits(w[2], 16) && (event.snr = trailingSnr(w[3])) && toDouble(w[4], event.value)
              && std::isfinite(event.value))

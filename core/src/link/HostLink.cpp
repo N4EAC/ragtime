@@ -544,7 +544,10 @@ void HostLink::onLine(const std::string& line, uint64_t nowMs)
             break;
         }
         case Type::HandEnd:
-            handEnded(nowMs);
+            handEnded(nowMs, false);
+            break;
+        case Type::HandExpired:
+            handEnded(nowMs, true);
             break;
         case Type::HandSent:
         case Type::HandDropped:
@@ -930,7 +933,7 @@ bool HostLink::handCancel(uint64_t nowMs)
     return true;
 }
 
-void HostLink::handEnded(uint64_t nowMs)
+void HostLink::handEnded(uint64_t nowMs, bool expired)
 {
     Event end;
     end.type = Event::Type::HandEnd;
@@ -940,7 +943,7 @@ void HostLink::handEnded(uint64_t nowMs)
         return;
     }
     Window& w = *window_;
-    if (!w.open)
+    if (!w.open || expired)
     {
         // The host gave the armed listen up while the burst waited (busy,
         // or held by a ragchew): arm it again, while the burst is the
@@ -960,6 +963,7 @@ void HostLink::handEnded(uint64_t nowMs)
         handLost(id);
         return;
     }
+    // A host from before HAND END EXPIRED says a bare HAND END either way.
     // A window's end comes once it has been heard: no sooner than the
     // delay and the Hand, less the search, after its burst went. An end
     // sooner than that, with nothing heard, is the armed listen giving up:

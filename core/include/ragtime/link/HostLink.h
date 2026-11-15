@@ -449,7 +449,7 @@ private:
         bool heard = false;         // a HAND or HAND SHORT line came for it
     };
     std::optional<Window> window_;
-    void handEnded(uint64_t nowMs);
+    void handEnded(uint64_t nowMs, bool expired);
     void handLost(uint64_t burst);
     bool handsSeen_ = false;            // a REF since the command port came up
     std::vector<ModeInfo> modesComing_;

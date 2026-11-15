@@ -137,7 +137,7 @@ bench"). Choices made there, for Jeff to keep or change:
   while a session is up; with none, the item is greyed and says so.
 - **Check-ins.** A Hello rides along in the first frame of the first
   message after the group opens, after the callsign, locator or Accept
-  sessions changes, and every 10 minutes after that; Station > Check in
+  sessions changes, and every 10 minutes after that; Station > Request roll call
   sends one alone. Ragtime never transmits on its own except to answer an
   `@` message with an Ack, or a ping with a Pong.
 - **Ping (Jeff, 2026-10-25).** **Ping W1AW** on a station's right-click
@@ -2328,18 +2328,21 @@ Jeff, 2026-11-12: "can we make checkin use hand mode?" A Hand can only
 answer a burst whose sender opened a window for it, so a Hand check-in
 is a roll call, and Jeff chose that Check in itself calls it.
 
-- **Check in** (Station > Check in, Ctrl+I) sends the Hello with a
+- **Request roll call** (Station > Request roll call, Ctrl+I; Check in
+  until Jeff renamed it on 2026-11-15) sends the Hello with a
   RollCall record and a 10.6 s Hand window 3 s after the burst
   (`BroadcastChat::checkIn`, `HostLink::broadcast` with a `HandWindow`).
   Every Ragtime that hears it answers by Hand at once, up to 40 at 2.4
   kHz (8 at 500 Hz). The Hello still rides along with messages as
-  before; only Check in calls the roll.
+  before; only Request roll call sends a RollCall.
 - **The row.** Our roll call is a row in the Broadcast tab, greyed like
   a ping's: "Your check-in, calling the roll (40 Hand channels),
   sending", "Roll call: listening for Hands", then "Roll call: 2 checked
   in by Hand: KC2G (FN20, −6.0 dB), G4XYZ (IO91, +3.0 dB)"
-  (`rollCallLine`). Its menu has Check in again, which lists those
-  already in so they stay quiet and the rest get the channels.
+  (`rollCallLine`). Its menu has Request roll call again, once the
+  window has closed. Everyone answers every round, those already in too
+  (Jeff, 2026-11-15: no limits on roll calls but one at a time); the
+  `in` list goes empty and is ignored, and so is the record's time.
 - **Who answered** joins the station list ("Checked in by Hand to our
   roll call" in the Status tooltip; `Stations::handCheckIn`), the path
   log and the watch list's bells, as if heard.
@@ -2353,7 +2356,7 @@ is a roll call, and Jeff chose that Check in itself calls it.
   heard; the square; the S/N the roll call was heard at; Accepts
   sessions, automatic and 500 Hz; 8 bits spare. `protocol/Hands.h`.
 - **Older hosts.** Until the host has shown it does Hands (a REF for any
-  burst, `HostLink::handsSeen`), Check in sends a plain Hello and says
+  burst, `HostLink::handsSeen`), Request roll call sends a plain Hello and says
   why on the status bar. No Data2G release has Hands yet (PR #146 merged
   after v0.4.3).
 - **A window that gave up** (Jeff, 2026-11-15: "Ragtime came to the
@@ -2364,7 +2367,7 @@ is a roll call, and Jeff chose that Check in itself calls it.
   gone, a `HAND END` sooner than the window could close, with nothing
   heard, makes the row "Roll call: no window, so no Hands heard.
   data2g-host gave up waiting for your check-in to go (it waits 30 s);
-  check in again when the channel is quiet" (`Roll::Lost`), never "no
+  request a roll call again when the channel is quiet" (`Roll::Lost`), never "no
   Hands heard".
 - **The bench.** The fake hosts collide two Hands in one channel unless
   one is 6 dB stronger, the bots' check-ins call the roll, and the bots

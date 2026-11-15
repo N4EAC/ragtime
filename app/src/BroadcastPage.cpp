@@ -899,8 +899,7 @@ void BroadcastPage::showRollCallMenu(const Message& m)
 
     wxMenu menu;
     if (m.state == State::Queued) menu.Append(ID_CANCEL, "Cancel");
-    // Those in already stay quiet, so a second round finds the rest.
-    wxString again = "Check in again";
+    wxString again = "Request roll call again";
     if (!why.empty()) again += " (" + wxString::FromUTF8(why) + ")";
     menu.Append(ID_RESEND, again);
     menu.Enable(ID_RESEND, why.empty());

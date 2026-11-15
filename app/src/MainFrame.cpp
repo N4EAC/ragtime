@@ -439,9 +439,9 @@ void MainFrame::buildMenus()
     auto* station = new wxMenu;
     station->Append(ID_MESSAGE_STATION, "&Message the selected station\tCtrl+M",
                     "Starts a line to the station picked in the list, \"@W1AW\"");
-    station->Append(ID_CHECK_IN, "Check &in\tCtrl+I", "Broadcasts your check-in (callsign, locator and whether "
-                                                       "you take sessions) and calls the roll: every Ragtime that "
-                                                       "hears it checks in back by Hand");
+    station->Append(ID_CHECK_IN, "Request &roll call\tCtrl+I",
+                    "Broadcasts your check-in (callsign, locator and whether you take sessions) and calls the "
+                    "roll: every Ragtime that hears it checks in back by Hand");
     station->AppendSeparator();
     station->Append(ID_CALL, "&Call...\tCtrl+K", "Starts a session (a ragchew) with the station picked in the list, "
                                                 "or one you name");
