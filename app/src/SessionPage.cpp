@@ -521,8 +521,11 @@ void SessionPage::refresh(uint64_t nowMs, long utcOffsetS)
         send_->Enable(connected);
         sendFile_->Enable(connected);
         sendPicture_->Enable(connected);
-        compose_->SetHint(connected ? "Message to " + wxString::FromUTF8(session_.peer()) + " in the session"
-                                    : wxString("No session: nothing to type into"));
+        // After a session ends any other way than a lost link (Jeff,
+        // 2026-11-15), the grey hint points the same two ways.
+        compose_->SetHint(connected       ? "Message to " + wxString::FromUTF8(session_.peer()) + " in the session"
+                          : p == Phase::Ended ? wxString("No session; try Broadcast, or Call the remote station again.")
+                                              : wxString("No session: nothing to type into"));
         if (phase != shownPhase_ && connected && IsShownOnScreen()) CallAfter([this]() { compose_->SetFocus(); });
         shownPhase_ = phase;
         strip_->Layout();

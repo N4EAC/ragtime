@@ -320,7 +320,10 @@ keep or change:
   its text, so it is the line's text, read-only, never sent; a line
   with something typed in it keeps that instead. Not for
   `PEER_RECONNECTED`, a farewell, our own Leave or the host's idle
-  hang-up.
+  hang-up. After those and every other ending, the grey hint says "No
+  session; try Broadcast, or Call the remote station again." (Jeff,
+  2026-11-15); before any session it is still "No session: nothing to
+  type into".
 - **A call we stopped stops only itself.** Cancel, or a call given up
   after `CALL_GIVE_UP_MS`, no longer cuts off the next session someone
   else starts with us (before, it was ABORTed as it opened).
