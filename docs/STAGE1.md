@@ -310,6 +310,14 @@ keep or change:
   host, such as Pat: "Another program on data2g-host ended the session
   with W1AW ... Is Pat or another VARA program connected to it?"
   (docs/DATA2G.md, "One host, many clients").
+- **Session lost; try Broadcast (2026-11-14, Jeff).** A session that
+  ends as a lost link (`Ending::LinkLost`: "Link lost", "Link failed",
+  or an older host's bare `DISCONNECTED` that isn't its idle timeout)
+  puts `SessionChat::LOST_HINT` in the strip's `hint`, and the Session
+  tab shows it in red (`badText`) under the typing line until the next
+  call. A click opens the Broadcast tab with "@W1AW " typed, since the
+  far end may still copy a broadcast. Not for `PEER_RECONNECTED`, a
+  farewell, our own Leave or the host's idle hang-up.
 - **A call we stopped stops only itself.** Cancel, or a call given up
   after `CALL_GIVE_UP_MS`, no longer cuts off the next session someone
   else starts with us (before, it was ABORTed as it opened).

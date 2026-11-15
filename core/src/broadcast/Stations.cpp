@@ -270,6 +270,17 @@ StatusView Stations::status(const Station& s, uint64_t nowMs) const
         return view;
     }
     std::string ago = s.statusHeard ? heardAgo(s.statusMs, nowMs) : std::string();
+    // A QRL naming us, with no session of ours with it up: that session has
+    // ended, though its QRV hasn't come (lost to the fade that ended it, or
+    // it hasn't noticed yet). It isn't busy for us, so Call and Ping stay
+    // open (Jeff, 2026-11-14: Ping stayed greyed after a session dropped).
+    bool oursOver = s.statusHeard && s.state == State::Qrl && !me_.empty() && protocol::normalCallsign(s.partner) == me_;
+    if (oursOver)
+    {
+        view.word = "QRV";
+        view.how = "Its QRL " + ago + " named us, but our session with " + s.call + " has ended";
+        return view;
+    }
     if (s.statusHeard && s.state == State::Qrl)
     {
         if (nowMs > s.statusMs && nowMs - s.statusMs > QRL_STALE_MS)

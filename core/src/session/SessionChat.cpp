@@ -1192,6 +1192,11 @@ SessionChat::Strip SessionChat::strip(uint64_t nowMs, long utcOffsetS) const
                         s.text = "Link lost at " + at;
                     else
                         s.text = "The session with " + peer_ + " ended at " + at;
+                    // Not when the far end called again or the host hung up a
+                    // quiet session: the link itself may be fine.
+                    if (why != "PEER_RECONNECTED"
+                        && !(why.empty() && nearIdle(silent, idleCloseMs_, HOST_IDLE_EARLY_MS, HOST_IDLE_LATE_MS)))
+                        s.hint = LOST_HINT;
                     break;
                 }
                 case Ending::Busy:
