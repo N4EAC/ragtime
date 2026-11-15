@@ -8,6 +8,7 @@
 
 #include <wx/panel.h>
 
+#include "FrontWindow.h"
 #include "ragtime/files/FileRows.h"
 
 class wxDataViewEvent;
@@ -30,6 +31,14 @@ class wxStaticText;
 class FilesPage : public wxPanel
 {
 public:
+    // The notebook gives the page the focus as it shows it: only in a
+    // window already in front, or a tab brought up by something heard
+    // lifts the main window over the Ear (FrontWindow.h).
+    void SetFocus() override
+    {
+        if (inFrontWindow(this)) wxPanel::SetFocus();
+    }
+
     FilesPage(wxWindow* parent, ragtime::files::FileHistory& history);
 
     // Every row in progress, any order; nowMs and utcOffsetS for the

@@ -9,6 +9,7 @@
 
 #include <wx/panel.h>
 
+#include "FrontWindow.h"
 #include "ragtime/files/FileTraffic.h"
 #include "ragtime/session/SessionChat.h"
 
@@ -37,6 +38,14 @@ class SessionMessages;
 class SessionPage : public wxPanel
 {
 public:
+    // The notebook gives the page the focus as it shows it: only in a
+    // window already in front, or a tab brought up by something heard
+    // lifts the main window over the Ear (FrontWindow.h).
+    void SetFocus() override
+    {
+        if (inFrontWindow(this)) wxPanel::SetFocus();
+    }
+
     SessionPage(wxWindow* parent, const ragtime::session::SessionChat& session,
                 const ragtime::files::FileTraffic& files);
 
