@@ -4,7 +4,8 @@
 #   app/res/ragtime.png  256 px, for the AppImage, the desktop file and the
 #                        window icon on Linux
 #   app/res/ragtime.ico  16 to 256 px, for ragtime.exe and its windows
-# Run it from anywhere after changing the SVG, and commit all three files.
+#   app/res/ragtime.icns on macOS, for Finder and the Dock
+# Run it after changing the SVG and commit the rendered icons.
 # Needs rsvg-convert (librsvg2-bin) and ImageMagick.
 
 cd "$(dirname "$0")/../../app/res"
@@ -17,3 +18,7 @@ for size in 16 20 24 32 40 48 64 128 256; do
 done
 convert "$tmp/16.png" "$tmp/20.png" "$tmp/24.png" "$tmp/32.png" "$tmp/40.png" \
     "$tmp/48.png" "$tmp/64.png" "$tmp/128.png" "$tmp/256.png" ragtime.ico
+
+if [ "$(uname -s)" = Darwin ]; then
+    /bin/sh ../../tools/icon/make_macos_icon.sh ragtime.png ragtime.icns
+fi

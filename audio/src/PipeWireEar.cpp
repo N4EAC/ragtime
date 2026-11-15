@@ -409,7 +409,7 @@ private:
             const uint32_t offset = std::min(d.chunk->offset, d.maxsize);
             const uint32_t size = std::min(d.chunk->size, d.maxsize - offset);
             samples_(reinterpret_cast<const float*>(static_cast<const uint8_t*>(d.data) + offset),
-                     size / sizeof(float), rate_);
+                     size / sizeof(float), rate_, std::nullopt);
             lastSamplesMs_ = nowMs();
         }
         pw.streamQueueBuffer(stream_, b);

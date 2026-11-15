@@ -18,9 +18,9 @@
 // to and from the socket-free HostLink, and trying again 2, 4, 8, 15 and
 // then every 30 s while the host isn't there; and the session data port
 // (command + 1), carrying a session's byte stream for the Session tab,
-// tried again every 5 s on its own while the other two are up. Ragtime
-// never starts data2g-host; the operator runs it. Everything that crosses
-// goes to the flight recorder too (docs/FLIGHT_RECORDER.md).
+// tried again every 5 s on its own while the other two are up. The same
+// client serves the built-in modem and external hosts. Everything that
+// crosses goes to the flight recorder too (docs/FLIGHT_RECORDER.md).
 class HostConnection : public wxEvtHandler
 {
 public:

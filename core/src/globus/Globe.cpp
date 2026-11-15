@@ -1233,7 +1233,7 @@ const Covered& covered()
     static const Covered all = []() {
         Covered c;
         const int along = 2;    // hundredths of a degree off the grid line
-        auto onGrid = [along](int v) { return std::abs(v - (int)std::lround(v / 100.0) * 100) <= along; };
+        auto onGrid = [](int v) { return std::abs(v - (int)std::lround(v / 100.0) * 100) <= along; };
         auto add = [&c, &onGrid](int count, const uint32_t* starts, const int16_t* points) {
             for (int l = 0; l < count; l++)
             {

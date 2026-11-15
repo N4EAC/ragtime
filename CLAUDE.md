@@ -374,8 +374,9 @@ and the Part 97 check.
   copying code is not. When something you need isn't in
   `docs/DATA2G.md`, or Data2G has moved past its commit, read the source
   and update that page in the same PR.
-- Never start `data2g-host`; the operator runs it. Ragtime never plays
-  to the radio's sound card or opens its ALSA devices. Voice records
+- External-host mode connects to the operator's own `data2g-host`.
+  The macOS source build can use Data2G's in-process station library,
+  with radio audio provided by Core Audio or TCI. Voice records
   and plays only on the operator's own microphone and speaker, never a
   card a data2g program uses (`voice::devices`, docs/STAGE1.md, "Voice
   audio"). The Ear only records,

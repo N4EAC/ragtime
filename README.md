@@ -102,10 +102,10 @@ can't show.
 ## Downloads
 
 Releases carry a Linux AppImage (x86_64, glibc 2.39 or newer, as on
-Ubuntu 24.04) and a portable Windows zip (64-bit). Ragtime needs a
-[data2g-host](https://github.com/arodland/Data2G) running on your
-computer or your network; it never bundles or starts one. Give its
-address and ports in Settings > Station.
+Ubuntu 24.04) and a portable Windows zip (64-bit). Those builds connect
+to a [data2g-host](https://github.com/arodland/Data2G) running on your
+computer or network. Give its address and ports in Settings > Station.
+The macOS source build below also offers an in-process Data2G modem.
 
 The gearshift reads Data2G's `data2g/codes_data/mode_thresholds.json`
 from your Data2G clone: from `$DATA2G_HOME`, or a `Data2G` or `data2g`
@@ -123,6 +123,67 @@ On Ubuntu 24.04:
     cmake --build build -j$(nproc)
     ctest --test-dir build --output-on-failure
     ./build/app/ragtime
+
+### macOS
+
+Build the integrated modem against the tested Data2G release, v0.5.1.
+From the Ragtime checkout, clone it beside Ragtime if you do not already
+have that checkout:
+
+    git clone --branch v0.5.1 https://github.com/arodland/Data2G.git ../Data2G
+
+Use `-DRAGTIME_DATA2G_SOURCE_DIR=/path/to/Data2G` to use a different checkout
+location. Install the build dependencies with Homebrew:
+
+    brew install cmake ninja pkg-config wxwidgets hamlib openjpeg webp libheif
+    brew install --skip-link qtbase qtsvg qtdeclarative qtwebsockets
+    cmake -S . -B build-macos -G Ninja -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)" \
+        -DQT_ADDITIONAL_PACKAGES_PREFIX_PATH="$(brew --prefix qtwebsockets)"
+    cmake --build build-macos --parallel
+    ctest --test-dir build-macos --output-on-failure
+    open build-macos/app/Ragtime.app
+
+Ragtime keeps its wxWidgets window and links to Data2G's native station
+library. Set your callsign and locator in **Settings > Station**, then
+enable **Use the built-in Data2G modem** in **Settings > Modem**. Choose
+the radio's input and output devices, or select **TCI** and enter the
+radio's address. With a sound card and Hamlib, configure radio keying
+under **Settings > Rig**. On first use of a sound card, allow microphone
+access when macOS asks.
+
+The modem listens only on loopback, using the KISS and command ports
+under **Settings > Station**, plus the session data port at command + 1.
+Use free ports if another modem is already running. Ragtime remembers the
+external address for when you switch back. Pass
+`-DRAGTIME_EMBED_DATA2G=OFF` to build without the modem library.
+
+To stage an app with its shared libraries bundled:
+
+    mkdir -p dist
+    ditto build-macos/app/Ragtime.app dist/Ragtime.app
+    packaging/macos/deploy.sh dist/Ragtime.app
+
+The built-in modem uses Core Audio or TCI for radio audio. In
+**Settings > Voice**, choose your microphone and speaker and use the
+**Test** buttons to check them. Voice messages use the bundled sotto codec.
+Ragtime leaves the built-in modem's sound devices out of the voice lists.
+On macOS 14.2 and later it also checks for devices used by local Data2G
+processes. The Ear follows the built-in modem over Core Audio or TCI and
+shows its outgoing waveform in grey during transmit. You can also select
+a Core Audio input in the Ear's
+**Listen to** menu. On macOS 14.2 and later the Ear can discover a local
+external Data2G sound-card input.
+
+**Settings > Rig** shows all Hamlib models and can filter by manufacturer.
+For serial connections, pick your radio's `/dev/cu.*` port. The packaged app
+includes both Hamlib tools. To list supported rigs or start a local daemon:
+
+    dist/Ragtime.app/Contents/MacOS/rigctl -l
+    dist/Ragtime.app/Contents/MacOS/rigctld -T 127.0.0.1 -m MODEL -r /dev/cu.DEVICE
+
+The second command uses your Hamlib model number and serial port. Select
+**Read the dial from rigctld** in Ragtime to use that daemon.
 
 ### Libraries
 
@@ -318,11 +379,11 @@ Sources: [ARRL band plan](https://www.arrl.org/band-plan),
 - **Sometimes we ragchew.** When operators want to talk, they enter a
   point to point ragchew on purpose and leave it on purpose.
 
-Ragtime is a front end for a separately running `data2g-host`, reached
-over TCP. It never starts the modem and never plays to the radio's
-sound card; its Ear only listens in, through PipeWire on Linux or
-WASAPI on Windows, to what data2g-host records, and voice uses your own
-microphone and speaker, never the radio's card (Settings > Voice).
+Ragtime speaks the Data2G host protocol over TCP, to the built-in modem
+on macOS or to a separately running `data2g-host`. The Ear listens through
+PipeWire on Linux, WASAPI on Windows or Core Audio on macOS. It can also
+display the built-in modem's receive and transmit audio directly.
+Voice messages use your microphone and speaker (Settings > Voice).
 It reads the radio's dial from rigctld, or opens the rig itself with
 Hamlib (Settings > Rig), and can key it when data2g-host does, for rigs
 whose drivers can't be opened twice (off by default). Through Hamlib or

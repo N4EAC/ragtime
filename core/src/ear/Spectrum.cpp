@@ -114,10 +114,15 @@ void Spectrum::restart()
     }
     windowGain_ = sum;
     buffer_.assign(n_, 0.0f);
+    discardSamples();
+    work_.resize(n_);
+}
+
+void Spectrum::discardSamples()
+{
     filled_ = 0;
     next_ = 0;
     sinceRow_ = 0;
-    work_.resize(n_);
 }
 
 std::vector<std::vector<float>> Spectrum::push(const float* samples, std::size_t n)

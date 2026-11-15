@@ -47,6 +47,8 @@ public:
     double rowsPerSecond() const { return rowsPerSecond_; }
     std::size_t fftLength() const { return n_; }
 
+    // Start the next row with fresh samples after an RX/TX boundary.
+    void discardSamples();
     // Takes n samples and hands back the rows they finish, oldest first.
     std::vector<std::vector<float>> push(const float* samples, std::size_t n);
 

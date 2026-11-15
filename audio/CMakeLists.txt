@@ -2,15 +2,18 @@
 # the microphone and speaker for voice messages (VoiceAudio.h): through
 # PipeWire on Linux, WASAPI on Windows. libpipewire is loaded at run
 # time, never linked, so only its headers (libpipewire-0.3-dev) are needed
-# to build, and Ragtime runs where there is no PipeWire. With
-# -DRAGTIME_PIPEWIRE=OFF (and on the Mac) stand-ins say the Ear can't
-# listen and voice can't record or play. The Ear's spectrum, the graph
+# to build. On macOS, the Ear and voice use Core Audio.
+# Linux without PipeWire uses stand-ins for both. The Ear's spectrum, the graph
 # search and the voice devices' rules are core's, and tested there.
 
 if(WIN32)
     add_library(ragtime_audio STATIC src/WasapiEar.cpp src/WasapiVoice.cpp src/HostProcess.cpp)
     # COM and property variants (ole32), the TCP table (iphlpapi).
     target_link_libraries(ragtime_audio PRIVATE ole32 iphlpapi)
+elseif(APPLE)
+    add_library(ragtime_audio STATIC src/CoreAudio.cpp src/HostProcess.cpp)
+    set_source_files_properties(src/CoreAudio.cpp PROPERTIES COMPILE_OPTIONS -fblocks)
+    target_link_libraries(ragtime_audio PRIVATE "-framework AudioToolbox" "-framework CoreAudio" "-framework CoreFoundation")
 elseif(RAGTIME_PIPEWIRE)
     add_library(ragtime_audio STATIC src/PipeWireEar.cpp src/PipeWireVoice.cpp src/HostProcess.cpp)
     # Headers only: SYSTEM, so a warning in PipeWire's own never fails -Werror.

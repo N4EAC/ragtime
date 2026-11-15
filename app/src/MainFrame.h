@@ -337,6 +337,10 @@ private:
     ragtime::broadcast::Stations stations_;
     ragtime::gearbox::Gearshift gearshift_;
     std::unique_ptr<HostConnection> host_;
+#ifdef RAGTIME_EMBED_DATA2G
+    std::unique_ptr<class EmbeddedModem> modem_;
+    std::string modemError_;
+#endif
     std::unique_ptr<RigControl> rig_;
     ragtime::radio::PathLog pathLog_;
     ragtime::broadcast::WatchList watch_;

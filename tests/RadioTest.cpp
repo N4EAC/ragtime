@@ -182,6 +182,34 @@ void dialReader()
     CHECK_EQ(dial.takeOutput(), std::string(""));
 }
 
+void extendedFrequencyReply()
+{
+    DialReader dial;
+    dial.connected(T0);
+    dial.takeOutput();
+    say(dial, "1\n", T0);
+    CHECK_EQ(probe(dial, T0), std::string("f currVFO\n"));
+
+    // AetherSDR replies this way even to plain "f currVFO".
+    say(dial, "get_freq:\nFrequency: 7105000\n", T0 + 10);
+    CHECK(!dial.dialHz(T0 + 10));
+    CHECK(dial.takeOutput().empty());
+    say(dial, "RPRT 0\n", T0 + 20);
+    CHECK(dial.dialHz(T0 + 20) == std::optional<uint64_t>(7105000));
+
+    dial.tick(T0 + DialReader::ASK_MS);
+    CHECK_EQ(dial.takeOutput(), std::string("f currVFO\n"));
+    say(dial, "get_freq: currVFO\r\nFrequency: 7106000.000000\r\nRPRT -11\r\n", T0 + 1010);
+    CHECK(dial.dialHz(T0 + 1010) == std::optional<uint64_t>(7105000));
+    CHECK_EQ(dial.problem(), std::string("rigctld answered RPRT -11"));
+
+    dial.tick(T0 + 2 * DialReader::ASK_MS);
+    CHECK_EQ(dial.takeOutput(), std::string("f currVFO\n"));
+    say(dial, "7107000\n", T0 + 2010);
+    CHECK(dial.dialHz(T0 + 2010) == std::optional<uint64_t>(7107000));
+    CHECK(dial.problem().empty());
+}
+
 // A rigctld started with --vfo wants the VFO named: "f currVFO".
 void vfoMode()
 {
@@ -1107,6 +1135,7 @@ int main()
 {
     bands();
     dialReader();
+    extendedFrequencyReply();
     vfoMode();
     meters();
     strength();

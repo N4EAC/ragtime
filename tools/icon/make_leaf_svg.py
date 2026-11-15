@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Draws Ragtime's icon, app/res/ragtime.svg: the leaf from the cover of
 Scott Joplin's Maple Leaf Rag (1899), tipped as it is there, going
-digital, block by block, on the cover's cream with its red rim.
+digital, block by block, on a dark tile with a red rim and a Data2G badge.
 
 The left of the leaf stays smooth. Right of SPLIT the leaf is sampled into
 square blocks that grow to the right, fade from the leaf's green to mint,
@@ -20,7 +20,7 @@ import subprocess
 import numpy as np
 from PIL import Image
 
-CREAM, RED, GREEN, MINT = '#f1e4c8', '#a8322d', '#2e5e52', '#6fae8f'
+RED, GREEN, MINT = '#a85151', '#62bba2', '#a2e7ca'
 SEED = 12
 SPLIT, END = 154, 234       # the blocks start at SPLIT and stop growing at END
 PLACE = 'translate(122 130) rotate(20) scale(1.03)'
@@ -79,8 +79,14 @@ def main():
     out = ['<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256">',
            '  <!-- Ragtime: the Maple Leaf Rag\'s leaf going digital. Drawn by',
            '       tools/icon/make_leaf_svg.py; edit that, not this. -->',
-           f'  <defs><clipPath id="smooth"><rect width="{SPLIT + 1}" height="256"/></clipPath></defs>',
-           f'  <rect x="8" y="8" width="240" height="240" rx="44" fill="{CREAM}"/>',
+           '  <defs>',
+           f'    <clipPath id="smooth"><rect width="{SPLIT + 1}" height="256"/></clipPath>',
+           '    <linearGradient id="tile" x2="0" y2="1">',
+           '      <stop stop-color="#26343c"/>',
+           '      <stop offset="1" stop-color="#101720"/>',
+           '    </linearGradient>',
+           '  </defs>',
+           '  <rect x="8" y="8" width="240" height="240" rx="44" fill="url(#tile)"/>',
            '  <g clip-path="url(#smooth)">',
            f'    <path fill="{GREEN}" transform="{PLACE}" d="{LEAF}"/>',
            f'    <path fill="none" stroke="{GREEN}" stroke-width="5.5" stroke-linecap="round" '
@@ -90,7 +96,10 @@ def main():
         gap = max(1.3, s * 0.16)
         out.append(f'  <rect x="{bx + gap / 2:.1f}" y="{by + gap / 2:.1f}" width="{s - gap:.1f}" '
                    f'height="{s - gap:.1f}" fill="{colour}"/>')
-    out += [f'  <rect x="8" y="8" width="240" height="240" rx="44" fill="none" stroke="{RED}" stroke-width="8"/>',
+    out += ['  <rect x="124" y="201" width="106" height="28" rx="8" fill="#30434a" stroke="#486567"/>',
+            '  <text x="177" y="221" text-anchor="middle" fill="#f2f7f4" font-size="18" '
+            'font-family="DejaVu Sans, sans-serif" font-weight="700">Data2G</text>',
+            f'  <rect x="8" y="8" width="240" height="240" rx="44" fill="none" stroke="{RED}" stroke-width="8"/>',
             '</svg>']
 
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'app', 'res', 'ragtime.svg')

@@ -51,10 +51,11 @@ bool onThisMachine(const std::string& host)
 } // namespace
 
 EarFrame::EarFrame(wxWindow* parent, ear::FilterEdit& edit, EarFilterBar::Write write, std::function<void()> onClosed,
-                   bool onTop)
+                   bool onTop, ReadHostAudio readHostAudio)
     : wxFrame(parent, wxID_ANY, wxString::FromUTF8("Ear \xc2\xb7 what the radio hears"), wxDefaultPosition,
               wxDefaultSize, wxDEFAULT_FRAME_STYLE | (onTop ? wxFRAME_FLOAT_ON_PARENT : 0))
     , audio_(audio::makeEarAudio())
+    , readHostAudio_(std::move(readHostAudio))
     , onClosed_(std::move(onClosed))
     , timer_(this)
 {
@@ -151,16 +152,30 @@ EarFrame::EarFrame(wxWindow* parent, ear::FilterEdit& edit, EarFilterBar::Write 
         Destroy();
     });
 
+    if (readHostAudio_) readHostAudio_(*audio_);
+#ifdef __WXOSX__
+    // Apply a saved input before opening a Core Audio stream.
+    audio_->choose(chosen_);
+#endif
     audio_->start(
-        [this](const float* samples, std::size_t n, int rate) {
+        [this](const float* samples, std::size_t n, int rate, std::optional<bool> tx) {
             std::lock_guard<std::mutex> lock(mutex_);
+            const bool isTx = tx.value_or(transmitting_.load());
+            if (isTx != spectrumTx_)
+            {
+                spectrum_.discardSamples();
+                spectrumTx_ = isTx;
+            }
             spectrum_.setRate(rate);
-            for (auto& row : spectrum_.push(samples, n)) pending_.push_back(std::move(row));
+            auto rows = spectrum_.push(samples, n);
+            if (!rows.empty()) pending_.push_back({std::move(rows), isTx});
             // A window closed without draining: never grow without bound.
             if (pending_.size() > 400) pending_.erase(pending_.begin(), pending_.end() - 400);
         },
         [this] { changed_ = true; });
+#ifndef __WXOSX__
     audio_->choose(chosen_);
+#endif
     timer_.Start(TICK_MS);
 }
 
@@ -211,15 +226,16 @@ void EarFrame::lookForHost()
 
 void EarFrame::tick()
 {
-    std::vector<std::vector<float>> rows;
+    if (readHostAudio_) readHostAudio_(*audio_);
+    std::vector<Rows> batches;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        rows.swap(pending_);
+        batches.swap(pending_);
     }
-    if (!rows.empty())
+    for (const Rows& batch : batches)
     {
-        scope_->addRows(rows, transmitting_);
-        for (const auto& row : rows) edges_.addRow(row, transmitting_);
+        scope_->addRows(batch.power, batch.tx);
+        for (const auto& row : batch.power) edges_.addRow(row, batch.tx);
     }
 
     // The filter bar: the rig asked every other tick. Quiet means not keyed
@@ -306,8 +322,11 @@ void EarFrame::showStatus(const audio::EarStatus& s)
     {
         if (s.host.found && s.host.found->source != 0)
         {
-            line = "Listening alongside " + utf8(s.host.found->program) + " to " +
-                   utf8(s.host.found->sourceDescription) + ".";
+            if (s.hostTap)
+                line = "Listening to " + utf8(s.host.found->program) + " " + utf8(s.host.found->sourceDescription) + ".";
+            else
+                line = "Listening alongside " + utf8(s.host.found->program) + " to " +
+                       utf8(s.host.found->sourceDescription) + ".";
         }
         else
         {
@@ -421,6 +440,7 @@ void EarFrame::chooseSource()
     {
         std::lock_guard<std::mutex> lock(mutex_);
         pending_.clear();
+        spectrum_.discardSamples();
     }
     scope_->clear();
     edges_.clear();

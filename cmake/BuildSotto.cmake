@@ -1,5 +1,5 @@
 # libsotto for voice messages, built when configuring if no libsotto is
-# found (RAGTIME_BUILD_SOTTO, Linux only).
+# found (RAGTIME_BUILD_SOTTO, Linux and macOS).
 #
 # Ragtime loads libsotto at run time and never links it (LGPL through
 # Codec 2), so nothing here is linked: this only puts a libsotto where the
@@ -23,15 +23,20 @@ set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS ${CMAKE_SOURCE_DI
 set(RAGTIME_SOTTO_WORK ${CMAKE_BINARY_DIR}/build-sotto)
 set(RAGTIME_SOTTO_OUT ${RAGTIME_SOTTO_WORK}/out)
 set(RAGTIME_SOTTO_STAMP ${RAGTIME_SOTTO_OUT}/commit.txt)
+if(APPLE)
+    set(RAGTIME_SOTTO_LIBRARY "${RAGTIME_SOTTO_OUT}/libsotto.0.dylib")
+else()
+    set(RAGTIME_SOTTO_LIBRARY "${RAGTIME_SOTTO_OUT}/libsotto.so.0")
+endif()
 
 set(_have "")
 if(DEFINED ENV{RAGTIME_SOTTO} AND EXISTS "$ENV{RAGTIME_SOTTO}")
     set(_have "$ENV{RAGTIME_SOTTO} (RAGTIME_SOTTO)")
-elseif(EXISTS ${RAGTIME_SOTTO_OUT}/libsotto.so.0 AND EXISTS ${RAGTIME_SOTTO_STAMP})
+elseif(EXISTS ${RAGTIME_SOTTO_LIBRARY} AND EXISTS ${RAGTIME_SOTTO_STAMP})
     file(READ ${RAGTIME_SOTTO_STAMP} _built)
     string(STRIP "${_built}" _built)
     if(_built STREQUAL RAGTIME_SOTTO_COMMIT)
-        set(_have "${RAGTIME_SOTTO_OUT}/libsotto.so.0")
+        set(_have "${RAGTIME_SOTTO_LIBRARY}")
     endif()
 endif()
 
@@ -46,9 +51,9 @@ else()
         RESULT_VARIABLE _result
         OUTPUT_VARIABLE _output
         ERROR_VARIABLE _output)
-    if(_result EQUAL 0 AND EXISTS ${RAGTIME_SOTTO_OUT}/libsotto.so.0)
+    if(_result EQUAL 0 AND EXISTS ${RAGTIME_SOTTO_LIBRARY})
         file(WRITE ${RAGTIME_SOTTO_STAMP} "${RAGTIME_SOTTO_COMMIT}\n")
-        message(STATUS "libsotto for voice: built, ${RAGTIME_SOTTO_OUT}/libsotto.so.0")
+        message(STATUS "libsotto for voice: built, ${RAGTIME_SOTTO_LIBRARY}")
     else()
         string(STRIP "${_output}" _output)
         message(WARNING "libsotto couldn't be built, so voice messages won't record or play until one is "

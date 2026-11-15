@@ -63,8 +63,6 @@ bool newestShows(const ChatList& list)
 
 } // namespace
 
-wxIMPLEMENT_APP_NO_MAIN(TestApp);
-
 int main(int argc, char** argv)
 {
     wxApp::SetInstance(new TestApp);

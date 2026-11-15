@@ -28,6 +28,21 @@ constexpr double VOICE_VOLUME_MAX_DB = 6.0;
 // The volume as audio::VoiceAudio::setVolume takes it.
 float voiceGain(double volumeDb);
 
+struct ModemPrefs
+{
+    bool enabled = false;
+    std::string input;
+    std::string output;
+    bool tci = false;
+    std::string tciHost = "localhost:50001";
+
+    bool operator==(const ModemPrefs& other) const
+    {
+        return enabled == other.enabled && input == other.input && output == other.output
+               && tci == other.tci && tciHost == other.tciHost;
+    }
+};
+
 // What Ragtime remembers between runs, in wxConfig (~/.Ragtime on Linux,
 // the registry on Windows, or the file given with --config). One place for
 // the keys, so the window, the dialogs and the connection agree on them.
@@ -36,6 +51,7 @@ struct StationPrefs
     std::string callsign;
     std::string locator;
     std::string host = "127.0.0.1";
+    ModemPrefs modem;
     int kissPort = 8100;
     int commandPort = 8300;     // the session data port is the next one
     std::string receivedFolder; // where files saved from a session go
@@ -63,6 +79,15 @@ struct StationPrefs
     bool usSegmentsOnly = false;
     VoicePrefs voice;
 
+    bool usesBuiltInModem() const
+    {
+#ifdef RAGTIME_EMBED_DATA2G
+        return modem.enabled;
+#else
+        return false;
+#endif
+    }
+    std::string hostAddress() const { return usesBuiltInModem() ? "127.0.0.1" : host; }
     bool readsDial() const { return rig.source != ragtime::radio::RigSource::None; }
 };
 

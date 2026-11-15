@@ -238,7 +238,9 @@ public:
     const Message* at(size_t n) const
     {
         const auto& all = owner_->chat_.messages();
-        return n < all.size() ? &all[n] : nullptr;
+        if (n >= owner_->visibleRows_.size()) return nullptr;
+        const auto index = owner_->visibleRows_[n];
+        return index < all.size() ? &all[index] : nullptr;
     }
 
 protected:
@@ -559,7 +561,10 @@ BroadcastPage::BroadcastPage(wxWindow* parent, const BroadcastChat& chat)
     row_->Add(buttons_, 0, wxEXPAND);
     under_ = new wxBoxSizer(wxHORIZONTAL);
 
+    clear_ = new wxButton(this, wxID_ANY, "Clear", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+    clear_->SetToolTip("Hide earlier Broadcast messages in this window. Queued messages and the saved log are kept.");
     auto* sizer = new wxBoxSizer(wxVERTICAL);
+    sizer->Add(clear_, 0, wxALIGN_RIGHT | wxRIGHT | wxTOP, 6);
     sizer->Add(list_, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
     sizer->Add(paused_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
     sizer->Add(row_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
@@ -579,6 +584,7 @@ BroadcastPage::BroadcastPage(wxWindow* parent, const BroadcastChat& chat)
         e.Skip();
     });
     send_->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { send(); });
+    clear_->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { clearView(); });
     gear_->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
         if (onGear_) onGear_();
     });
@@ -636,7 +642,7 @@ BroadcastPage::BroadcastPage(wxWindow* parent, const BroadcastChat& chat)
         list_->SetToolTip(tip);
         e.Skip();
     });
-    refresh();
+    updateRows();
 }
 
 void BroadcastPage::setVoiceDeckLit(bool lit)
@@ -678,14 +684,41 @@ void BroadcastPage::send()
     compose_->SetFocus();
 }
 
+void BroadcastPage::clearView()
+{
+    // A late arrival can be placed above existing messages, so use the
+    // highest ID rather than the last row's position or timestamp.
+    for (const Message& message : chat_.messages())
+        clearedThrough_ = std::max(clearedThrough_, message.id);
+    list_->SetSelection(wxNOT_FOUND);
+    updateRows();
+}
+
 void BroadcastPage::refresh()
 {
     uint64_t seals = sealsVersion_ ? sealsVersion_() : 0;
-    if (shownVersion_ == chat_.version() && shownSeals_ == seals && list_->GetItemCount() == chat_.messages().size())
-        return;
+    if (shownVersion_ == chat_.version() && shownSeals_ == seals) return;
     shownVersion_ = chat_.version();
     shownSeals_ = seals;
-    list_->showRows(chat_.messages().size());
+    updateRows();
+}
+
+void BroadcastPage::updateRows()
+{
+    using State = Message::State;
+    const auto& messages = chat_.messages();
+    visibleRows_.clear();
+    bool canClear = false;
+    for (size_t row = 0; row < messages.size(); ++row)
+    {
+        const auto& message = messages[row];
+        const bool pending = message.ours && (message.state == State::Queued || message.state == State::Sending
+                                              || message.state == State::Held);
+        if (message.id > clearedThrough_ || pending) visibleRows_.push_back(row);
+        if (message.id > clearedThrough_ && !pending) canClear = true;
+    }
+    clear_->Enable(canClear);
+    list_->showRows(visibleRows_.size());
 }
 
 void BroadcastPage::refreshVoices()

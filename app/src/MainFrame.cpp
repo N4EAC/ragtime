@@ -45,6 +45,9 @@
 #include "SwrBar.h"
 #include "DrawnIcon.h"
 #include "EarFrame.h"
+#ifdef RAGTIME_EMBED_DATA2G
+#include "EmbeddedModem.h"
+#endif
 #include "FilesPage.h"
 #include "GearshiftDialog.h"
 #include "HostConnection.h"
@@ -96,6 +99,7 @@ enum
     ID_STATION_SETTINGS,
     ID_RIG_SETTINGS,
     ID_VOICE_SETTINGS,
+    ID_MODEM_SETTINGS,
     ID_CLEAR_SWR_TRIP,
     ID_NARROW,
     ID_GLOBUS,
@@ -325,6 +329,15 @@ MainFrame::MainFrame()
         sort = static_cast<broadcast::Column>(saved);
     stationList_->setSort(sort, loadBool(keys::SORT_ASCENDING, true));
 
+#ifdef RAGTIME_EMBED_DATA2G
+    modem_ = std::make_unique<EmbeddedModem>([this](const std::string& error) {
+        modemError_ = error;
+        host_->recorder().note(error, HostConnection::nowMs());
+        host_->stop();
+        rig_->hostLost();
+        showConnection();
+    });
+#endif
     loadFilesLog();
     applyPrefs(true);
     applyRadioPrefs();
@@ -399,6 +412,9 @@ MainFrame::~MainFrame()
     if (voiceAudio_) voiceAudio_->stop();
     rig_.reset();
     host_.reset();
+#ifdef RAGTIME_EMBED_DATA2G
+    modem_.reset();
+#endif
     // The panes go now, while the engines their callbacks read are still
     // here. Left to wxFrame's own teardown, after our members have gone,
     // GTK moves the focus as it destroys them, and a message list that had
@@ -478,6 +494,9 @@ void MainFrame::buildMenus()
 
     auto* settings = new wxMenu;
     settings->Append(ID_STATION_SETTINGS, "&Station...\tCtrl+,");
+#ifdef RAGTIME_EMBED_DATA2G
+    settings->Append(ID_MODEM_SETTINGS, "&Modem...");
+#endif
     settings->Append(ID_RIG_SETTINGS, "&Rig...");
     settings->Append(ID_VOICE_SETTINGS, "&Voice...", "The microphone and speaker for voice messages");
     settings->Append(ID_CLEAR_SWR_TRIP, "&Clear the SWR trip...",
@@ -513,6 +532,9 @@ void MainFrame::buildMenus()
     Bind(wxEVT_UPDATE_UI, [this](wxUpdateUIEvent& e) { e.Enable(!prefs_.callsign.empty()); }, ID_BROADCAST_FILE);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { showGearshift(); }, ID_GEARSHIFT);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { showSettings(); }, ID_STATION_SETTINGS);
+#ifdef RAGTIME_EMBED_DATA2G
+    Bind(wxEVT_MENU, [this](wxCommandEvent&) { showSettings(SettingsDialog::Page::Modem); }, ID_MODEM_SETTINGS);
+#endif
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { showSettings(SettingsDialog::Page::Rig); }, ID_RIG_SETTINGS);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { showSettings(SettingsDialog::Page::Voice); }, ID_VOICE_SETTINGS);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { clearSwrTrip(); }, ID_CLEAR_SWR_TRIP);
@@ -533,7 +555,7 @@ void MainFrame::buildMenus()
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { leaveSessionNow(); }, ID_LEAVE_NOW);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { sendFilePrompt(""); }, ID_SEND_FILE);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { sendFilePrompt(""); }, ID_STATION_SEND_FILE);
-    Bind(wxEVT_MENU, [this](wxCommandEvent&) {
+    Bind(wxEVT_MENU, [](wxCommandEvent&) {
         wxFileName::Mkdir(wxString::FromUTF8(receivedFolder()), wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
         openWithDesktop(receivedFolder());
     }, ID_OPEN_RECEIVED);
@@ -573,7 +595,7 @@ void MainFrame::buildMenus()
         facts.lastError = host_->lastError();
         saveReport(this, host_->recorder(), facts);
     }, ID_SAVE_REPORT);
-    Bind(wxEVT_MENU, [this](wxCommandEvent&) {
+    Bind(wxEVT_MENU, [](wxCommandEvent&) {
         wxFileName::Mkdir(wxString::FromUTF8(flightRecorderDir()), wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
         openWithDesktop(flightRecorderDir());
     }, ID_OPEN_FLIGHT);
@@ -583,7 +605,11 @@ void MainFrame::buildMenus()
         info.SetVersion(versionString());
         info.SetDescription("A plain chat and file-transfer client for Data2G.\n"
                             "Welcome to the D2G net. Sometimes we ragchew.\n\n"
-                            "Ragtime talks to a data2g-host you run; it never starts one."
+#ifdef RAGTIME_EMBED_DATA2G
+                            "Use the built-in Data2G modem or connect to an external data2g-host."
+#else
+                            "Ragtime connects to an external data2g-host."
+#endif
                             + (ragtime::image::available() ? "\n\nPictures: " + utf8(ragtime::image::versions())
                                                            : wxString()));
         info.SetLicence("MIT");
@@ -658,7 +684,7 @@ void MainFrame::buildLayout()
         themeButton_ = new wxBitmapButton(GetStatusBar(), wxID_ANY, wxBitmapBundle(), wxDefaultPosition,
                                           wxDefaultSize, wxBU_EXACTFIT | wxBORDER_NONE);
         showThemeButton();
-        themeButton_->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+        themeButton_->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
             ThemeChoice choice = themeIsDark() ? ThemeChoice::Light : ThemeChoice::Dark;
             saveInt(keys::THEME, (int)choice);
             applyTheme(choice);
@@ -847,7 +873,7 @@ void MainFrame::buildLayout()
             voiceAction(key, voiceQueue_.playing() == key ? "voice:stop:0" : "voice:play:0");
         },
         [this](const std::string& path) { return voiceQueue_.playing() == "p" + path; });
-    filesPage_->onOpenFolder([this]() {
+    filesPage_->onOpenFolder([]() {
         wxFileName::Mkdir(wxString::FromUTF8(receivedFolder()), wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
         openWithDesktop(receivedFolder());
     });
@@ -909,10 +935,31 @@ void MainFrame::applyPrefs(bool reconnect)
 
     if (reconnect)
     {
-        if (prefs_.callsign.empty())
-            host_->stop();
+        host_->stop();
+        rig_->hostLost();
+#ifdef RAGTIME_EMBED_DATA2G
+        modemError_.clear();
+        if (prefs_.usesBuiltInModem() && !prefs_.callsign.empty())
+        {
+            if (voiceAudio_) voiceAudio_->stopPlaying();
+            modemError_ = modem_->start(prefs_);
+            if (!modemError_.empty())
+            {
+                host_->recorder().note("Built-in Data2G: " + modemError_, HostConnection::nowMs());
+                const wxString error = utf8(modemError_);
+                CallAfter([this, error] {
+                    if (utf8(modemError_) == error)
+                        wxMessageBox(error, "Built-in Data2G could not start", wxOK | wxICON_ERROR, this);
+                });
+            }
+        }
         else
-            host_->start(prefs_.host, prefs_.kissPort, prefs_.commandPort);
+            modem_->stop();
+        if (modemError_.empty() && !prefs_.callsign.empty())
+#else
+        if (!prefs_.callsign.empty())
+#endif
+            host_->start(prefs_.hostAddress(), prefs_.kissPort, prefs_.commandPort);
     }
     showConnection();
     refreshStations();
@@ -945,12 +992,13 @@ void MainFrame::showSettings(SettingsDialog::Page page)
     autoAlc_.hold(false);
     if (!ok) return;
     StationPrefs next = dialog.prefs();
-    bool reconnect = next.callsign != prefs_.callsign || next.host != prefs_.host || next.kissPort != prefs_.kissPort
-                     || next.commandPort != prefs_.commandPort || host_->state() == HostConnection::State::Off;
+    bool reconnect = next.callsign != prefs_.callsign || next.hostAddress() != prefs_.hostAddress() || next.kissPort != prefs_.kissPort
+                     || next.commandPort != prefs_.commandPort || !(next.modem == prefs_.modem)
+                     || host_->state() == HostConnection::State::Off;
     prefs_ = next;
     saveStationPrefs(prefs_);
     applyPrefs(reconnect);
-    if (ear_) ear_->setHost(prefs_.host, prefs_.commandPort);
+    if (ear_) ear_->setHost(prefs_.hostAddress(), prefs_.commandPort);
     // A rig already open the same way stays open.
     applyRadioPrefs();
 }
@@ -971,7 +1019,7 @@ void MainFrame::onHostEvents(const std::vector<Event>& events)
         {
             case Event::Type::Ptt:
                 bar_->tx->setOn(e.on);
-                rig_->hostPtt(e.on);
+                if (!prefs_.usesBuiltInModem() || !prefs_.modem.tci) rig_->hostPtt(e.on);
                 if (ear_) ear_->setTransmitting(e.on);
                 break;
             case Event::Type::ModeUsed:
@@ -1182,9 +1230,19 @@ void MainFrame::showConnection()
         state = "Connected, opening D2G";
     }
     if (host_ && !host_->lastError().empty()) tip = utf8(host_->lastError());
-    if (tip.empty()) tip = "Ragtime talks to a data2g-host you run; it never starts one. Settings > Station";
+#ifdef RAGTIME_EMBED_DATA2G
+    if (prefs_.usesBuiltInModem() && !modemError_.empty())
+    {
+        state = "Modem stopped";
+        tip = utf8(modemError_);
+    }
+    if (tip.empty() && prefs_.usesBuiltInModem()) tip = "Built-in Data2G. Settings > Modem";
+#endif
+    if (tip.empty()) tip = "External data2g-host. Settings > Station";
     hostTip_ = tip;
-    wxString text = "data2g-host " + utf8(prefs_.host + ":" + std::to_string(prefs_.commandPort)) + utf8(DOT) + state;
+    wxString name = prefs_.usesBuiltInModem() ? wxString("Built-in Data2G") :
+                    "data2g-host " + utf8(prefs_.host + ":" + std::to_string(prefs_.commandPort));
+    wxString text = name + utf8(DOT) + state;
     if (text == hostText_) return;
     hostText_ = text;
     SetStatusText(text, FIELD_HOST);
@@ -3632,6 +3690,15 @@ void MainFrame::setEar(bool open)
         // The filter, set from the Ear: only with the box ticked (RigControl
         // checks), noted in the flight recorder.
         auto write = [this](const radio::RigFilter& f, const std::string& why) { setRigFilter(f, why); };
+        EarFrame::ReadHostAudio readHostAudio;
+#ifdef RAGTIME_EMBED_DATA2G
+        readHostAudio = [this](audio::EarAudio& ear) {
+            if (prefs_.usesBuiltInModem())
+                modem_->readEarAudio(ear);
+            else
+                ear.hostAudio({}, nullptr, 0, 0);
+        };
+#endif
         ear_ = new EarFrame(this, filterEdit_, write, [this] {
             ear_ = nullptr;
             // Still read while Ragtime has changed the filter, so a new
@@ -3639,8 +3706,8 @@ void MainFrame::setEar(bool open)
             watchFilter();
             bar_->setEarOpen(false);
             GetMenuBar()->Check(ID_EAR, false);
-        }, toolsOnTop_);
-        ear_->setHost(prefs_.host, prefs_.commandPort);
+        }, toolsOnTop_, std::move(readHostAudio));
+        ear_->setHost(prefs_.hostAddress(), prefs_.commandPort);
         ear_->setNarrow(gearshift_.narrowOnly());
         ear_->setTransmitting(bar_->tx->isOn());
         ear_->setHostBusy([this]() -> std::optional<bool> {

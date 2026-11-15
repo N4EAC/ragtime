@@ -1060,6 +1060,18 @@ void testGiveUpAndAskAgain()
 // requests under the seal didn't ask for it; Sealed when nobody has said.
 // Theirs: Sealed when the seal's digest matches what we hold, Mismatch
 // when it doesn't, until a good copy comes.
+// The mapping from mt19937 to a uniform interval differs across C++
+// standard libraries. Order the two test seeds by their first repair delay.
+std::pair<uint32_t, uint32_t> repairSeedOrder(const Station& station)
+{
+    auto mode = broadcast::findMode(station.link.modes(), "qpsk-r1/3");
+    auto window = broadcast::listeningWindowMs(mode);
+    auto own = (uint64_t)(broadcast::oneCodewordSeconds(mode) * 1000.0) + 2000;
+    std::uniform_int_distribution<uint64_t> delay(0, window > own + 1000 ? window - own : 1000);
+    std::mt19937 first(2), second(3);
+    return delay(first) < delay(second) ? std::make_pair(2u, 3u) : std::make_pair(3u, 2u);
+}
+
 void testSealMarks()
 {
     using Mark = Seals::Mark;
@@ -1083,6 +1095,9 @@ void testSealMarks()
         return false;
     };
     air.run(2000);
+    const auto [early, late] = repairSeedOrder(b);
+    b.seals.setRandomSeed(early);
+    c.seals.setRandomSeed(late);
     a.chat.send("one", "", now);
     a.chat.send("two", "", now);
     a.chat.send("three", "", now);
@@ -1677,18 +1692,21 @@ void testRepairGear()
 // A request heard speaks for us only if its asker's gear is no faster
 // than ours: the weak station asks too when the strong one asked first,
 // and the line goes again once, in the weak one's gear.
-void testSuppressionByGear(uint32_t weakSeed, uint32_t strongSeed, const std::string& firstAsker)
+void testSuppressionByGear(const std::string& firstAsker)
 {
     Air air;
     Station& a = air.add("AG7EW", 1);
-    Station& b = air.add("KC2G", weakSeed);
-    Station& c = air.add("W1AW", strongSeed);
+    Station& b = air.add("KC2G", 2);
+    Station& c = air.add("W1AW", 3);
     for (auto& st : air.stations) st->seals.setLadder(ladder());
     b.hearsAt["AG7EW"] = -5.0;
     c.hearsAt["AG7EW"] = 20.0;
     b.lose = loseOnce("two");
     c.lose = loseOnce("two");
     air.run(2000);
+    const auto [early, late] = repairSeedOrder(b);
+    b.seals.setRandomSeed(firstAsker == "KC2G" ? early : late);
+    c.seals.setRandomSeed(firstAsker == "W1AW" ? early : late);
     a.chat.send("one", "", now);
     a.chat.send("two", "", now);
     air.run(Seals::QUIET_MS + 120000);
@@ -2330,8 +2348,8 @@ int main()
     testPartsAcrossRestart();
     testPartsExpire();
     testRepairGear();
-    testSuppressionByGear(2, 3, "KC2G");
-    testSuppressionByGear(3, 2, "W1AW");
+    testSuppressionByGear("KC2G");
+    testSuppressionByGear("W1AW");
     testSlowCap(60 * 60, true);
     testSlowCap(20, false);
     testRefusedCancelled();

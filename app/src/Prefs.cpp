@@ -106,6 +106,13 @@ StationPrefs loadStationPrefs()
     p.callsign = readString("/Station/Callsign", p.callsign);
     p.locator = readString("/Station/Locator", p.locator);
     p.host = readString("/Connection/Host", p.host);
+#ifdef RAGTIME_EMBED_DATA2G
+    p.modem.enabled = config().ReadBool("/Modem/Enabled", p.modem.enabled);
+    p.modem.input = readString("/Modem/Input", p.modem.input);
+    p.modem.output = readString("/Modem/Output", p.modem.output);
+    p.modem.tci = config().ReadBool("/Modem/Tci", p.modem.tci);
+    p.modem.tciHost = readString("/Modem/TciHost", p.modem.tciHost);
+#endif
     p.kissPort = (int)config().ReadLong("/Connection/KissPort", p.kissPort);
     p.commandPort = (int)config().ReadLong("/Connection/CommandPort", p.commandPort);
     p.receivedFolder = receivedFolder();
@@ -133,6 +140,13 @@ void saveStationPrefs(const StationPrefs& p)
     config().Write("/Station/Callsign", wxString::FromUTF8(p.callsign));
     config().Write("/Station/Locator", wxString::FromUTF8(p.locator));
     config().Write("/Connection/Host", wxString::FromUTF8(p.host));
+#ifdef RAGTIME_EMBED_DATA2G
+    config().Write("/Modem/Enabled", p.modem.enabled);
+    config().Write("/Modem/Input", wxString::FromUTF8(p.modem.input));
+    config().Write("/Modem/Output", wxString::FromUTF8(p.modem.output));
+    config().Write("/Modem/Tci", p.modem.tci);
+    config().Write("/Modem/TciHost", wxString::FromUTF8(p.modem.tciHost));
+#endif
     config().Write("/Connection/KissPort", (long)p.kissPort);
     config().Write("/Connection/CommandPort", (long)p.commandPort);
     // The default folder stays the default until the operator picks another.

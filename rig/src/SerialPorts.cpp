@@ -65,10 +65,15 @@ std::vector<std::string> listed(const std::string& folder, const std::vector<std
 
 std::vector<std::string> serialPorts()
 {
+#ifdef __APPLE__
+    // Use the call-out endpoints for connections initiated by Ragtime.
+    return listed("/dev", {"cu."});
+#else
     // By-id names first: they survive replugging, and name the interface.
     std::vector<std::string> ports = listed("/dev/serial/by-id", {});
     for (const std::string& port : listed("/dev", {"ttyUSB", "ttyACM"})) ports.push_back(port);
     return ports;
+#endif
 }
 
 #endif

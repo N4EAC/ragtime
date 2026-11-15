@@ -21,6 +21,9 @@
 #include <dlfcn.h>
 #include <limits.h>
 #include <unistd.h>
+#ifdef __APPLE__
+#include <mach-o/dyld.h>
+#endif
 #endif
 
 namespace ragtime
@@ -125,14 +128,23 @@ void closeLibrary(void* lib)
     FreeLibrary((HMODULE)lib);
 }
 #else
+#ifdef __APPLE__
+constexpr const char* LIBRARY_NAME = "libsotto.0.dylib";
+#else
 constexpr const char* LIBRARY_NAME = "libsotto.so.0";
+#endif
 
 std::string programFolder()
 {
     char path[PATH_MAX];
+#ifdef __APPLE__
+    uint32_t size = sizeof(path);
+    if (_NSGetExecutablePath(path, &size) != 0) return {};
+#else
     ssize_t n = readlink("/proc/self/exe", path, sizeof(path) - 1);
-    if (n <= 0) return std::string();
+    if (n <= 0) return {};
     path[n] = '\0';
+#endif
     std::string s(path);
     size_t slash = s.rfind('/');
     if (slash != std::string::npos) s.resize(slash + 1);
@@ -207,6 +219,9 @@ std::vector<std::string> sottoCandidates()
     {
         out.push_back(here + LIBRARY_NAME);
 #ifndef _WIN32
+#ifdef __APPLE__
+        out.push_back(here + "../Frameworks/" + LIBRARY_NAME);
+#endif
         // The AppImage keeps its libraries in usr/lib beside usr/bin.
         out.push_back(here + "../lib/" + LIBRARY_NAME);
         // Built from source: packaging/build-sotto.sh leaves it in the
@@ -262,7 +277,7 @@ Sotto::Sotto(const std::string& path)
         info_.why = "sotto.dll isn't installed: put it beside ragtime.exe, or set RAGTIME_SOTTO to its path";
 #else
         info_.why = "libsotto isn't installed: build it with packaging/build-sotto.sh in Ragtime's checkout, "
-                    "or set RAGTIME_SOTTO to libsotto.so.0's path";
+                    "or set RAGTIME_SOTTO to the library's path";
 #endif
 }
 

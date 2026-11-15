@@ -33,7 +33,7 @@ class wxSpinCtrlDouble;
 class wxStaticText;
 class wxTextCtrl;
 
-// Settings, in three tabs.
+// Settings for the station, rig, voice and built-in modem.
 //
 // Station: the callsign and locator Ragtime sends, where data2g-host is,
 // where files go (the received folder, and the stations whose files are
@@ -62,6 +62,7 @@ public:
         Station,
         Rig,
         Voice,
+        Modem,
     };
 
     // gears: the gearshift's ladder, most robust first, as (Data2G's mode,
@@ -115,6 +116,14 @@ private:
     wxTextCtrl* callsign_ = nullptr;
     wxTextCtrl* locator_ = nullptr;
     wxTextCtrl* host_ = nullptr;
+#ifdef RAGTIME_EMBED_DATA2G
+    wxWindow* modemPage(wxNotebook* book, const ModemPrefs& prefs);
+    wxCheckBox* useModem_ = nullptr;
+    wxChoice* modemInput_ = nullptr;
+    wxChoice* modemOutput_ = nullptr;
+    wxCheckBox* modemTci_ = nullptr;
+    wxTextCtrl* modemTciHost_ = nullptr;
+#endif
     wxSpinCtrl* kissPort_ = nullptr;
     wxSpinCtrl* commandPort_ = nullptr;
     wxStaticText* dataPort_ = nullptr;

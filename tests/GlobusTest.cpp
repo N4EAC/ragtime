@@ -638,7 +638,6 @@ void testSpinning()
     CHECK(slowest < 6.0);
 }
 
-const double HALF_TURN = std::acos(-1.0);
 
 // Whether segments pq and rs, in whole hundredths of a degree, meet
 // anywhere but at an end they share.

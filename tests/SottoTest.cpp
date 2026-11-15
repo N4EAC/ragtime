@@ -269,7 +269,11 @@ int main()
     }
 #ifndef _WIN32
     {
+#ifdef __APPLE__
+        voice::Sotto notSotto("libSystem.B.dylib");
+#else
         voice::Sotto notSotto("libm.so.6");
+#endif
         CHECK(!notSotto.available());
         CHECK(notSotto.info().why.find("missing") != std::string::npos);
     }

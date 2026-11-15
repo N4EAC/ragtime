@@ -6,6 +6,11 @@
 #include <wx/socket.h>
 #include <wx/wx.h>
 
+#ifdef RAGTIME_EMBED_DATA2G
+#include "EmbeddedModem.h"
+#endif
+
+#include "AppIcon.h"
 #include "MainFrame.h"
 #include "Prefs.h"
 #include "QuitSignal.h"
@@ -28,6 +33,9 @@ public:
         if (theme == (int)ThemeChoice::Light || theme == (int)ThemeChoice::Dark) applyTheme((ThemeChoice)theme);
         auto* frame = new MainFrame();
         frame->Show();
+#ifdef __WXOSX__
+        setDockIcon();
+#endif
         // kill, Ctrl+C and a closed terminal close it as the close box does.
         watchQuitSignals();
         return true;
@@ -83,6 +91,10 @@ int main(int argc, char** argv)
             return 0;
         }
     }
+#ifdef RAGTIME_EMBED_DATA2G
+    return EmbeddedModem::runWithRuntime(argc, argv, [](int count, char** args) { return wxEntry(count, args); });
+#else
     return wxEntry(argc, argv);
+#endif
 }
 #endif

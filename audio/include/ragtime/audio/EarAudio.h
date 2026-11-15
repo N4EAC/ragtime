@@ -1,7 +1,7 @@
 // EarAudio: the Ear's ears. It listens to the sound card data2g-host
 // records from, alongside it, and hands the samples to the Ear's spectrum
 // (docs/STAGE1.md, "The Ear"; Jeff's call, 2026-10-26). PipeWire on Linux,
-// WASAPI on Windows (2026-10-27).
+// WASAPI on Windows, and Core Audio or the built-in modem tap on macOS.
 //
 // It follows data2g-host by default: it watches for the host's capture
 // (ear::findHostCapture) and records the source feeding it, moving when
@@ -61,6 +61,7 @@ struct EarStatus
     ear::HostSearch host;
     // Following data2g-host, or the source the operator picked.
     bool following = true;
+    bool hostTap = false;
     std::string chosen;
     // Why the Ear records the source it does.
     ear::Pick pick = ear::Pick::None;
@@ -75,7 +76,9 @@ struct EarStatus
 class EarAudio
 {
 public:
-    using Samples = std::function<void(const float* samples, std::size_t n, int rate)>;
+    // Device captures leave TX state unknown. The built-in modem tags
+    // its synthesized transmit and received audio explicitly.
+    using Samples = std::function<void(const float* samples, std::size_t n, int rate, std::optional<bool> tx)>;
     using Changed = std::function<void()>;
 
     virtual ~EarAudio() = default;
@@ -91,11 +94,13 @@ public:
     // tell several data2g-hosts apart.
     virtual void setHostPid(std::optional<int> pid) = 0;
 
+    // An in-process modem can supply its RX and TX audio directly. An empty
+    // source name returns to sound-card discovery.
+    virtual void hostAudio(const std::string&, const float*, std::size_t, int, bool = false) {}
     virtual EarStatus status() const = 0;
 };
 
-// PipeWire on Linux, WASAPI on Windows; a stand-in that says why not
-// elsewhere.
+// PipeWire on Linux, WASAPI on Windows and Core Audio on macOS.
 std::unique_ptr<EarAudio> makeEarAudio();
 
 // The process listening on a TCP port on this machine, if any we may see:

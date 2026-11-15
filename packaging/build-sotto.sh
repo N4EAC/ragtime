@@ -24,15 +24,33 @@ fi
 
 # Codec 2's library only, from sotto's own fork.
 C2="$WORK/codec2"
+platform=$(uname -s)
+if [ "$platform" = Darwin ]; then
+    jobs=$(sysctl -n hw.logicalcpu 2>/dev/null || echo 4)
+else
+    jobs=$(nproc)
+fi
 cmake -S "$SRC/codec/codec2" -B "$C2" -DCMAKE_BUILD_TYPE=Release -DUNITTEST=OFF > /dev/null
-cmake --build "$C2" --target codec2 -j"$(nproc)" > /dev/null
+cmake --build "$C2" --target codec2 -j"$jobs" > /dev/null
 
 make -C "$SRC/c" --no-print-directory clean VARIANT="$SOTTO_VARIANT" > /dev/null
-make -C "$SRC/c" --no-print-directory libsotto.so VARIANT="$SOTTO_VARIANT" CODEC2_LIB="$C2/src" > /dev/null
-
 mkdir -p "$OUT/licences"
-cp -L "$SRC/c/libsotto.so.0" "$OUT/libsotto.so.0"
-C2LIB=$(ldd "$OUT/libsotto.so.0" | awk '/libcodec2/ {print $3}')
+if [ "$platform" = Darwin ]; then
+    # Use the upstream object list and flags. The Makefile's shared target
+    # uses an ELF soname, so link the same objects as a Mach-O dylib.
+    make -C "$SRC/c" --no-print-directory -j"$jobs" libsotto.a VARIANT="$SOTTO_VARIANT" CODEC2_LIB="$C2/src" > /dev/null
+    SOTTO_LIB="$OUT/libsotto.0.dylib"
+    C2LIB="$C2/src/libcodec2.1.2.dylib"
+    C2NAME=$(basename "$C2LIB")
+    "${CC:-cc}" -dynamiclib -Wl,-force_load,"$SRC/c/libsotto.a" -Wl,-headerpad_max_install_names \
+        -install_name "@rpath/$(basename "$SOTTO_LIB")" "$C2LIB" -o "$SOTTO_LIB"
+    install_name_tool -change "$(otool -D "$C2LIB" | tail -1)" "@loader_path/$C2NAME" "$SOTTO_LIB"
+    codesign --force --sign - "$SOTTO_LIB"
+else
+    make -C "$SRC/c" --no-print-directory libsotto.so VARIANT="$SOTTO_VARIANT" CODEC2_LIB="$C2/src" > /dev/null
+    cp -L "$SRC/c/libsotto.so.0" "$OUT/libsotto.so.0"
+    C2LIB=$(ldd "$OUT/libsotto.so.0" | awk '/libcodec2/ {print $3}')
+fi
 cp -L "$C2LIB" "$OUT/$(basename "$C2LIB")"
 cp "$SRC/LICENSE" "$OUT/licences/sotto.txt"
 cp "$SRC/codec/codec2/COPYING" "$OUT/licences/codec2.txt"

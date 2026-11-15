@@ -211,6 +211,8 @@ void DialReader::askNext(uint64_t nowMs)
     // Frequency queries only.
     out_ += vfo_ == Vfo::Yes ? "f currVFO\n" : "f\n";
     asking_ = Ask::Freq;
+    inFrequency_ = false;
+    frequencyReply_.reset();
     askedMs_ = freqAskedMs_ = nowMs;
     freqAsked_ = true;
 }
@@ -554,6 +556,36 @@ void DialReader::onLine(const std::string& line, uint64_t nowMs)
     if (line.empty()) return;
     int code = 0;
 
+    // Some rigctld-compatible servers respond with the extended reply
+    // even to plain "f", after earlier commands requested that format.
+    if (asking_ == Ask::Freq && line.compare(0, 9, "get_freq:") == 0)
+    {
+        inFrequency_ = true;
+        frequencyReply_.reset();
+        return;
+    }
+    if (asking_ == Ask::Freq && inFrequency_)
+    {
+        constexpr char frequencyLabel[] = "Frequency: ";
+        constexpr size_t labelSize = sizeof(frequencyLabel) - 1;
+        uint64_t hz = 0;
+        if (line.compare(0, labelSize, frequencyLabel) == 0 && frequencyLine(line.substr(labelSize), hz))
+        {
+            frequencyReply_ = hz;
+            return;
+        }
+        if (!rprt(line, code)) return;
+
+        inFrequency_ = false;
+        if (code == 0)
+        {
+            if (frequencyReply_) publishFrequency(*frequencyReply_, nowMs);
+            answered(nowMs);
+            return;
+        }
+        // Use the same error handling as for a bare RPRT line.
+    }
+
     // The mode's long answer: "get_mode:" (or "get_mode: currVFO"),
     // "Mode: USB", "Passband: 2400", then RPRT; its short one the mode
     // and the width on lines of their own.
@@ -638,10 +670,7 @@ void DialReader::onLine(const std::string& line, uint64_t nowMs)
     uint64_t hz = 0;
     if (frequencyLine(line, hz))
     {
-        readMs_ = nowMs;
-        if (hz_ != hz || !problem_.empty()) version_++;
-        hz_ = hz;
-        problem_.clear();
+        publishFrequency(hz, nowMs);
         if (asking_ == Ask::Freq) answered(nowMs);
         return;
     }
@@ -655,6 +684,14 @@ void DialReader::onLine(const std::string& line, uint64_t nowMs)
         }
         if (asking_ == Ask::Freq) answered(nowMs);
     }
+}
+
+void DialReader::publishFrequency(uint64_t hz, uint64_t nowMs)
+{
+    readMs_ = nowMs;
+    if (hz_ != hz || !problem_.empty()) version_++;
+    hz_ = hz;
+    problem_.clear();
 }
 
 void DialReader::modeLine(const std::string& line, uint64_t nowMs)

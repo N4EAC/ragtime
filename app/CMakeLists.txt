@@ -20,7 +20,7 @@ else()
         ${CMAKE_CURRENT_BINARY_DIR}/generated/RagtimeIconPng.h RAGTIME_ICON_PNG)
 endif()
 
-add_executable(ragtime WIN32
+add_executable(ragtime WIN32 MACOSX_BUNDLE
     src/RagtimeApp.cpp
     src/AppIcon.cpp
     src/MainFrame.cpp
@@ -98,6 +98,61 @@ else()
     endif()
 endif()
 target_link_libraries(ragtime PRIVATE ragtime_core ragtime_rig ragtime_audio ragtime_image ragtime_denoise ${RAGTIME_WX_LIBS})
+if(APPLE)
+    enable_language(OBJCXX)
+    target_sources(ragtime PRIVATE src/AppIconMac.mm)
+
+    set_source_files_properties(res/ragtime.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    target_sources(ragtime PRIVATE res/ragtime.icns)
+    set_target_properties(ragtime PROPERTIES
+        MACOSX_BUNDLE_ICON_FILE ragtime.icns
+        OUTPUT_NAME Ragtime
+        MACOSX_BUNDLE_BUNDLE_NAME Ragtime
+        MACOSX_BUNDLE_GUI_IDENTIFIER org.baitisj.ragtime
+        MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+        MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/res/RagtimeInfo.plist.in)
+    target_link_options(ragtime PRIVATE "LINKER:-headerpad_max_install_names")
+    if(RAGTIME_BUILD_SOTTO AND EXISTS "${RAGTIME_SOTTO_LIBRARY}")
+        set(sottoLibraries "${RAGTIME_SOTTO_LIBRARY}" "${RAGTIME_SOTTO_OUT}/libcodec2.1.2.dylib")
+        set(sottoNotices "${RAGTIME_SOTTO_OUT}/licences/sotto.txt" "${RAGTIME_SOTTO_OUT}/licences/codec2.txt")
+        set_source_files_properties(${sottoLibraries} PROPERTIES MACOSX_PACKAGE_LOCATION Frameworks)
+        set_source_files_properties(${sottoNotices} PROPERTIES MACOSX_PACKAGE_LOCATION Resources/Licenses)
+        target_sources(ragtime PRIVATE ${sottoLibraries} ${sottoNotices})
+    endif()
+endif()
+
+if(RAGTIME_EMBED_DATA2G)
+    add_library(ragtime_modem STATIC src/EmbeddedModem.cpp)
+    target_compile_definitions(ragtime_modem PUBLIC RAGTIME_EMBED_DATA2G)
+    target_compile_features(ragtime_modem PRIVATE cxx_std_20)
+    if(RAGTIME_BUILD_WX)
+        foreach(lib ${RAGTIME_WX_LIBS})
+            get_target_property(dirs ${lib} INTERFACE_INCLUDE_DIRECTORIES)
+            target_include_directories(ragtime_modem SYSTEM PRIVATE ${dirs})
+        endforeach()
+    else()
+        target_include_directories(ragtime_modem SYSTEM PRIVATE ${wxWidgets_INCLUDE_DIRS})
+        target_compile_definitions(ragtime_modem PRIVATE ${wxWidgets_DEFINITIONS})
+        target_compile_options(ragtime_modem PRIVATE ${RAGTIME_WX_CXX_FLAGS})
+    endif()
+    target_link_libraries(ragtime_modem PRIVATE ragtime_audio data2g_station ${RAGTIME_WX_LIBS})
+    ragtime_warnings(ragtime_modem)
+    target_link_libraries(ragtime PRIVATE ragtime_modem)
+
+    foreach(component IN ITEMS Data2G miniaudio pocketfft)
+        if(component STREQUAL "Data2G")
+            set(license "${RAGTIME_DATA2G_SOURCE_DIR}/LICENSE")
+        else()
+            set(license "${RAGTIME_DATA2G_SOURCE_DIR}/native/third_party/${component}/LICENSE")
+        endif()
+        set(notice "${CMAKE_CURRENT_BINARY_DIR}/generated/${component}-LICENSE.txt")
+        configure_file("${license}" "${notice}" COPYONLY)
+        set_source_files_properties("${notice}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources/Licenses)
+        target_sources(ragtime PRIVATE "${notice}")
+    endforeach()
+endif()
+
 ragtime_warnings(ragtime)
 
 if(RAGTIME_TESTS AND NOT WIN32)

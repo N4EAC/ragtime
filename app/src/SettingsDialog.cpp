@@ -25,6 +25,9 @@
 #include <wx/tokenzr.h>
 
 #include "Html.h"
+#ifdef RAGTIME_EMBED_DATA2G
+#include "EmbeddedModem.h"
+#endif
 #include "ragtime/globus/Globe.h"
 #include "ragtime/link/HostLink.h"
 #include "ragtime/protocol/Fields.h"
@@ -124,7 +127,10 @@ SettingsDialog::SettingsDialog(wxWindow* parent, const StationPrefs& prefs,
     book->AddPage(stationPage(book, prefs, gears, txLevel), "Station");
     book->AddPage(rigPage(book, prefs), "Rig");
     book->AddPage(voicePage(book, prefs), "Voice");
-    book->SetSelection(page == Page::Rig ? 1 : page == Page::Voice ? 2 : 0);
+#ifdef RAGTIME_EMBED_DATA2G
+    book->AddPage(modemPage(book, prefs.modem), "Modem");
+#endif
+    book->SetSelection(static_cast<size_t>(page));
     // Voice's audio opens only once its tab is looked at.
     if (page == Page::Voice) CallAfter([this] { startVoice(); });
     book->Bind(wxEVT_NOTEBOOK_PAGE_CHANGED, [this](wxBookCtrlEvent& event) {
@@ -164,6 +170,12 @@ SettingsDialog::SettingsDialog(wxWindow* parent, const StationPrefs& prefs,
     locator_->Bind(wxEVT_TEXT, changed);
     commandPort_->Bind(wxEVT_SPINCTRL, [this](wxSpinEvent&) { check(); });
     repairCap_->Bind(wxEVT_CHECKBOX, changed);
+#ifdef RAGTIME_EMBED_DATA2G
+    kissPort_->Bind(wxEVT_SPINCTRL, [this](wxSpinEvent&) { check(); });
+    useModem_->Bind(wxEVT_CHECKBOX, changed);
+    modemTci_->Bind(wxEVT_CHECKBOX, changed);
+    modemTciHost_->Bind(wxEVT_TEXT, changed);
+#endif
     for (wxRadioButton* r : {noRig_, useRigctld_, useHamlib_}) r->Bind(wxEVT_RADIOBUTTON, changed);
     maker_->Bind(wxEVT_CHOICE, [this](wxCommandEvent&) {
         fillModels(0);
@@ -224,7 +236,7 @@ wxWindow* SettingsDialog::stationPage(wxNotebook* book, const StationPrefs& pref
     auto* host = new wxStaticBoxSizer(wxVERTICAL, page, "data2g-host");
     box = host->GetStaticBox();
     host_ = new wxTextCtrl(box, wxID_ANY, wxString::FromUTF8(prefs.host));
-    host_->SetToolTip("The computer data2g-host runs on. Ragtime never starts it: you run it.");
+    host_->SetToolTip("The computer running your external data2g-host.");
     kissPort_ = new wxSpinCtrl(box, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 65535,
                                prefs.kissPort);
     commandPort_ = new wxSpinCtrl(box, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 65534,
@@ -454,17 +466,8 @@ wxWindow* SettingsDialog::rigPage(wxNotebook* book, const StationPrefs& prefs)
     for (const std::string& maker : makers_) maker_->Append(utf8(maker));
     model_ = new wxChoice(box, wxID_ANY);
     model_->SetMinSize(wxSize(FromDIP(220), -1));
-    // The saved model's maker, or the first.
-    int makerAt = 0;
-    for (const rig::Model& m : models_)
-    {
-        if (m.id != r.model) continue;
-        for (size_t i = 0; i < makers_.size(); i++)
-        {
-            if (makers_[i] == m.maker) makerAt = (int)i;
-        }
-    }
-    if (!makers_.empty()) maker_->SetSelection(makerAt);
+    maker_->Insert("All manufacturers", 0);
+    maker_->SetSelection(0);
     if (r.model != 0 && !rig::model(r.model)) unknownModel_ = r.model;
     fillModels(r.model);
 
@@ -634,8 +637,8 @@ void SettingsDialog::fillModels(int pick)
     for (size_t i = 0; maker >= 0 && i < models_.size(); i++)
     {
         const rig::Model& m = models_[i];
-        if (m.maker != makers_[(size_t)maker]) continue;
-        wxString label = utf8(m.name);
+        if (maker > 0 && m.maker != makers_[(size_t)maker - 1]) continue;
+        wxString label = maker == 0 ? utf8(m.maker + " " + m.name) : utf8(m.name);
         if (m.status != "Stable") label << "  (" << utf8(m.status) << ")";
         if (m.id == pick) selection = (int)shown_.size();
         model_->Append(label);
@@ -931,6 +934,7 @@ wxWindow* SettingsDialog::voicePage(wxNotebook* book, const StationPrefs& prefs)
     showVolume();
     volume_->Bind(wxEVT_SLIDER, [showVolume](wxCommandEvent&) { showVolume(); });
     microphone_->Bind(wxEVT_CHOICE, [this](wxCommandEvent&) {
+        voiceTestResult_.clear();
         if (voice_) voice_->chooseMicrophone(pickedMicrophone());
     });
     speaker_->Bind(wxEVT_CHOICE, [this](wxCommandEvent&) {
@@ -1090,9 +1094,10 @@ void SettingsDialog::onVoiceTimer()
         if (loudest > -120.0) level_->SetValue(std::max(0, std::min(60, (int)std::lround(loudest + 60.0))));
         const int left = (int)((MIC_TEST_MS - (steadyMs() - voiceTestMs_) + 999) / 1000);
         microphoneTest_->SetLabel(wxString::Format("Recording %d", std::max(1, left)));
-        if (!status.microphoneProblem.empty())
+        if (!status.microphone.usable() || !status.microphoneProblem.empty())
         {
-            voiceTestResult_ = status.microphoneProblem;
+            voiceTestResult_ = status.microphoneProblem.empty() ? voice::describe(status.microphone, true)
+                                                                : status.microphoneProblem;
             done = true;
         }
         if (done) finishVoiceTest();
@@ -1172,7 +1177,7 @@ void SettingsDialog::finishVoiceTest()
         samples.swap(testSamples_);
         rate = testRate_;
     }
-    if (rate <= 0 || samples.empty())
+    if (!voiceTestResult_.empty() || rate <= 0 || samples.empty())
     {
         if (voiceTestResult_.empty()) voiceTestResult_ = "Nothing came from the microphone";
         microphoneStatus_->SetForegroundColour(badText());
@@ -1229,6 +1234,54 @@ void SettingsDialog::finishTxLevel(bool ok)
     setTxLevel_(*hostTxLevel_);
 }
 
+#ifdef RAGTIME_EMBED_DATA2G
+wxWindow* SettingsDialog::modemPage(wxNotebook* book, const ModemPrefs& prefs)
+{
+    auto* page = new wxPanel(book);
+    auto* layout = new wxBoxSizer(wxVERTICAL);
+    auto* grid = new wxFlexGridSizer(2, 8, 12);
+    grid->AddGrowableCol(1);
+    useModem_ = new wxCheckBox(page, wxID_ANY, "Use the built-in Data2G modem");
+    useModem_->SetValue(prefs.enabled);
+    layout->Add(useModem_, 0, wxALL, 12);
+    auto pickDevice = [page](bool input, const std::string& saved) {
+        auto* choice = new wxChoice(page, wxID_ANY);
+        choice->Append("System default");
+        for (const auto& name : EmbeddedModem::devices(input))
+            if (choice->FindString(utf8(name), true) == wxNOT_FOUND) choice->Append(utf8(name));
+        if (saved.empty())
+            choice->SetSelection(0);
+        else
+        {
+            int index = choice->FindString(utf8(saved), true);
+            if (index == wxNOT_FOUND) index = choice->Append(utf8(saved));
+            choice->SetSelection(index);
+        }
+        return choice;
+    };
+    modemInput_ = pickDevice(true, prefs.input);
+    modemOutput_ = pickDevice(false, prefs.output);
+    modemTci_ = new wxCheckBox(page, wxID_ANY, "Use TCI for radio audio and PTT");
+    modemTci_->SetValue(prefs.tci);
+    modemTciHost_ = new wxTextCtrl(page, wxID_ANY, utf8(prefs.tciHost));
+    grid->Add(new wxStaticText(page, wxID_ANY, "Radio input"), 0, wxALIGN_CENTER_VERTICAL);
+    grid->Add(modemInput_, 1, wxEXPAND);
+    grid->Add(new wxStaticText(page, wxID_ANY, "Radio output"), 0, wxALIGN_CENTER_VERTICAL);
+    grid->Add(modemOutput_, 1, wxEXPAND);
+    grid->AddSpacer(0);
+    grid->Add(modemTci_);
+    grid->Add(new wxStaticText(page, wxID_ANY, "TCI address"), 0, wxALIGN_CENTER_VERTICAL);
+    grid->Add(modemTciHost_, 1, wxEXPAND);
+    layout->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 12);
+    layout->Add(new wxStaticText(page, wxID_ANY,
+        "The built-in modem uses the ports under Station.\n"
+        "For sound card PTT, use the keying option under Rig."),
+        0, wxLEFT | wxRIGHT | wxBOTTOM, 12);
+    page->SetSizer(layout);
+    return page;
+}
+#endif
+
 StationPrefs SettingsDialog::prefs() const
 {
     StationPrefs p;
@@ -1238,6 +1291,13 @@ StationPrefs SettingsDialog::prefs() const
     if (p.host.empty()) p.host = "127.0.0.1";
     p.kissPort = kissPort_->GetValue();
     p.commandPort = commandPort_->GetValue();
+#ifdef RAGTIME_EMBED_DATA2G
+    p.modem.enabled = useModem_->GetValue();
+    if (modemInput_->GetSelection() > 0) p.modem.input = std::string(modemInput_->GetStringSelection().utf8_str());
+    if (modemOutput_->GetSelection() > 0) p.modem.output = std::string(modemOutput_->GetStringSelection().utf8_str());
+    p.modem.tci = modemTci_->GetValue();
+    p.modem.tciHost = typed(modemTciHost_);
+#endif
     p.receivedFolder = std::string(received_->GetPath().Strip(wxString::both).utf8_str());
     wxStringTokenizer words(autoAccept_->GetValue(), ", ;");
     while (words.HasMoreTokens())
@@ -1265,6 +1325,15 @@ void SettingsDialog::check()
 {
     dataPort_->SetLabel(wxString::Format("Session data on %d", commandPort_->GetValue() + 1));
     repairCapMinutes_->Enable(repairCap_->GetValue());
+#ifdef RAGTIME_EMBED_DATA2G
+    const bool useModem = useModem_->GetValue();
+    const bool useTci = useModem && modemTci_->GetValue();
+    host_->Enable(!useModem);
+    modemInput_->Enable(useModem && !useTci);
+    modemOutput_->Enable(useModem && !useTci);
+    modemTci_->Enable(useModem);
+    modemTciHost_->Enable(useTci);
+#endif
 
     bool rigctld = useRigctld_->GetValue();
     bool hamlib = useHamlib_->GetValue();
@@ -1276,15 +1345,24 @@ void SettingsDialog::check()
     maker_->Enable(hamlib);
     model_->Enable(hamlib);
     port_->Enable(hamlib && port != radio::PortType::None);
-    port_->SetHint(port == radio::PortType::Network ? "host:port" : port == radio::PortType::None ? "" : "/dev/ttyUSB0");
+#ifdef __WXOSX__
+    const char* serialHint = "/dev/cu.usbserial";
+#else
+    const char* serialHint = "/dev/ttyUSB0";
+#endif
+    port_->SetHint(port == radio::PortType::Network ? "host:port" : port == radio::PortType::None ? "" : serialHint);
     for (wxWindow* w : serial_) w->Enable(hamlib && port == radio::PortType::Serial);
     backend_->Enable(hamlib);
     poll_->Enable(hamlib);
     testButton_->Enable(hamlib && !testRig_);
+#ifdef RAGTIME_EMBED_DATA2G
+    keyRig_->Enable(hamlib && !useTci);
+#else
     keyRig_->Enable(hamlib);
+#endif
     earFilters_->Enable(hamlib || rigctld);
     swrTrip_->Enable(hamlib || rigctld);
-    bool keying = hamlib && keyRig_->GetValue();
+    bool keying = keyRig_->IsEnabled() && keyRig_->GetValue();
     for (wxWindow* w : keying_) w->Enable(keying);
     radio::PttMethod ptt = valueAt(PTTS, ptt_);
     pttPort_->Enable(keying && (ptt == radio::PttMethod::Dtr || ptt == radio::PttMethod::Rts));
@@ -1292,6 +1370,12 @@ void SettingsDialog::check()
     usSegmentsOnly_->Enable(rigctld || hamlib);
 
     wxString problem;
+#ifdef RAGTIME_EMBED_DATA2G
+    if (useModem && (kissPort_->GetValue() == commandPort_->GetValue()
+                     || kissPort_->GetValue() == commandPort_->GetValue() + 1))
+        problem = "The KISS, command and session data ports must be distinct.";
+    if (useTci && typed(modemTciHost_).empty()) problem = "Enter the TCI address.";
+#endif
     std::string call = typed(callsign_);
     std::string locator = typed(locator_);
     if (!call.empty() && protocol::normalCallsign(call).empty())

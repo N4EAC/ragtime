@@ -64,7 +64,7 @@ int main(int argc, char** argv)
     auto ear = audio::makeEarAudio();
     ear->setHostPid(audio::processListeningOn(port));
     ear->start(
-        [&](const float* x, std::size_t n, int rate) {
+        [&](const float* x, std::size_t n, int rate, std::optional<bool>) {
             std::lock_guard<std::mutex> lock(mutex);
             spectrum.setRate(rate);
             for (auto& r : spectrum.push(x, n)) rows.push_back(r);

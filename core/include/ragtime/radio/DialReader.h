@@ -12,8 +12,8 @@
 // commands). A rigctld too old to know \chk_vfo answers with an RPRT and
 // gets no VFO names. Then it asks each meter once, to learn which this rig
 // reports, and from then on "f" (get frequency) once a second. rigctld
-// answers "f" with the frequency in Hz on a line of its own, or "RPRT -n"
-// for an error.
+// answers "f" with a bare frequency in Hz or a "get_freq:" response
+// ending in RPRT. A bare "RPRT -n" reports an error.
 //
 // The meters are levels: "+l ALC", "+l SWR" and "+l RFPOWER_METER_WATTS"
 // (or "+l RFPOWER_METER", a share of full power, for a rig that knows no
@@ -193,6 +193,7 @@ private:
     void answered(uint64_t nowMs);
     void onLine(const std::string& line, uint64_t nowMs);
     void vfoAnswer(const std::string& line);
+    void publishFrequency(uint64_t hz, uint64_t nowMs);
     void meterValue(int meter, double value);
     void meterFailed(int meter, int code);
 
@@ -209,6 +210,8 @@ private:
     uint64_t unkeyedMs_ = 0;
     uint64_t readMs_ = 0;           // the last answer (or the end of keying)
     std::optional<uint64_t> hz_;
+    bool inFrequency_ = false;
+    std::optional<uint64_t> frequencyReply_;
     State state_[METERS] = {};
     int failures_[METERS] = {};
     int probe_ = 0;                 // the next meter to probe; METERS once done

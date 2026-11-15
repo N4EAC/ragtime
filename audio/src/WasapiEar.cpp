@@ -347,7 +347,7 @@ private:
                 }
             }
             capture_->ReleaseBuffer(frames);
-            if (frames > 0 && samples_) samples_(mono_.data(), mono_.size(), layout_.rate);
+            if (frames > 0 && samples_) samples_(mono_.data(), mono_.size(), layout_.rate, std::nullopt);
             lastSamplesMs_ = nowMs();
         }
         if (FAILED(hr))

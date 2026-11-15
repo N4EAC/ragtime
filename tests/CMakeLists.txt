@@ -100,8 +100,12 @@ endif()
 # Voice cards: the play queue, voice through the file machinery and the
 # chat logs.
 ragtime_test(ragtime_voice_cards_test VoiceCardsTest.cpp)
+if(APPLE)
+    ragtime_test(ragtime_core_audio_ear_test CoreAudioEarTest.cpp)
+    target_link_libraries(ragtime_core_audio_ear_test PRIVATE ragtime_audio)
+endif()
 # The Ear without its window, for the bench and checking a station by hand
-# (it only records). Not a test: it needs a running PipeWire.
+# (it only records). Run with a working audio input.
 add_executable(ragtime_ear_probe EarProbe.cpp)
 target_link_libraries(ragtime_ear_probe PRIVATE ragtime_audio)
 ragtime_warnings(ragtime_ear_probe)

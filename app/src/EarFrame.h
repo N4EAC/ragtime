@@ -47,8 +47,9 @@ public:
     // that quitting can put the rig back) and how a setting reaches the rig.
     // onTop keeps it above the main window (View > Keep tool windows on
     // top); otherwise it stacks as any other window.
+    using ReadHostAudio = std::function<void(ragtime::audio::EarAudio&)>;
     EarFrame(wxWindow* parent, ragtime::ear::FilterEdit& edit, EarFilterBar::Write write,
-             std::function<void()> onClosed, bool onTop);
+             std::function<void()> onClosed, bool onTop, ReadHostAudio readHostAudio);
     ~EarFrame() override;
 
     // data2g-host's address and command port, to find its process when it
@@ -73,6 +74,7 @@ private:
     void fitSpan(const ragtime::audio::EarStatus& status);
 
     std::unique_ptr<ragtime::audio::EarAudio> audio_;
+    ReadHostAudio readHostAudio_;
     std::function<void()> onClosed_;
 
     wxChoice* source_ = nullptr;
@@ -86,10 +88,17 @@ private:
     EarFilterBar* filterBar_ = nullptr;
     wxTimer timer_;
 
-    // Filled on PipeWire's thread, drained by the timer.
+    struct Rows
+    {
+        std::vector<std::vector<float>> power;
+        bool tx;
+    };
+
+    // Filled by the audio backend and drained by the window timer.
     std::mutex mutex_;
     ragtime::ear::Spectrum spectrum_;
-    std::vector<std::vector<float>> pending_;
+    std::vector<Rows> pending_;
+    bool spectrumTx_ = false;
     std::atomic<bool> changed_{true};
     ragtime::ear::EdgeFinder edges_;
     ragtime::ear::AutoSpan autoSpan_;
@@ -100,7 +109,7 @@ private:
     std::string chosen_;
     std::string host_;
     int commandPort_ = 0;
-    bool transmitting_ = false;
+    std::atomic<bool> transmitting_{false};
     std::function<std::optional<bool>()> hostBusy_;
     bool narrow_ = false;
     EarRig rigNow_;         // asked every few ticks

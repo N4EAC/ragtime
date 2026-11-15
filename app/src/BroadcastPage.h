@@ -168,6 +168,8 @@ private:
     friend class MessageList;
 
     void send();
+    void clearView();
+    void updateRows();
     // The ham phrases on the line, highlighted as they are typed.
     void showPhrases();
     void showMenu(int row);
@@ -189,10 +191,15 @@ private:
     wxString gearName_ = "Gear";
     double gearSpeed_ = 0.0;  // bit/s, for the needle; 0 rests it at the left
     wxButton* send_ = nullptr;
+    wxButton* clear_ = nullptr;
     wxBoxSizer* buttons_ = nullptr;
     wxBoxSizer* row_ = nullptr;
     wxBoxSizer* under_ = nullptr;
     bool stacked_ = false;
+    // Clear hides earlier rows in this window. The chat still owns its
+    // history, pending sends and records used by the seal engine.
+    uint64_t clearedThrough_ = 0;
+    std::vector<size_t> visibleRows_;
     uint64_t shownVersion_ = 0;
     uint64_t shownSeals_ = 0;
 
