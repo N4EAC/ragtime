@@ -148,6 +148,16 @@ constexpr double HAND_SEARCH_S = 0.6;
 // HAND LISTEN's delay: at least this, and both commands' under the most.
 constexpr double HAND_LISTEN_MIN_S = 1.0;
 constexpr double HAND_DELAY_MAX_S = 30.0;
+// An armed HAND LISTEN whose burst hasn't ended this long after it was
+// armed gives up with HAND END (Data2G's HAND_ARM_EXPIRE_S). The host checks
+// only while it isn't transmitting.
+constexpr double HAND_ARM_EXPIRE_S = 30.0;
+// How many times a window is armed again while its burst waits (8, four
+// minutes; NOT_SENT_MS gives the burst up at two).
+constexpr int HAND_REARMS = 8;
+// The most a window's decoding should take after it closes (Data2G: about
+// 0.4 s for 40 channels on a desktop, the Python host 2.4 s), with room.
+constexpr double HAND_DECODE_MAX_S = 10.0;
 
 // Channel c's centre, Hz, numbered from the centre out: 0 at 1470, 1 at
 // 1530, 2 at 1410 and so on, even below 1500 Hz and odd above.

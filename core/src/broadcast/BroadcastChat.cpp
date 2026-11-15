@@ -186,6 +186,9 @@ std::string rollCallLine(const Message& m)
     }
     if (m.roll == Message::Roll::NoWindow)
         return "Your check-in went as a plain one: data2g-host wouldn't open a window for Hands";
+    if (m.roll == Message::Roll::Lost)
+        return "Roll call: no window, so no Hands heard. data2g-host gave up waiting for your check-in to go "
+               "(it waits 30 s); check in again when the channel is quiet";
     std::string line;
     if (m.roll == Message::Roll::Done)
     {
@@ -586,6 +589,18 @@ void BroadcastChat::onHandEvent(const Event& event, uint64_t nowMs)
             {
                 m->windowShort = true;
                 version_++;
+            }
+            break;
+        case Event::Type::HandLost:
+            for (Message& m : messages_)
+            {
+                if (m.kind != Message::Kind::RollCall || !m.ours || m.burst != event.id) continue;
+                if (m.roll == Message::Roll::Calling || m.roll == Message::Roll::Listening)
+                {
+                    m.roll = Message::Roll::Lost;
+                    armed_.erase(m.burst);
+                    version_++;
+                }
             }
             break;
         case Event::Type::HandEnd:
@@ -1106,6 +1121,7 @@ std::vector<protocol::Record> BroadcastChat::onEvent(const Event& event, uint64_
         case Event::Type::HandHeard:
         case Event::Type::HandShort:
         case Event::Type::HandEnd:
+        case Event::Type::HandLost:
         case Event::Type::Refused:
             onHandEvent(event, nowMs);
             break;
