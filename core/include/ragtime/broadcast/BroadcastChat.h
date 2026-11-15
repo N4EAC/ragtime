@@ -86,7 +86,8 @@ struct Message
         File,
         Rule,
         Ping,           // a ping of ours and its pong, or a station's ping to us and our pong
-        RollCall,       // our check-in that called the roll, and the Hands that answered it
+        RollCall,       // our check-in that called the roll, and the Hands that answered
+                        // it; or a station's roll call we heard, and our Hand for it
     };
 
     // A roll call row's course.
@@ -98,6 +99,16 @@ struct Message
         NoWindow,       // the host wouldn't open the window: a plain check-in
         Lost,           // the host's armed window gave up before the check-in
                         // went (it waits HAND_ARM_EXPIRE_S): no Hands heard
+    };
+
+    // Our answer to a station's roll call (a RollCall row not ours).
+    enum class Answer
+    {
+        Waiting,        // our Hand is with the host, waiting for its slot
+        Sent,           // our Hand went: we checked in
+        Dropped,        // the host dropped it: the radio was busy
+        Refused,        // the host wouldn't send it
+        NotAnswered,    // no Hand raised; answerWhy says why
     };
 
     // A station that checked in by Hand to our roll call.
@@ -150,7 +161,9 @@ struct Message
     uint64_t answeredMs = 0;        // ours: when the Pong came
     bool unanswered = false;        // ours: no Pong by dueMs (a late one still counts)
 
-    // A roll call row (Kind::RollCall): always ours. State is its burst's.
+    // A roll call row (Kind::RollCall). Ours: state is its burst's. A
+    // station's (not ours): Heard, with roll Done from the start, and our
+    // answer, the channel our Hand goes in (answerChannel) or why none.
     Roll roll = Roll::Calling;
     uint16_t round = 0;
     int rollTag = 0;
@@ -158,6 +171,9 @@ struct Message
     std::vector<Hand> hands;        // in the order heard
     bool windowShort = false;       // the window's head was missed (our own burst ran into it)
     uint64_t windowEndMs = 0;       // Listening: done by then even if the host never says
+    Answer answer = Answer::Waiting;
+    int answerChannel = 0;
+    std::string answerWhy;
 
     // A text line's reactions (docs/PROTOCOL.md, "Reactions"): the
     // stations', one each, and ours, on the air or waiting to go.
@@ -177,7 +193,9 @@ std::string pingLine(const Message& m);
 
 // The roll call row's words: "Calling the roll after your check-in: 40
 // Hand channels", "Roll call: listening for Hands", "Roll call: 2 checked
-// in by Hand: W1AW (FN31, −8 dB), KC2G (FN20, −12 dB)".
+// in by Hand: W1AW (FN31, −8 dB), KC2G (FN20, −12 dB)". A station's:
+// "AG7EW called the roll: checked in by Hand (Hand channel 12)", or "...:
+// not answered, we're in a ragchew".
 std::string rollCallLine(const Message& m);
 
 // Hands go this long after the roll call's burst ends: time for every
@@ -395,6 +413,8 @@ private:
                         const std::optional<link::HandRef>& ref, uint64_t nowMs);
     void onHandEvent(const link::HostLink::Event& event, uint64_t nowMs);
     Message* activeRoll();
+    // Our Hand for handTo_'s roll call is settled: its row says how.
+    void handSettled(Message::Answer answer, const std::string& why = std::string());
     std::string findCall(uint32_t hash) const;
     // A burst of ours settled or was taken back: its reactions are on the
     // air, or wait again.
@@ -458,6 +478,7 @@ private:
     uint16_t rollRound_ = 0;
     std::set<std::pair<std::string, uint16_t>> answered_;   // (net control, round) we answered
     std::string handTo_;                            // net control our Hand waiting to go answers
+    uint64_t handRow_ = 0;                          // the row of that station's roll call
     std::vector<Message::Hand> checkIns_;
     std::vector<std::string> handNotes_;
     std::set<std::string> calls_;                   // every call heard on the group
