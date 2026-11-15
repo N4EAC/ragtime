@@ -16,7 +16,7 @@ after v0.4.3; in v0.5.0), and its windows' timing again at v0.5.1,
 (2026-11-15). The thresholds in `MODES` were read where
 Data2G PR #186 merged,
 [d23a62b](https://github.com/arodland/Data2G/commit/d23a62b) (2026-11-14,
-after v0.5.0; no release has it yet).
+after v0.5.0; in v0.5.1).
 
 ## Where to look in Data2G
 
