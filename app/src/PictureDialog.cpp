@@ -28,6 +28,7 @@
 #include "ArrivalBar.h"
 #include "Html.h"
 #include "PictureView.h"
+#include "PicturePreview.h"
 #include "Pictures.h"
 #include "Prefs.h"
 #include "ragtime/broadcast/Airtime.h"
@@ -304,6 +305,7 @@ void PictureDialog::choose()
 {
     wxFileDialog pick(this, "Pick a picture", wxFileName(utf8(path_)).GetPath(), "", pictureWildcard(),
                       wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    PicturePreview preview(pick);
     if (pick.ShowModal() != wxID_OK) return;
     if (load(std::string(pick.GetPath().utf8_str()))) remake();
 }

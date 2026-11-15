@@ -1626,6 +1626,22 @@ file with a kind byte (docs/PROTOCOL.md, "Pictures").
   rest of EXIF, its GPS included. From the air only a JPEG 2000
   codestream is ever decoded, up to 4,096 pixels either way: decoders
   are where an attack comes in.
+- **Picking.** The file picker (File > Send a picture, Broadcast a
+  picture, the picture buttons, and Open... in the dialog) shows the
+  picture under the cursor on its right (Jeff, 2026-11-15), with its
+  size in pixels and on disk, or why Ragtime can't read it
+  (`app/src/PicturePreview`). It is GTK's own preview pane, filled by
+  Ragtime's loader rather than GTK's, so JPEG 2000, WebP and HEIF show
+  too, turned the way their EXIF says; wx's `wxFD_PREVIEW` reads only
+  what GdkPixbuf does, at 128 pixels, unturned. Pictures are read on a
+  thread of their own, one at a time, so arrowing through a folder of
+  24-megapixel photos never holds the picker up: the last preview
+  stays, dimmed, until the newest is read. The picker is held to the
+  screen less room for its title bar: on its first opening GTK made it
+  822 pixels high (the filter takes a row of its own), and on a 1366 ×
+  768 screen Open and Cancel were off the bottom. Windows keeps its own
+  dialog, whose preview pane (Alt+P) and thumbnails need nothing from
+  us.
 - **Shrinking.** `picture::downscale` is "Rapid, Detail-Preserving Image
   Downscaling" (Weber, Waechter, Amirshahi and Goesele, 2016), with
   λ = 0.5: each output pixel is a weighted average of the pixels under

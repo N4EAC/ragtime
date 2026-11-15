@@ -52,6 +52,7 @@
 #include "PictureDialog.h"
 #include "VoiceDeck.h"
 #include "PictureFrame.h"
+#include "PicturePreview.h"
 #include "VoiceCards.h"
 #include "QuitSignal.h"
 #include "ReactionChips.h"
@@ -2877,6 +2878,7 @@ void MainFrame::sendPicture(bool broadcast)
     wxFileDialog pick(this, broadcast ? wxString("Broadcast a picture to D2G") : "Send a picture to " + utf8(target.peer),
                       utf8(loadString(keys::PICTURE_FOLDER, "")), "", pictureWildcard(),
                       wxFD_OPEN | wxFD_FILE_MUST_EXIST);
+    PicturePreview preview(pick);
     if (pick.ShowModal() != wxID_OK) return;
     saveString(keys::PICTURE_FOLDER, std::string(pick.GetDirectory().utf8_str()));
     PictureDialog dialog(this, target, std::string(pick.GetPath().utf8_str()));

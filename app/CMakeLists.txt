@@ -45,6 +45,7 @@ add_executable(ragtime WIN32
     src/Html.cpp
     src/PhraseHighlight.cpp
     src/PictureDialog.cpp
+    src/PicturePreview.cpp
     src/PictureFrame.cpp
     src/PictureView.cpp
     src/Pictures.cpp
