@@ -310,6 +310,15 @@ figure the gearshift's Auto already shifts for.
 - *Repair gear* (a file's right-click menu, while its repairs are
   open): Auto, or one gear for this file's repairs whatever the askers
   say. What the round had queued in the old gear is taken back.
+- *Repair gear for KC2G* (the same menu, with KC2G picked in the
+  station list; Jeff, 2026-11-15): a gear for one station's repairs of
+  this file, over the file's own. Say they go to KC2G in A32, but the
+  path has opened: pick G3C, and the round's bursts that only KC2G
+  wanted go back, so KC2G's next repairs go in G3C. A second station
+  asking for the same file still gets the gear it hears us in (or its
+  own pick, or the file's). One catch: a listener that keeps quiet
+  behind KC2G's request, as both seem to hear us alike, gets KC2G's
+  gear; it asks for itself once KC2G is whole.
 - *Close a file's repairs after N minutes of repair airtime*
   (Settings, 30 by default): then its seal closes, and askers hear so.
 

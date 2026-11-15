@@ -114,6 +114,9 @@ struct BroadcastFile
     // Ours: the operator's repair gear for it (empty: Auto), the airtime
     // its repairs have taken, and whether they closed at the cap.
     std::string repairGear;
+    // Ours: the operator's repair gear for one station, by normal
+    // callsign, over repairGear for that station's requests.
+    std::map<std::string, std::string> stationGears;
     double repairSeconds = 0.0;
     bool repairCapped = false;
     // Ours, finished: its seal is still held and the file on disk is the
@@ -209,6 +212,9 @@ public:
     uint64_t findSent(const std::string& path, uint64_t size) const;
     // Ours: the gear its repairs go in (empty: Auto, from the askers' S/N).
     bool setRepairGear(uint64_t id, const std::string& mode);
+    // Ours: the gear its repairs go in for call alone (empty: as the file
+    // goes), Seals::setStationRepairGear.
+    bool setStationRepairGear(uint64_t id, const std::string& call, const std::string& mode);
 
     // Theirs: save it at path once all of it is here (at once if it is),
     // asking for what is missing until then; an empty path keeps the one

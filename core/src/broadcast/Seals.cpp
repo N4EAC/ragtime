@@ -135,9 +135,11 @@ void Seals::setChain(const std::string& callsign, const Chain& chain)
         resendLast_ = 0;
         roundBursts_.clear();
         fileRound_.clear();
+        roundGearAskers_.clear();
         repairAir_.clear();
         repairPieces_.clear();
         gears_.clear();
+        stationGears_.clear();
         sealSoon_ = false;
         settled_.clear();
         roundItems_.clear();
@@ -189,10 +191,13 @@ std::string Seals::faster(const std::string& a, const std::string& b) const
     return sb > sa ? b : a;
 }
 
-std::string Seals::repairMode(std::optional<double> snr, const std::string& first, uint32_t seq) const
+std::string Seals::repairMode(std::optional<double> snr, const std::string& first, uint32_t seq,
+                              const std::string& from) const
 {
     if (seq != 0)
     {
+        std::string theirs = from.empty() ? std::string() : stationRepairGear(seq, from);
+        if (!theirs.empty()) return theirs;
         auto own = gears_.find(seq);
         if (own != gears_.end()) return own->second;
     }
@@ -226,6 +231,44 @@ std::string Seals::repairGear(uint32_t seq) const
     return own != gears_.end() ? own->second : std::string();
 }
 
+void Seals::setStationRepairGear(uint32_t seq, const std::string& call, const std::string& mode)
+{
+    std::string normal = protocol::normalCallsign(call);
+    if (normal.empty()) return;
+    if (mode.empty())
+    {
+        auto file = stationGears_.find(seq);
+        if (file != stationGears_.end())
+        {
+            file->second.erase(normal);
+            if (file->second.empty()) stationGears_.erase(file);
+        }
+    }
+    else
+    {
+        stationGears_[seq][normal] = mode;
+    }
+    // What the round has queued for this station alone goes back; the
+    // round's seals still go, and its next request is answered in this
+    // gear. Pieces another asker wants in that gear still go.
+    takeBackStationRepairs(seq, normal);
+    version_++;
+}
+
+std::string Seals::stationRepairGear(uint32_t seq, const std::string& call) const
+{
+    auto file = stationGears_.find(seq);
+    if (file == stationGears_.end()) return std::string();
+    auto theirs = file->second.find(protocol::normalCallsign(call));
+    return theirs != file->second.end() ? theirs->second : std::string();
+}
+
+std::map<std::string, std::string> Seals::stationRepairGears(uint32_t seq) const
+{
+    auto file = stationGears_.find(seq);
+    return file != stationGears_.end() ? file->second : std::map<std::string, std::string>();
+}
+
 double Seals::repairAirtime(uint32_t seq) const
 {
     auto air = repairAir_.find(seq);
@@ -255,6 +298,34 @@ Seals::FileRepairs Seals::fileRepairs(uint32_t seq) const
     auto sent = repairPieces_.find(seq);
     if (sent != repairPieces_.end()) r.piecesSent = sent->second;
     return r;
+}
+
+void Seals::takeBackStationRepairs(uint32_t seq, const std::string& call)
+{
+    const OurSeal* s = sealFor(seq);
+    auto gears = roundGearAskers_.find(seq);
+    if (s == nullptr || gears == roundGearAskers_.end()) return;
+    for (auto it = roundBursts_.begin(); it != roundBursts_.end();)
+    {
+        const RoundBurst& burst = it->second;
+        auto askers = gears->second.find(burst.mode);
+        bool only = askers != gears->second.end() && askers->second.size() == 1 && askers->second.count(call) == 1;
+        bool mine = burst.onlyPieces && burst.seals.size() == 1 && *burst.seals.begin() == s->number
+                    && burst.filePieces.size() == 1 && burst.filePieces.begin()->first == seq;
+        if (only && mine && link_.cancel(it->first))
+        {
+            auto round = fileRound_.find(seq);
+            uint32_t pieces = burst.filePieces.begin()->second;
+            if (round != fileRound_.end()) round->second.pieces -= std::min(round->second.pieces, pieces);
+            resendBursts_.erase(it->first);
+            it = roundBursts_.erase(it);
+            version_++;
+        }
+        else
+        {
+            ++it;
+        }
+    }
 }
 
 void Seals::takeBackRepairs(uint16_t number)
@@ -623,7 +694,7 @@ void Seals::onSealOver(const std::string& from, const protocol::RepairRequest& r
         }
         OurSeal* s = findSeal(found->number);
         if (!s->sent) continue;
-        std::string mode = repairMode(request.snr, s->mode, seq);
+        std::string mode = repairMode(request.snr, s->mode, seq, from);
         if (!open(*s, nowMs))
         {
             auto reason = !s->closed ? protocol::RefusalReason::Closed
@@ -735,7 +806,7 @@ void Seals::onRequest(const std::string& from, const protocol::RepairRequest& re
         if (seq < s->first || seq >= s->first + s->count || files_ == nullptr || file.second == 0) continue;
         uint16_t pieces = files_->pieceCount(seq);
         const OurItem* item = findItem(seq);
-        std::string mode = repairMode(request.snr, item != nullptr ? item->mode : s->mode, seq);
+        std::string mode = repairMode(request.snr, item != nullptr ? item->mode : s->mode, seq, from);
         if (pieces == 0)
         {
             // Asked for pieces we no longer hold.
@@ -750,6 +821,7 @@ void Seals::onRequest(const std::string& from, const protocol::RepairRequest& re
         uint32_t& most = a.files[seq][mode];
         most = std::max(most, want);
         a.fileAskers[seq].insert(from);
+        a.fileGearAskers[seq][mode].insert(from);
         std::vector<std::string>& askers = s->fileAskers[seq];
         if (std::find(askers.begin(), askers.end(), from) == askers.end()) askers.push_back(from);
     }
@@ -812,6 +884,7 @@ void Seals::resend(uint64_t nowMs)
     std::vector<std::string> sealModes;
     roundItems_.clear();
     fileRound_.clear();
+    roundGearAskers_.clear();
     uint32_t time = seconds(nowMs);
     // The round's own gear is its newest seal's. Parity pieces are made to
     // fit its slow gears' cap, as they're numbered one after another: one
@@ -864,6 +937,8 @@ void Seals::resend(uint64_t nowMs)
             if (item == sealedItems_.end() || k == 0) continue;
             auto askers = a.fileAskers.find(seq);
             if (askers != a.fileAskers.end()) fileRound_[seq].to = askers->second;
+            auto gearAskers = a.fileGearAskers.find(seq);
+            if (gearAskers != a.fileGearAskers.end()) roundGearAskers_[seq] = gearAskers->second;
             uint32_t span = 65536u - k;
             for (const auto& gear : file.second)
             {
@@ -980,13 +1055,19 @@ void Seals::resend(uint64_t nowMs)
         // What it carries: repairs under which seals, and each file's
         // share of its airtime, counted to the file once it has gone.
         RoundBurst& round = roundBursts_[id];
+        round.mode = burst.first;
         double each = burstSeconds(burst.second, modeInfo(burst.first)) / (double)burst.second.size();
         for (const auto& frame : burst.second)
         {
             std::vector<protocol::Record> records;
-            if (!protocol::decodeFrame(frame, records)) continue;
+            if (!protocol::decodeFrame(frame, records))
+            {
+                round.onlyPieces = false;
+                continue;
+            }
             for (const protocol::Record& r : records)
             {
+                if (r.as<protocol::FilePiece>() == nullptr) round.onlyPieces = false;
                 const protocol::ItemParity* p = r.as<protocol::ItemParity>();
                 const OurSeal* under = p != nullptr ? nullptr : sealFor(r.header.seq);
                 if (p != nullptr) round.seals.insert(p->seal);
@@ -1335,6 +1416,8 @@ void Seals::prune(uint64_t nowMs)
         {
             sealedItems_.erase(seq);
             gears_.erase(seq);
+            stationGears_.erase(seq);
+            roundGearAskers_.erase(seq);
             repairAir_.erase(seq);
             repairPieces_.erase(seq);
             fileRound_.erase(seq);

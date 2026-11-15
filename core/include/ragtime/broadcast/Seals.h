@@ -194,6 +194,17 @@ public:
     const std::string& repairFloor() const { return floor_; }
     void setRepairGear(uint32_t seq, const std::string& mode);
     std::string repairGear(uint32_t seq) const;
+    // A file's gear for one station (Jeff, 2026-11-15: "the repair is
+    // going out at A32 but you notice condx much better"): call's requests
+    // for its pieces are answered in that mode, whatever its S/N says and
+    // over the file's own gear; every other asker keeps its own gear, its
+    // own pick or the file's or Auto's. The round's queued repairs of the
+    // file in a gear only call wanted are taken back, so the next round
+    // goes to it in this one (empty: as the file goes). All of them, by
+    // normal callsign.
+    void setStationRepairGear(uint32_t seq, const std::string& call, const std::string& mode);
+    std::string stationRepairGear(uint32_t seq, const std::string& call) const;
+    std::map<std::string, std::string> stationRepairGears(uint32_t seq) const;
     void setRepairCapSeconds(double seconds) { repairCapSeconds_ = seconds; }
     double repairCapSeconds() const { return repairCapSeconds_; }
     // The airtime a file's repairs have taken (bursts sent), and whether
@@ -425,6 +436,8 @@ private:
         std::vector<std::pair<std::set<uint32_t>, uint32_t>> itemAskers;
         std::map<uint32_t, std::map<std::string, uint32_t>> files;
         std::map<uint32_t, std::set<std::string>> fileAskers;
+        // Per file, per gear, the stations whose requests went in it.
+        std::map<uint32_t, std::map<std::string, std::set<std::string>>> fileGearAskers;
     };
 
     // A refusal to go at the window's end: for these files under a seal,
@@ -460,12 +473,16 @@ private:
     // An item that first went in mode first goes again in this mode for a
     // station that heard us at snr.
     // seq, when given, is the item: its own gear, when the operator set
-    // one, wins.
-    std::string repairMode(std::optional<double> snr, const std::string& first, uint32_t seq = 0) const;
+    // one, wins, and over that its gear for from, the asker.
+    std::string repairMode(std::optional<double> snr, const std::string& first, uint32_t seq = 0,
+                           const std::string& from = std::string()) const;
     std::string faster(const std::string& a, const std::string& b) const;
     // The round's queued bursts that carry nothing but repairs under seal
     // number go back from HostLink.
     void takeBackRepairs(uint16_t number);
+    // The round's queued bursts that carry nothing but file seq's pieces,
+    // in a gear no asker but call wanted them in, go back from HostLink.
+    void takeBackStationRepairs(uint32_t seq, const std::string& call);
 
     //----- theirs
 
@@ -576,6 +593,8 @@ private:
     double slowResendSeconds_ = SLOW_RESEND_SECONDS;
     std::string floor_;
     std::map<uint32_t, std::string> gears_;     // the operator's, by item
+    // The operator's, by file and normal callsign.
+    std::map<uint32_t, std::map<std::string, std::string>> stationGears_;
     double repairCapSeconds_ = 0.0;
     std::map<uint32_t, double> repairAir_;      // a file's repairs sent, by its announce
     bool sealText_ = false;
@@ -602,8 +621,12 @@ private:
         std::set<uint16_t> seals;
         std::map<uint32_t, double> fileAir;
         std::map<uint32_t, uint32_t> filePieces;
+        std::string mode;
+        bool onlyPieces = true;     // nothing but file pieces in it
     };
     std::map<uint64_t, RoundBurst> roundBursts_;
+    // Per file, per gear, the stations the round going now answers.
+    std::map<uint32_t, std::map<std::string, std::set<std::string>>> roundGearAskers_;
     // Each file's part in the round going now (FileRepairs), and its
     // repair pieces sent since its repairs last opened.
     struct FileRound

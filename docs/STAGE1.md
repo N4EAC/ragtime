@@ -649,6 +649,17 @@ The brief:
   (`files::PIECE_COVERED`). The status bar says when a round starts,
   and on both ends when repairs re-open (`BroadcastFiles` events
   Repairing and Reopened).
+- A repair gear per station (Jeff, 2026-11-15): with a station picked
+  in the station list (or Recent work), a share's right-click menu
+  (the card and the Files tab row) has "Repair gear for KC2G": "As the
+  file goes" and each gear of the ladder. KC2G's requests for that
+  file are then answered in it, over the file's Repair gear and
+  whatever its S/N says, and the round's bursts only KC2G wanted go
+  back (`Seals::setStationRepairGear`, `takeBackStationRepairs`); any
+  other asker keeps its own gear. The menu's first line names the
+  stations with gears of their own ("repairs to KC2G in G3C"). With no
+  station picked and someone asking, a greyed line says to pick one.
+  Not kept across a restart, as the file's gear isn't.
 
 ## I. Packaging and the first release
 

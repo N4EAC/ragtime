@@ -222,7 +222,7 @@ const int ID_COPY = wxID_HIGHEST + 404;
 const int ID_SEAL_LINE = wxID_HIGHEST + 405;
 const int ID_SAVE_WAV = wxID_HIGHEST + 406;
 const int ID_FILE_ACTION = wxID_HIGHEST + 410;     // and FILE_MENU_IDS after it
-const int ID_REACT = wxID_HIGHEST + 470;           // and REACTION_MENU_IDS after it
+const int ID_REACT = wxID_HIGHEST + 474;           // and REACTION_MENU_IDS after it
 
 } // namespace
 
@@ -814,7 +814,7 @@ void BroadcastPage::showMenu(int row)
 
 void fillFileMenu(wxMenu& menu, const FileCard& card, int firstId, std::function<void(const std::string&)> act)
 {
-    // Ids in order: the title, the actions, then the submenu's items.
+    // Ids in order: the title, the actions, then the submenus' items.
     std::vector<std::string> actionOf;
     auto next = [&](const std::string& action) {
         int id = firstId + (int)actionOf.size();
@@ -835,18 +835,20 @@ void fillFileMenu(wxMenu& menu, const FileCard& card, int firstId, std::function
         menu.Append(id, wxString::FromUTF8(action.second));
         if (action.first.empty()) menu.Enable(id, false);
     }
-    wxMenu* sub = nullptr;
-    if (!card.sub.empty())
+    std::vector<wxMenu*> subs;
+    for (const FileCard::Submenu& submenu : card.subs)
     {
-        sub = new wxMenu;
-        for (const auto& item : card.sub)
+        if (submenu.items.empty()) continue;
+        wxMenu* sub = new wxMenu;
+        for (const auto& item : submenu.items)
         {
             if (actionOf.size() >= (size_t)FILE_MENU_IDS) break;
             int id = next(item.first);
             sub->AppendRadioItem(id, wxString::FromUTF8(item.second));
-            if (item.first == card.subChosen) sub->Check(id, true);
+            if (item.first == submenu.chosen) sub->Check(id, true);
         }
-        menu.AppendSubMenu(sub, wxString::FromUTF8(card.subLabel));
+        menu.AppendSubMenu(sub, wxString::FromUTF8(submenu.label));
+        subs.push_back(sub);
     }
     auto handler = [actionOf, firstId, act](wxCommandEvent& e) {
         int index = e.GetId() - firstId;
@@ -859,7 +861,7 @@ void fillFileMenu(wxMenu& menu, const FileCard& card, int firstId, std::function
     };
     int last = firstId + FILE_MENU_IDS - 1;
     menu.Bind(wxEVT_MENU, handler, firstId, last);
-    if (sub != nullptr) sub->Bind(wxEVT_MENU, handler, firstId, last);
+    for (wxMenu* sub : subs) sub->Bind(wxEVT_MENU, handler, firstId, last);
 }
 
 void BroadcastPage::showPingMenu(const Message& m)

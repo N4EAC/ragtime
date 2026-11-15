@@ -14,6 +14,7 @@
 #include "ragtime/broadcast/BroadcastParts.h"
 #include "ragtime/files/Parity.h"
 #include "ragtime/files/SessionFiles.h"
+#include "ragtime/protocol/Fields.h"
 
 namespace ragtime
 {
@@ -535,6 +536,15 @@ bool BroadcastFiles::setRepairGear(uint64_t id, const std::string& mode)
     Outgoing* out = findOutgoing(id);
     if (out == nullptr || !out->file.live()) return false;
     seals_.setRepairGear(out->file.seq, mode);
+    changed();
+    return true;
+}
+
+bool BroadcastFiles::setStationRepairGear(uint64_t id, const std::string& call, const std::string& mode)
+{
+    Outgoing* out = findOutgoing(id);
+    if (out == nullptr || !out->file.live() || protocol::normalCallsign(call).empty()) return false;
+    seals_.setStationRepairGear(out->file.seq, call, mode);
     changed();
     return true;
 }
@@ -1474,6 +1484,7 @@ BroadcastFile BroadcastFiles::view(const Outgoing& out, uint64_t nowMs) const
 {
     BroadcastFile f = out.file;
     f.repairGear = seals_.repairGear(f.seq);
+    f.stationGears = seals_.stationRepairGears(f.seq);
     f.repairSeconds = seals_.repairAirtime(f.seq);
     f.repairCapped = out.capped;
     if (f.state == State::Repairing)

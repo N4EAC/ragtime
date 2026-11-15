@@ -219,7 +219,10 @@ Delivered and Not delivered keep theirs.
   sent" once some have gone), then Keep open 30 min longer, Keep open 2
   hours longer, Keep open until..., Close repairs now, and a Repair gear
   submenu: "Auto, as the stations that ask hear you" and each gear of
-  the ladder ("E2C  (n10-qpsk-r1/5)"), the one in use ticked.
+  the ladder ("E2C  (n10-qpsk-r1/5)"), the one in use ticked. With a
+  station picked in the station list, a second submenu, "Repair gear
+  for KC2G": "As the file goes (Auto, as KC2G hears you)" (or the
+  file's gear) and each gear of the ladder, for that station alone.
 - Right-click on one whose repairs have closed (here or in Completed
   files): Re-open repairs for 30 min, Re-open repairs for 2 hours,
   Re-open repairs until... While its seal is no longer held: greyed

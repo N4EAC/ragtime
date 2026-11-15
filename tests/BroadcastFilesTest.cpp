@@ -1971,6 +1971,99 @@ void testRepairGearOverride()
     CHECK_EQ(w.ours().repairGear, std::string());
 }
 
+// The operator's gear for one station (Jeff, 2026-11-15): that station's
+// repairs go in it, while another station asking for the same file keeps
+// the gear its own S/N calls for.
+void testStationRepairGear()
+{
+    Air air;
+    Station& a = air.add("AG7EW", 1);
+    Station& b = air.add("KC2G", 2);
+    Station& c = air.add("W1AW", 3);
+    a.seals.setLadder(ladder());
+    // Both weak, gear 1 by Auto; both lose the first pass. They don't hear
+    // each other, so neither keeps quiet behind the other's request, and
+    // W1AW can't copy gear 3.
+    bool sealed = false;
+    for (Station* s : {&b, &c})
+    {
+        s->hearsAt["AG7EW"] = -5.0;
+        s->files.setAutoReceive(freshFolder("station-gear-" + s->call()).string());
+        std::string other = s == &b ? "W1AW" : "KC2G";
+        bool fast = s == &c;
+        s->lose = [&sealed, &a, other, fast](protocol::Record& r) {
+            if (r.header.callsign == other) return true;
+            if (r.as<protocol::Seal>() != nullptr) sealed = true;
+            bool piece = r.as<protocol::FilePiece>() != nullptr;
+            return piece && (!sealed || (fast && a.groupMode == "w48-16qam-r1/2"));
+        };
+    }
+    air.run(2000);
+    std::string error;
+    std::string path = makeFile("station-gear.bin", 1200, 43);
+    uint64_t id = a.files.send(path, "qpsk-r1/3", now, error);
+    CHECK(id != 0);
+    auto ours = [&a, id]() {
+        BroadcastFile f;
+        a.files.find(id, now, f);
+        return f;
+    };
+
+    CHECK(a.files.setStationRepairGear(id, "kc2g", "w48-16qam-r1/2"));
+    CHECK_EQ(ours().stationGears.size(), (size_t)1);
+    CHECK_EQ(ours().stationGears["KC2G"], std::string("w48-16qam-r1/2"));
+    CHECK_EQ(a.seals.stationRepairGear(ours().seq, "KC2G"), std::string("w48-16qam-r1/2"));
+    CHECK_EQ(a.seals.stationRepairGear(ours().seq, "W1AW"), std::string());
+    CHECK_EQ(ours().repairGear, std::string());
+    air.run(30 * 60 * 1000, 1000);
+    CHECK(fileFrom(b, "AG7EW").state == FileState::Saved);
+    CHECK(fileFrom(c, "AG7EW").state == FileState::Saved);
+    std::map<std::string, size_t> modes = parityModes(air, ours().pieces);
+    CHECK(modes["w48-16qam-r1/2"] > 0);     // KC2G's
+    CHECK(modes["fsk16r25-r1/3"] > 0);      // W1AW's, by Auto
+    CHECK_EQ(modes.size(), (size_t)2);
+
+    // The station's gear wins over the file's.
+    CHECK(a.files.setRepairGear(id, "qpsk-r1/3"));
+    CHECK_EQ(ours().stationGears["KC2G"], std::string("w48-16qam-r1/2"));
+    // As the file goes again.
+    CHECK(a.files.setStationRepairGear(id, "KC2G", ""));
+    CHECK(ours().stationGears.empty());
+    // No station, no gear.
+    CHECK(!a.files.setStationRepairGear(id, "", "qpsk-r1/3"));
+}
+
+// A station's gear picked while a round goes to it in the old one: the
+// round's bursts for it alone go back, and the next round goes to it in
+// the new gear ("the very next resend to that station").
+void testStationRepairGearTakesBack()
+{
+    WeakFile w("station-gear-back");
+    // Until a round of repair pieces is queued for KC2G, in gear 1.
+    for (int i = 0; i < 30 * 60 * 4 && w.ours().roundPieces < 2; i++) w.air.run(250);
+    BroadcastFile f = w.ours();
+    CHECK(f.roundPieces >= 2);
+    CHECK(f.roundSent < f.roundPieces);
+    uint32_t sent = f.roundSent;
+    size_t aired = w.air.aired.size();
+    CHECK(w.a->files.setStationRepairGear(w.id, "KC2G", "w48-16qam-r1/2"));
+    // What hadn't gone yet went back.
+    CHECK(w.ours().roundPieces < f.roundPieces);
+    CHECK(w.ours().roundPieces >= sent);
+    w.air.run(30 * 60 * 1000, 1000);
+    CHECK(fileFrom(*w.b, "AG7EW").state == FileState::Saved);
+    size_t slow = 0, fast = 0;
+    for (size_t i = aired; i < w.air.aired.size(); i++)
+    {
+        const protocol::FilePiece* p = w.air.aired[i].record.as<protocol::FilePiece>();
+        if (p == nullptr || p->index < f.pieces) continue;
+        if (w.air.aired[i].mode == "fsk16r25-r1/3") slow++;
+        if (w.air.aired[i].mode == "w48-16qam-r1/2") fast++;
+    }
+    CHECK_EQ(slow, (size_t)0);
+    CHECK(fast > 0);
+}
+
 // The cap on a file's repair airtime: once its repairs have had it, they
 // close, the asker hears so, and Re-open repairs gives as much again.
 void testRepairCapAndReopen()
@@ -2343,6 +2436,8 @@ int main()
     testCappedRoundNotLoss();
     testRepairFloor();
     testRepairGearOverride();
+    testStationRepairGear();
+    testStationRepairGearTakesBack();
     testRepairCapAndReopen();
     testCloseTakesBack();
     testRepairsShown();
