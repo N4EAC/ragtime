@@ -126,6 +126,10 @@ On Ubuntu 24.04:
     ctest --test-dir build --output-on-failure
     ./build/app/ragtime
 
+On Fedora 44:
+
+    sudo dnf install wxGTK-devel libde265-devel libheif-devel openjpeg-devel libwebp-devel pipewire-devel hamlib-devel
+
 ### Libraries
 
 These are all the libraries the build looks for. The package names are
