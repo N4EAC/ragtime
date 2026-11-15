@@ -228,11 +228,13 @@ and the Part 97 check.
   drawing both. Step 3: with "Let the Ear change the rig's filters"
   ticked (off by default; through Hamlib or rigctld, Jeff's OK
   2026-10-26), the edges are dragged on the scope and the filter is set
-  between bursts
+  at once, but never while data2g-host transmits (receiving is fine,
+  Jeff 2026-11-15)
   (`ear::FilterEdit`, `ear::Calibration` in `ear/FilterControl`;
   `app/src/EarFilterBar`, `EarControls`): on trial for 15 s with a
   clock beside Undo and Keep, Keep pressed twice for a cut into Data2G's
-  passband, Disable (PBT centred, notch off) and four presets (tap
+  passband (with the 500 Hz switch on, only into its 200 Hz middle,
+  `ear::data2gKept`), Disable (PBT centred, notch off) and four presets (tap
   recalls, hold stores, pushed in while the rig has them), the notch's
   bar dragged out of its NF OFF bay (`ear::NotchModel`, learned from the
   dip, `EdgeFinder::dip`), Revert (the
@@ -437,7 +439,8 @@ and the Part 97 check.
   opens with Hamlib, where PTT is the only thing it sets, the SWR
   trip (off by default) the only thing that sets the power, to 0. The
   Ear, with its own box ticked (off by default), is the only thing that
-  sets the receive filter's width, PBT and manual notch, between bursts,
+  sets the receive filter's width, PBT and manual notch, never while
+  data2g-host transmits,
   through Hamlib or rigctld (`M`, `L PBT_IN`, `L PBT_OUT`,
   `L NOTCHF_RAW` and `U MN`, Jeff's OK 2026-10-26); it is the only set
   command Ragtime ever sends rigctld. It

@@ -180,8 +180,9 @@ bool filtersOff(const RigFilter& f);
 // and the notch within one and a half of the rig's steps. Parts the
 // preset doesn't hold match anything.
 bool holds(const RigFilter& rig, const RigFilter& preset);
-// Whether a passband cuts into Data2G's (the wide modes', or the 500 Hz
-// ones' with the 500 Hz switch on), by more than 10 Hz.
+// Whether a passband cuts more than 10 Hz into what of Data2G's it must
+// leave whole (data2gKept: the wide modes', or with the 500 Hz switch on
+// the narrowest ones' 200 Hz in the middle).
 bool cutsData2G(const Span& span, bool narrow);
 
 // "High edge 2700 → 2450 Hz", "Low edge 300 → 500 Hz, high edge

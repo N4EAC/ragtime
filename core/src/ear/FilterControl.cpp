@@ -299,7 +299,7 @@ bool holds(const RigFilter& rig, const RigFilter& preset)
 
 bool cutsData2G(const Span& span, bool narrow)
 {
-    const Passband p = data2gPassband(narrow);
+    const Passband p = data2gKept(narrow);
     return span.lowHz > p.lowHz + 10 || span.highHz < p.highHz - 10;
 }
 
