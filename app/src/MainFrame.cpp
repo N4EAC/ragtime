@@ -802,6 +802,10 @@ void MainFrame::buildLayout()
     sessionPage_->onLeave([this]() { leaveSession(); });
     sessionPage_->onLeaveNow([this]() { leaveSessionNow(); });
     sessionPage_->onCallAgain([this]() { callStation(session_.peer()); });
+    sessionPage_->onTryBroadcast([this]() {
+        tabs_->SetSelection(TAB_BROADCAST);
+        if (!session_.peer().empty()) broadcast_->address(session_.peer());
+    });
     sessionPage_->onCallsign([this](const std::string& call) { openSession(call); },
                              [this](const std::string& call) { return knownStation(call); });
     sessionPage_->onResend([this](uint64_t id) {

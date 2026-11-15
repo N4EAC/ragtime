@@ -10,6 +10,7 @@
 #include <wx/button.h>
 #include <wx/tglbtn.h>
 #include <wx/clipbrd.h>
+#include <wx/cursor.h>
 #include <wx/datetime.h>
 #include <wx/dnd.h>
 #include <wx/htmllbox.h>
@@ -326,6 +327,18 @@ SessionPage::SessionPage(wxWindow* parent, const SessionChat& session, const rag
                                PAUSED_LINE);
     followThemeText(paused_, secondaryText);
     paused_->Hide();
+    // Once the link is lost, a red line at the very bottom says to try
+    // broadcasting (Jeff, 2026-11-14); a click opens the Broadcast tab with
+    // a message to the partner.
+    lost_ = new wxStaticText(this, wxID_ANY, "");
+    lost_->SetFont(lost_->GetFont().Bold());
+    lost_->SetCursor(wxCursor(wxCURSOR_HAND));
+    followThemeText(lost_, badText);
+    lost_->Hide();
+    lost_->Bind(wxEVT_LEFT_UP, [this](wxMouseEvent& e) {
+        if (onTryBroadcast_) onTryBroadcast_();
+        e.Skip();
+    });
     compose_ = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER | PHRASE_ENTRY_STYLE);
     compose_->SetMaxLength((unsigned long)SessionChat::MAX_TYPED);
     send_ = new wxButton(this, wxID_ANY, "Send");
@@ -391,6 +404,7 @@ SessionPage::SessionPage(wxWindow* parent, const SessionChat& session, const rag
     sizer->Add(queue_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
     sizer->Add(paused_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
     sizer->Add(row, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
+    sizer->Add(lost_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
     sizer->AddSpacer(6);
     SetSizer(sizer);
 
@@ -469,10 +483,16 @@ void SessionPage::refresh(uint64_t nowMs, long utcOffsetS)
 {
     SessionChat::Strip strip = session_.strip(nowMs, utcOffsetS);
     int phase = (int)session_.phase();
-    if (strip.text != shownStrip_ || strip.amber != shownAmber_ || phase != shownPhase_)
+    if (strip.text != shownStrip_ || strip.amber != shownAmber_ || strip.hint != shownHint_ || phase != shownPhase_)
     {
         shownStrip_ = strip.text;
         shownAmber_ = strip.amber;
+        shownHint_ = strip.hint;
+        lost_->SetLabel(wxString::FromUTF8(strip.hint));
+        lost_->SetToolTip(strip.hint.empty() ? wxString()
+                                             : "Open the Broadcast tab with a message to "
+                                                   + wxString::FromUTF8(session_.peer()));
+        lost_->Show(!strip.hint.empty());
         stripText_->SetLabel(wxString::FromUTF8(strip.text));
         stripText_->SetToolTip(wxString::FromUTF8(strip.text));
         // Amber when the link is quiet; a session that's up stands out from

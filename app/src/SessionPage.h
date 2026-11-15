@@ -46,6 +46,9 @@ public:
     void onLeave(std::function<void()> fn) { onLeave_ = std::move(fn); }
     void onLeaveNow(std::function<void()> fn) { onLeaveNow_ = std::move(fn); }
     void onCallAgain(std::function<void()> fn) { onCallAgain_ = std::move(fn); }
+    // The red "Session lost" line under the typing clicked: try the
+    // partner on the Broadcast tab.
+    void onTryBroadcast(std::function<void()> fn) { onTryBroadcast_ = std::move(fn); }
     // A callsign double-clicked in a line: the partner's, or a station
     // isStation knows named in the text.
     void onCallsign(std::function<void(const std::string& call)> fn,
@@ -144,6 +147,7 @@ private:
     wxButton* callAgain_ = nullptr;
     SessionMessages* list_ = nullptr;
     wxStaticText* paused_ = nullptr;
+    wxStaticText* lost_ = nullptr;      // red, at the bottom, once the link is lost
     wxTextCtrl* compose_ = nullptr;
     wxButton* send_ = nullptr;
     wxButton* sendFile_ = nullptr;
@@ -155,10 +159,12 @@ private:
     uint64_t shownVersion_ = ~0ull;
     std::string shownStrip_;
     bool shownAmber_ = false;
+    std::string shownHint_;
     int shownPhase_ = -1;
 
     std::function<bool(const std::string&)> onSend_;
-    std::function<void()> onCancel_, onLeave_, onLeaveNow_, onCallAgain_, onSendFile_, onSendPicture_, onVoiceDeck_;
+    std::function<void()> onCancel_, onLeave_, onLeaveNow_, onCallAgain_, onSendFile_, onSendPicture_, onVoiceDeck_,
+        onTryBroadcast_;
     std::function<wxString(uint64_t, const wxWindow*, const wxString&, const wxString&)> pictureHtml_;
     std::function<wxString(const std::string&, const wxWindow*, const wxString&)> pastPictureHtml_;
     std::function<wxString(const std::string&, const wxWindow*, bool)> voiceHtml_;
