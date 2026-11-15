@@ -290,7 +290,10 @@ design is in Data2G's `docs/hand-burst.md`, the commands in `docs/arq.md`
   sooner after the burst went than the delay and the Hand less the
   search, with no `HAND` line before it, is `HandLost`, as is a refused
   rearm. Jeff's roll call of 2026-11-15 01:36 UTC ended that way 1.1 s
-  after its burst, and used to read "no Hands heard".
+  after its burst, and used to read "no Hands heard". Data2G PR #201
+  (merged at fc69e77 on 2026-11-15, in no release yet) has the expiry
+  say `HAND END EXPIRED`, which `Data2GLink` reads as `HandExpired`: no
+  timing guess then.
 - **Timing on the air.** Data2G's `docs/hand-burst.md` (§1) says each
   host starts a Hand's audio early by its own PTT and output latency, so
   the RF lands on time. At v0.5.1 neither end does: `Engine::hand_send`
@@ -305,8 +308,14 @@ design is in Data2G's `docs/hand-burst.md`, the commands in `docs/arq.md`
   window's clock starts, and the answer leaves its station about as
   late again: a Hand reaches net control about a second late, past the
   ±0.6 s search. None of his eight roll calls on the air (2026-11-13 to
-  15) decoded a Hand. Raised with Andrew through Jeff; `HAND c`'s dt
-  would show the lateness once Hands decode.
+  15) decoded a Hand. Andrew's fix, Data2G PR #201 (issue #200, merged
+  at fc69e77 on 2026-11-15, in no release yet), has the native transmit
+  thread measure each burst's lag (engine clock to the card: the capture
+  backlog, the queued lead, the card's output latency), average it (0.7
+  old, 0.3 new), start a Hand that much early and open a `HAND LISTEN`
+  window that much late, at the burst's end on air; the Python host uses
+  lead plus output latency. Ragtime's delays stay as they are. `HAND
+  c`'s dt shows what is left once Hands decode.
 - **`HAND CANCEL`** stops a waiting Hand and any window, always OK. A
   command client that leaves cancels its own.
 - **Holds.** While a Hand waits or a window is open the host starts no

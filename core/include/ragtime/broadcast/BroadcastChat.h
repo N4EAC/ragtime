@@ -183,12 +183,6 @@ std::string rollCallLine(const Message& m);
 // Hands go this long after the roll call's burst ends: time for every
 // host to decode it and its Ragtime to answer (Data2G's advice).
 constexpr double ROLL_CALL_DELAY_S = 3.0;
-// A roll call within this long of the last lists those who checked in by
-// Hand to it as in, so they stay quiet and the rest have the channels.
-constexpr uint64_t ROLL_CALL_AGAIN_MS = 10 * 60 * 1000;
-// A roll call heard more than this far from our clock is old (repaired,
-// or a clock wrong): not answered.
-constexpr uint32_t ROLL_CALL_FRESH_S = 120;
 
 // A Pong waits this long for the host to say how well it heard the Ping
 // (its BCAST HEARD may come just before or just after the frame), then goes
@@ -462,7 +456,6 @@ private:
     // Roll calls: ours (the row), those we checked in to, and the calls
     // heard, to put a Hand's hash back to a call.
     uint16_t rollRound_ = 0;
-    std::map<std::string, uint64_t> handIns_;       // call: when it checked in by Hand to ours
     std::set<std::pair<std::string, uint16_t>> answered_;   // (net control, round) we answered
     std::string handTo_;                            // net control our Hand waiting to go answers
     std::vector<Message::Hand> checkIns_;

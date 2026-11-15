@@ -103,7 +103,7 @@ public:
         onPing_ = std::move(ping);
         whyNoPing_ = std::move(whyNot);
     }
-    // A roll call row's Check in again: checkIn goes, and whyNot says
+    // A roll call row's Request roll call again: checkIn goes, and whyNot says
     // why it wouldn't call the roll, or "".
     void onCheckIn(std::function<void()> checkIn, std::function<std::string()> whyNot)
     {

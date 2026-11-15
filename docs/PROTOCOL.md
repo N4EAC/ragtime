@@ -131,7 +131,7 @@ Ragtime that hears it to check in by Hand (Roll calls, below).
 | delay | 1 | Tenths of a second from the burst's end to the Hands: 30 (3.0 s), never 0 |
 | channels | 1 | The window's channels: the first so many, 8, 20 or 40 |
 | count | 1 | How many follow, at most 64 |
-| in | 2 each | The 16-bit roll call hash of each station already in (Roll calls) |
+| in | 2 each | The 16-bit roll call hash of each station already in. Ragtime sends none and ignores any since 2026-11-15 (Roll calls) |
 
 A later version may add fields after them; a reader skips what it
 doesn't know.
@@ -549,8 +549,8 @@ it checks in back at once, by Hand. The Hand is Data2G's show of hands
 into the window that burst's sender opened, so a station can't check in
 by Hand on its own: it answers someone's roll call.
 
-- **Calling.** Check in (Station > Check in, Ctrl+I) sends the Hello and
-  a RollCall in one frame, with a window over all our Hand channels (40,
+- **Calling.** Request roll call (Station > Request roll call, Ctrl+I)
+  sends the Hello and a RollCall in one frame, with a window over all our Hand channels (40,
   or 8 with the 500 Hz setting) `delay` after its burst, armed with
   `HAND LISTEN` before the burst can go. The tag that seeds the Hands'
   CRC is byte 4 of SHA-256 over net control's callsign, a zero byte and
@@ -561,9 +561,12 @@ by Hand on its own: it answers someone's roll call.
 - **Answering.** A station that hears a RollCall answers with `HAND SEND`
   on the burst's reference, `delay` after it, unless it is in a ragchew
   (docs/PLAN.md, "Who stays quiet"), its operator has turned answering
-  off (Settings > Station, on by default), the record's time is more
-  than 2 minutes off its clock, its hash is in the `in` list, it has
-  answered that round already, or its host gave the frame no reference.
+  off (Settings > Station, on by default), it has answered that round
+  already (heard twice), a Hand of its own for another roll call still
+  waits to go (the host sends one at a time), or its host gave the frame
+  no reference. Nothing else holds it back (Jeff, 2026-11-15): not the
+  record's time, and not the `in` list; the host refuses a slot already
+  past.
 - **The channel** is the first 4 bytes of SHA-256 over the answering
   station's callsign, a zero byte and the round, big-endian, modulo the
   smaller of `channels` and its own channel count. With no channel map,
@@ -579,11 +582,13 @@ by Hand on its own: it answers someone's roll call.
   the path log as stations heard, and a station's Hand counts as a Hello
   with takes `0x7F` (only a Ragtime that takes all of v0 sends Hands),
   its square kept only where no finer locator is known.
-- **Again.** A check-in within 10 minutes of the last lists, as `in`,
-  the 16-bit hash (the first 2 bytes of SHA-256 over the callsign) of
-  each station that checked in by Hand since, so they stay quiet and the
-  rest, who collided or faded, have the channels. The roll call's row
-  has Check in again on its menu.
+- **Again.** A roll call may follow the last as soon as its window has
+  closed, and everyone answers every round (Jeff, 2026-11-15). Until
+  then `in` listed the 16-bit hash (the first 2 bytes of SHA-256 over
+  the callsign) of each station that had checked in by Hand within 10
+  minutes, to keep them quiet; Ragtime now sends it empty and ignores
+  one heard. The roll call's row has Request roll call again on its
+  menu.
 
 **What a Hand says.** 63 bits, most significant first; Data2G ignores
 the top bit of its 16 hex digits:

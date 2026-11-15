@@ -188,7 +188,7 @@ std::string rollCallLine(const Message& m)
         return "Your check-in went as a plain one: data2g-host wouldn't open a window for Hands";
     if (m.roll == Message::Roll::Lost)
         return "Roll call: no window, so no Hands heard. data2g-host gave up waiting for your check-in to go "
-               "(it waits 30 s); check in again when the channel is quiet";
+               "(it waits 30 s); request a roll call again when the channel is quiet";
     std::string line;
     if (m.roll == Message::Roll::Done)
     {
@@ -416,17 +416,8 @@ bool BroadcastChat::checkIn(const std::string& mode, uint64_t nowMs)
     roll.delayTenths = (uint8_t)(ROLL_CALL_DELAY_S * 10.0 + 0.5);
     int channels = link_.handChannels();
     roll.channels = (uint8_t)channels;
-    // Those in lately stay quiet, so the rest have the channels.
-    for (auto it = handIns_.begin(); it != handIns_.end();)
-    {
-        if (nowMs > it->second + ROLL_CALL_AGAIN_MS)
-        {
-            it = handIns_.erase(it);
-            continue;
-        }
-        if (roll.in.size() < protocol::MAX_ROLL_CALL_IN) roll.in.push_back(protocol::rollCallHash(it->first));
-        ++it;
-    }
+    // Everyone answers every round (Jeff, 2026-11-15): the in list goes
+    // empty.
     records.push_back(numbering_.record(roll, time));
     std::vector<uint8_t> frame = protocol::encodeFrame(records);
     if (frame.empty()) return false;
@@ -523,10 +514,9 @@ void BroadcastChat::answerRollCall(const protocol::Record& record, const protoco
     if (!settings_.answerRollCalls || me.empty() || from.empty() || from == me || !ref) return;
     // Stations in a ragchew raise no hand (docs/PLAN.md).
     if (link_.sessionState() != link::HostLink::SessionState::None) return;
-    uint32_t now = seconds(nowMs);
-    uint32_t age = now > record.header.time ? now - record.header.time : record.header.time - now;
-    if (age > ROLL_CALL_FRESH_S) return;
-    if (std::find(roll.in.begin(), roll.in.end(), protocol::rollCallHash(me)) != roll.in.end()) return;
+    // No clock check and no in list (Jeff, 2026-11-15): a roll call heard
+    // now, with its burst's reference, is answered, and the host refuses
+    // a slot already past. Once a round, though it be heard twice.
     if (answered_.count({from, roll.round}) != 0) return;
     // The host sends one Hand at a time: a roll call heard while ours for
     // another waits goes unanswered.
@@ -553,7 +543,7 @@ void BroadcastChat::answerRollCall(const protocol::Record& record, const protoco
         handTo_ = from;
 }
 
-void BroadcastChat::onHandEvent(const Event& event, uint64_t nowMs)
+void BroadcastChat::onHandEvent(const Event& event, uint64_t /*nowMs*/)
 {
     switch (event.type)
     {
@@ -645,11 +635,7 @@ void BroadcastChat::onHandEvent(const Event& event, uint64_t nowMs)
             h.narrow = heard->narrow;
             h.channel = event.number;
             m->hands.push_back(h);
-            if (!h.call.empty())
-            {
-                handIns_[h.call] = nowMs;
-                checkIns_.push_back(h);
-            }
+            if (!h.call.empty()) checkIns_.push_back(h);
             version_++;
             break;
         }
