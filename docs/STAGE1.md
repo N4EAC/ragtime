@@ -2350,6 +2350,14 @@ is a roll call, and Jeff chose that Check in itself calls it.
   ("Checked in by Hand to W1AW's roll call"). Settings > Station, "Check
   in by Hand when a station calls the roll" (on by default), turns it
   off; a station in a ragchew never answers.
+- **A roll call heard** is a row too, greyed like ours, which keeps what
+  we did about it in sight (Spud, 2026-11-15: the status bar's note went
+  at the next one, a burst that didn't decode, and his check-in seemed
+  lost): "W1AW called the roll: checking in by Hand (Hand channel 12)",
+  then "checked in by Hand", "our Hand didn't go, the radio was busy",
+  "data2g-host wouldn't send our Hand", or "not answered" and why (Check
+  in by Hand off, a ragchew, our Hand for another still waiting). One
+  row a round, however often it is heard (`Message::Answer`).
 - **What a Hand says** (PROTOCOL.md, "Roll calls"): the callsign in 28
   bits, a standard call packed as a number and any other (with `/` or
   `-`) as a 22-bit hash that net control puts back to a call it has
