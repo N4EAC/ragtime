@@ -36,7 +36,12 @@ chats on the D2G broadcast group. Current features include:
 
 ## Screenshots
 
-These were taken on the bench that comes with the build
+**Ragtime on macOS.** The Broadcast tab, Globus, the Microphone Deck, and
+the Ear waterfall following the built-in Data2G modem over TCI.
+
+![Ragtime on macOS with Globus, the Microphone Deck, and the Ear waterfall](docs/images/readme/ragtime-macos.png)
+
+The remaining screenshots were taken on the bench that comes with the build
 (`ragtime_fake_air`, below): fake data2g-hosts and a few chatty bot
 stations, with no radio. The picture of the tower is drawn for the
 occasion.
