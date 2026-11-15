@@ -246,6 +246,10 @@ StationList::StationList(wxWindow* parent, const Stations& stations)
         Column c = columns_[(size_t)col];
         setSort(c, c == sortColumn_ ? !sortAscending_ : true);
     });
+    table_->Bind(wxEVT_SIZE, [this](wxSizeEvent& e) {
+        e.Skip();
+        fitColumns();
+    });
     table_->Bind(wxEVT_LIST_COL_RIGHT_CLICK, [this](wxListEvent&) {
         wxMenu menu;
         appendColumnItems(menu);
@@ -384,15 +388,52 @@ void StationList::rebuildColumns()
     for (size_t i = 0; i < columns_.size(); i++)
     {
         Column c = columns_[i];
-        int width = c == Column::Status ? 125 : c == Column::Heard ? 90 : c == Column::Distance ? 85 : c == Column::Call ? 80
-                    : c == Column::Bearing ? 65 : c == Column::Key ? 40 : 75;
         int align = c == Column::Distance || c == Column::Bearing || c == Column::Snr ? wxLIST_FORMAT_RIGHT
                                                                                       : wxLIST_FORMAT_LEFT;
-        table_->AppendColumn(columnLabel(c), (wxListColumnFormat)align, FromDIP(width));
+        table_->AppendColumn(columnLabel(c), (wxListColumnFormat)align);
     }
     for (size_t i = 0; i < columns_.size(); i++)
     {
         if (columns_[i] == sortColumn_) table_->ShowSortIndicator((int)i, sortAscending_);
+    }
+    fitColumns();
+}
+
+void StationList::fitColumns()
+{
+    if (table_->GetColumnCount() != (int)columns_.size() || table_->GetClientSize().x <= 0) return;
+    int available = table_->GetClientSize().x;
+#ifndef __WXMSW__
+    // The generic list's scrollbar belongs to its inner rows window.
+    if (table_->GetItemCount() > table_->GetCountPerPage())
+        available -= wxSystemSettings::GetMetric(wxSYS_VSCROLL_X, table_);
+#endif
+
+    // Keep headers legible when the sash is narrow. Give spare space to
+    // longer values, and let the list scroll if even the headers cannot fit.
+    std::vector<int> widths;
+    std::vector<int> weights;
+    for (Column column : columns_)
+    {
+        const int padding = column == sortColumn_ ? 27 : 14;
+        int width = table_->GetTextExtent(columnLabel(column)).x + FromDIP(padding);
+        if (column == Column::Call) width = std::max(width, FromDIP(75)); // callsign and watch bell
+        widths.push_back(width);
+        weights.push_back(column == Column::Call || column == Column::Status || column == Column::Heard ||
+                                  column == Column::Services ? 2 : 1);
+    }
+
+    for (int width : widths) available -= width;
+    int extra = std::max(0, available);
+    int weightLeft = 0;
+    for (int weight : weights) weightLeft += weight;
+    for (size_t i = 0; i < widths.size(); ++i)
+    {
+        const int share = extra * weights[i] / weightLeft;
+        const int width = widths[i] + share;
+        if (table_->GetColumnWidth((int)i) != width) table_->SetColumnWidth((int)i, width);
+        extra -= share;
+        weightLeft -= weights[i];
     }
 }
 
@@ -405,6 +446,7 @@ void StationList::setSort(Column column, bool ascending)
     {
         if (columns_[i] == sortColumn_) table_->ShowSortIndicator((int)i, sortAscending_);
     }
+    fitColumns();
     refresh(nowMs_);
 }
 
@@ -421,7 +463,8 @@ void StationList::refresh(uint64_t nowMs)
 
     updating_ = true;
     int page = narrow_ ? (order_.empty() ? PAGE_EMPTY : PAGE_NARROW) : PAGE_TABLE;
-    if (book_->GetSelection() != page) book_->ChangeSelection((size_t)page);
+    const bool changedPage = book_->GetSelection() != page;
+    if (changedPage) book_->ChangeSelection((size_t)page);
     if (narrowView_->GetItemCount() != order_.size()) narrowView_->SetItemCount(order_.size());
     // A new count leaves wx's table to lay itself out again, and a paint
     // before that draws it empty: it blinked once a refresh (Jeff,
@@ -429,6 +472,7 @@ void StationList::refresh(uint64_t nowMs)
     // table repaints itself once laid out.
     bool recount = table_->GetItemCount() != (long)order_.size();
     if (recount) table_->SetItemCount((long)order_.size());
+    if (page == PAGE_TABLE && (recount || changedPage)) fitColumns();
     showSelection();
     narrowView_->RefreshAll();
     if (!recount) table_->Refresh();

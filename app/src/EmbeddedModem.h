@@ -1,9 +1,11 @@
 #ifndef RAGTIME_EMBEDDED_MODEM_H
 #define RAGTIME_EMBEDDED_MODEM_H
 
+#include <complex>
 #include <cstdint>
 #include <functional>
 #include <memory>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -12,6 +14,16 @@
 namespace data2g::app { class Station; }
 namespace ragtime::audio { class EarAudio; }
 struct StationPrefs;
+
+struct ModemConstellation
+{
+    std::string mode;
+    bool tones;
+    bool live;
+    bool lost;
+    std::vector<std::complex<float>> symbols;
+    std::vector<std::complex<float>> points;
+};
 
 // The native Data2G station runs in Ragtime's process. It owns the modem
 // threads and speaks the same loopback protocols as a standalone station.
@@ -25,6 +37,8 @@ public:
     std::string start(const StationPrefs& prefs);
     void stop();
     void readEarAudio(ragtime::audio::EarAudio& ear);
+    bool running() const { return station_ != nullptr; }
+    std::optional<ModemConstellation> takeConstellation();
 
     static int runWithRuntime(int argc, char** argv, int (*run)(int, char**));
     static std::vector<std::string> devices(bool input);

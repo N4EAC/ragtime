@@ -80,6 +80,7 @@ public:
 
     // Send pressed: true when the text went, and the line is cleared.
     void onSend(std::function<bool(const std::string& typed)> fn) { onSend_ = std::move(fn); }
+    void onClear(std::function<void()> fn) { onClear_ = std::move(fn); }
     void onGear(std::function<void()> fn) { onGear_ = std::move(fn); }
     void onCancel(std::function<void(uint64_t id)> fn) { onCancel_ = std::move(fn); }
     void onResend(std::function<void(uint64_t id)> fn) { onResend_ = std::move(fn); }
@@ -204,7 +205,7 @@ private:
     uint64_t shownSeals_ = 0;
 
     std::function<bool(const std::string&)> onSend_;
-    std::function<void()> onGear_;
+    std::function<void()> onGear_, onClear_;
     std::function<void(uint64_t)> onCancel_, onResend_;
     std::function<void(uint64_t, uint8_t)> onReact_;
     std::function<void(const std::string&)> onPing_;

@@ -16,6 +16,7 @@
 //   X <from> <seq> <time> <call> <code>    call reacted to a line (its
 //                                          sender, number and record time)
 //   Y <from> <seq> <time> <code>           our reaction to a line went
+//   C                                      hide all rows recorded so far
 //   E <ms>                                 Ragtime closed
 //
 // Times are Unix ms; time is the record's, in seconds. <id> is the row's
@@ -65,6 +66,7 @@ public:
     std::vector<Message> load(size_t max) const;
 
     void began(uint64_t nowMs);
+    void cleared();
     // before: the id of the row it goes above, 0 for the end.
     void added(const Message& message, uint64_t before = 0);
     void settled(const Message& message);

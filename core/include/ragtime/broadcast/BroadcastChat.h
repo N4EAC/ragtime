@@ -129,6 +129,7 @@ struct Message
     // for it, with text the file's name. 0 for a file line from the log.
     uint64_t file = 0;
     bool past = false;          // from before Ragtime last closed, read from the BroadcastLog
+    bool cleared = false;       // hidden by a Clear entry in the broadcast log
     std::string outcome;        // a file line from the log: how it ended, when known
     // A file line from the log: where it was saved or sent from ("" if not
     // known), and whether it is an inline picture or a voice message, shown

@@ -140,6 +140,45 @@ void testTwoRunsAndTheirRules()
     std::filesystem::remove_all(dir, ec);
 }
 
+void testClearAcrossRestarts()
+{
+    const auto dir = scratch("broadcast-log-clear");
+    const auto path = (dir / "broadcast.log").string();
+    BroadcastLog log(path);
+    log.began(T0);
+    log.added(text(1, false, "W1AW", "old message", T0 + 1000));
+    log.ended(T0 + 2000);
+
+    log.began(T0 + 3000);
+    log.added(fileCard(1, true, "AG7EW", "old voice.sot", T0 + 4000));
+    log.added(text(2, true, "AG7EW", "still queued", T0 + 5000, MState::Queued));
+    log.cleared();
+    log.fileEnded(fileCard(1, true, "AG7EW", "old voice.sot", T0 + 4000), "Sent");
+    // A new repair can sit above a hidden message in display order.
+    log.added(text(3, false, "W1AW", "late repair", T0 + 6000), 2);
+    log.ended(T0 + 7000);
+
+    BroadcastLog reopened(path);
+    auto rows = reopened.load(100);
+    CHECK_EQ(rows.size(), size_t(6));
+    if (rows.size() == 6)
+    {
+        CHECK(rows[0].cleared && rows[0].text == "old message");
+        CHECK(rows[1].cleared && rows[1].kind == Kind::Rule);
+        CHECK(rows[2].cleared && rows[2].outcome == "Sent");
+        CHECK(!rows[3].cleared && rows[3].text == "late repair");
+        CHECK(rows[4].cleared && rows[4].state == MState::NotSent);
+        CHECK(!rows[5].cleared && rows[5].kind == Kind::Rule);
+    }
+    reopened.began(T0 + 8000);
+    reopened.cleared();
+    reopened.ended(T0 + 9000);
+    rows = reopened.load(100);
+    CHECK_EQ(rows.size(), size_t(6));
+    for (const auto& row : rows) CHECK(row.cleared);
+    std::filesystem::remove_all(dir);
+}
+
 void testOddLines()
 {
     // Lines it doesn't know, broken numbers, a state for a row it never
@@ -257,6 +296,7 @@ void testNoPath()
 int main()
 {
     testTwoRunsAndTheirRules();
+    testClearAcrossRestarts();
     testOddLines();
     testCutBack();
     testRepairedInPlace();

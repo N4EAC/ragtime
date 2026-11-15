@@ -46,6 +46,7 @@
 #include "DrawnIcon.h"
 #include "EarFrame.h"
 #ifdef RAGTIME_EMBED_DATA2G
+#include "ConstellationPane.h"
 #include "EmbeddedModem.h"
 #endif
 #include "FilesPage.h"
@@ -104,6 +105,9 @@ enum
     ID_NARROW,
     ID_GLOBUS,
     ID_EAR,
+#ifdef RAGTIME_EMBED_DATA2G
+    ID_CONSTELLATION,
+#endif
     ID_VOICE_DECK,
     ID_TOOLS_ON_TOP,
     ID_MESSAGE_STATION,
@@ -150,6 +154,7 @@ enum
     ID_STATION_PING,
     ID_SAVE_REPORT,
     ID_OPEN_FLIGHT,
+    ID_OPEN_SESSION_LOGS,
 };
 
 
@@ -280,6 +285,9 @@ MainFrame::MainFrame()
     SetMinSize(wxSize(960, 600));
 
     globusOn_ = loadBool(keys::GLOBUS, true);
+#ifdef RAGTIME_EMBED_DATA2G
+    constellationOn_ = loadBool(keys::CONSTELLATION, true);
+#endif
     toolsOnTop_ = loadBool(keys::TOOLS_ON_TOP, false);
     listWidth_ = std::max(MIN_PANE, loadInt(keys::LIST_WIDTH, listWidth_));
     tableWidth_ = std::max(MIN_PANE, loadInt(keys::TABLE_WIDTH, tableWidth_));
@@ -332,10 +340,15 @@ MainFrame::MainFrame()
 #ifdef RAGTIME_EMBED_DATA2G
     modem_ = std::make_unique<EmbeddedModem>([this](const std::string& error) {
         modemError_ = error;
+        constellationTimer_.Stop();
+        constellation_->clear(false);
         host_->recorder().note(error, HostConnection::nowMs());
         host_->stop();
         rig_->hostLost();
         showConnection();
+    });
+    constellationTimer_.Bind(wxEVT_TIMER, [this](wxTimerEvent&) {
+        if (auto plot = modem_->takeConstellation()) constellation_->setPlot(std::move(*plot));
     });
 #endif
     loadFilesLog();
@@ -413,6 +426,7 @@ MainFrame::~MainFrame()
     rig_.reset();
     host_.reset();
 #ifdef RAGTIME_EMBED_DATA2G
+    constellationTimer_.Stop();
     modem_.reset();
 #endif
     // The panes go now, while the engines their callbacks read are still
@@ -475,6 +489,10 @@ void MainFrame::buildMenus()
     viewMenu_ = new wxMenu;
     viewMenu_->AppendCheckItem(ID_GLOBUS, "&Globus\tCtrl+Shift+G");
     viewMenu_->AppendCheckItem(ID_EAR, "&Ear\tCtrl+E", "A waterfall of what the radio hears");
+#ifdef RAGTIME_EMBED_DATA2G
+    viewMenu_->AppendCheckItem(ID_CONSTELLATION, "Data2G &constellation",
+                               "Show the built-in modem's received symbols below Recent work");
+#endif
     viewMenu_->AppendCheckItem(ID_VOICE_DECK, "&Microphone deck\tCtrl+Shift+M",
                                "Push to talk: record a voice message for the net or the session");
     auto* columns = new wxMenu;
@@ -509,6 +527,7 @@ void MainFrame::buildMenus()
                  "Zips the flight recorder (the last 7 days of the link to data2g-host) with your settings, "
                  "to send with a bug");
     help->Append(ID_OPEN_FLIGHT, "Open the &flight recorder folder");
+    help->Append(ID_OPEN_SESSION_LOGS, "Open &session logs folder");
     help->AppendSeparator();
     help->Append(wxID_ABOUT, "&About Ragtime");
 
@@ -542,6 +561,13 @@ void MainFrame::buildMenus()
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setNarrow(e.IsChecked()); }, ID_NARROW);
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setGlobus(e.IsChecked()); }, ID_GLOBUS);
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setEar(e.IsChecked()); }, ID_EAR);
+#ifdef RAGTIME_EMBED_DATA2G
+    Bind(wxEVT_MENU, [this](wxCommandEvent& e) {
+        constellationOn_ = e.IsChecked();
+        saveBool(keys::CONSTELLATION, constellationOn_);
+        updateConstellationVisibility();
+    }, ID_CONSTELLATION);
+#endif
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setVoiceDeck(e.IsChecked()); }, ID_VOICE_DECK);
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) {
         toolsOnTop_ = e.IsChecked();
@@ -600,6 +626,13 @@ void MainFrame::buildMenus()
         openWithDesktop(flightRecorderDir());
     }, ID_OPEN_FLIGHT);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) {
+        const auto folder = utf8(sessionLogDir());
+        const bool ready = wxFileName::DirExists(folder) ||
+                           wxFileName::Mkdir(folder, wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
+        if (!ready || !wxLaunchDefaultApplication(folder))
+            wxMessageBox("Could not open " + folder, "Session logs", wxOK | wxICON_ERROR, this);
+    }, ID_OPEN_SESSION_LOGS);
+    Bind(wxEVT_MENU, [this](wxCommandEvent&) {
         wxAboutDialogInfo info;
         info.SetName("Ragtime");
         info.SetVersion(versionString());
@@ -634,9 +667,23 @@ void MainFrame::buildLayout()
     left_->SetMinimumPaneSize(MIN_PANE);
     left_->SetSashGravity(1.0);
     stationList_ = new StationList(left_, stations_);
+    int lowerHeight = recentHeight_;
+#ifdef RAGTIME_EMBED_DATA2G
+    auto* lower = new wxPanel(left_, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxTAB_TRAVERSAL);
+    auto* lowerSizer = new wxBoxSizer(wxVERTICAL);
+    recent_ = new RecentWorkPane(lower);
+    constellation_ = new ConstellationPane(lower);
+    lowerSizer->Add(recent_, 1, wxEXPAND);
+    lowerSizer->Add(constellation_, 0, wxEXPAND);
+    lower->SetSizer(lowerSizer);
+    constellation_->Show(constellationOn_ && prefs_.usesBuiltInModem());
+    if (constellation_->IsShown()) lowerHeight += constellation_->GetMinHeight();
+#else
     recent_ = new RecentWorkPane(left_);
+    auto* lower = recent_;
+#endif
     recent_->setOrder(recentOrder_);
-    left_->SplitHorizontally(stationList_, recent_, -recentHeight_);
+    left_->SplitHorizontally(stationList_, lower, -lowerHeight);
 
     inner_ = new wxSplitterWindow(outer_, wxID_ANY, wxDefaultPosition, wxDefaultSize,
                                   wxSP_LIVE_UPDATE | wxSP_3DSASH | wxSP_NO_XP_THEME);
@@ -765,6 +812,7 @@ void MainFrame::buildLayout()
     recent_->bells([this](const std::string& call) { return watch_.belled(call); });
 
     // The Broadcast tab.
+    broadcast_->onClear([this] { broadcastLog_.cleared(); });
     broadcast_->onSend([this](const std::string& typed) { return sendTyped(typed); });
     broadcast_->onCallsign([this](const std::string& call) { openSession(call); },
                            [this](const std::string& call) { return knownStation(call); });
@@ -955,6 +1003,8 @@ void MainFrame::applyPrefs(bool reconnect)
         }
         else
             modem_->stop();
+        constellation_->clear(modem_->running());
+        updateConstellationVisibility();
         if (modemError_.empty() && !prefs_.callsign.empty())
 #else
         if (!prefs_.callsign.empty())
@@ -3886,8 +3936,36 @@ void MainFrame::rememberDividers()
             tableWidth_ = left;
     }
     if (inner_->IsSplit()) globusWidth_ = std::max(MIN_PANE, inner_->GetClientSize().x - inner_->GetSashPosition());
-    if (left_->IsSplit()) recentHeight_ = std::max(MIN_PANE, left_->GetClientSize().y - left_->GetSashPosition());
+    if (left_->IsSplit())
+    {
+        int height = left_->GetClientSize().y - left_->GetSashPosition();
+#ifdef RAGTIME_EMBED_DATA2G
+        if (constellation_->IsShown()) height -= constellation_->GetSize().y;
+#endif
+        recentHeight_ = std::max(MIN_PANE, height);
+    }
 }
+
+#ifdef RAGTIME_EMBED_DATA2G
+void MainFrame::updateConstellationVisibility()
+{
+    const bool builtIn = prefs_.usesBuiltInModem();
+    const bool show = constellationOn_ && builtIn;
+    GetMenuBar()->Enable(ID_CONSTELLATION, builtIn);
+    GetMenuBar()->Check(ID_CONSTELLATION, show);
+    if (show != constellation_->IsShown())
+    {
+        constellation_->Show(show);
+        const int height = constellation_->GetMinHeight();
+        left_->SetSashPosition(left_->GetSashPosition() + (show ? -height : height));
+        constellation_->GetParent()->Layout();
+    }
+    if (show && modem_->running())
+        constellationTimer_.Start(150);
+    else
+        constellationTimer_.Stop();
+}
+#endif
 
 void MainFrame::setGlobus(bool on)
 {

@@ -562,7 +562,7 @@ BroadcastPage::BroadcastPage(wxWindow* parent, const BroadcastChat& chat)
     under_ = new wxBoxSizer(wxHORIZONTAL);
 
     clear_ = new wxButton(this, wxID_ANY, "Clear", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
-    clear_->SetToolTip("Hide earlier Broadcast messages in this window. Queued messages and the saved log are kept.");
+    clear_->SetToolTip("Hide earlier Broadcast messages across restarts. Queued messages and the saved log are kept.");
     auto* sizer = new wxBoxSizer(wxVERTICAL);
     sizer->Add(clear_, 0, wxALIGN_RIGHT | wxRIGHT | wxTOP, 6);
     sizer->Add(list_, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
@@ -690,6 +690,7 @@ void BroadcastPage::clearView()
     // highest ID rather than the last row's position or timestamp.
     for (const Message& message : chat_.messages())
         clearedThrough_ = std::max(clearedThrough_, message.id);
+    if (onClear_) onClear_();
     list_->SetSelection(wxNOT_FOUND);
     updateRows();
 }
@@ -714,8 +715,9 @@ void BroadcastPage::updateRows()
         const auto& message = messages[row];
         const bool pending = message.ours && (message.state == State::Queued || message.state == State::Sending
                                               || message.state == State::Held);
-        if (message.id > clearedThrough_ || pending) visibleRows_.push_back(row);
-        if (message.id > clearedThrough_ && !pending) canClear = true;
+        const bool visible = !message.cleared && message.id > clearedThrough_;
+        if (visible || pending) visibleRows_.push_back(row);
+        if (visible && !pending) canClear = true;
     }
     clear_->Enable(canClear);
     list_->showRows(visibleRows_.size());

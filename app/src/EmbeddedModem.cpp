@@ -117,6 +117,15 @@ void EmbeddedModem::readEarAudio(ragtime::audio::EarAudio& ear)
     ear.hostAudio(name, audio.data(), audio.size(), rate, transmitting);
 }
 
+std::optional<ModemConstellation> EmbeddedModem::takeConstellation()
+{
+    if (!station_) return std::nullopt;
+    auto plot = station_->take_constellation();
+    if (!plot) return std::nullopt;
+    return ModemConstellation{std::move(plot->mode), plot->tones, plot->live, plot->lost,
+                              std::move(plot->symbols), std::move(plot->points)};
+}
+
 std::vector<std::string> EmbeddedModem::devices(bool input)
 {
     std::vector<std::string> names;

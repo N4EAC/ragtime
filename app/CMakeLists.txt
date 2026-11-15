@@ -123,6 +123,7 @@ if(APPLE)
 endif()
 
 if(RAGTIME_EMBED_DATA2G)
+    target_sources(ragtime PRIVATE src/ConstellationPane.cpp)
     add_library(ragtime_modem STATIC src/EmbeddedModem.cpp)
     target_compile_definitions(ragtime_modem PUBLIC RAGTIME_EMBED_DATA2G)
     target_compile_features(ragtime_modem PRIVATE cxx_std_20)

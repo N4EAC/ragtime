@@ -79,6 +79,7 @@ private:
     const ragtime::broadcast::Station* stationAt(size_t row) const;
     void picked(long row);
     void rebuildColumns();
+    void fitColumns();
     void showSelection();
     wxString tooltip(long row) const;
     bool belled(const std::string& call) const { return belled_ && belled_(call); }

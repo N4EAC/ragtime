@@ -206,6 +206,7 @@ constexpr const char* LIST_WIDTH = "/Window/StationListWidth";        // beside 
 constexpr const char* TABLE_WIDTH = "/Window/StationTableWidth";      // Globus off
 constexpr const char* GLOBUS_WIDTH = "/Window/GlobusWidth";
 constexpr const char* RECENT_HEIGHT = "/Window/RecentWorkHeight";      // under the station list
+constexpr const char* CONSTELLATION = "/Window/Constellation";
 constexpr const char* THEME = "/Window/Theme";                        // ThemeChoice: 0 the desktop's, 1 light, 2 dark
 constexpr const char* SORT_COLUMN = "/Stations/SortColumn";
 constexpr const char* SORT_ASCENDING = "/Stations/SortAscending";

@@ -70,27 +70,27 @@ std::vector<Message> parseBroadcastLog(const std::string& text, size_t max)
 {
     std::vector<Message> rows;
     std::map<uint64_t, size_t> ids;     // the open run's rows, by their id there
-    bool any = false;                   // the open run has rows
     uint64_t lastMs = 0;
 
     auto close = [&](uint64_t endMs) {
-        if (any)
+        bool visible = false;
+        for (const auto& id : ids)
         {
-            for (const auto& id : ids)
-            {
-                Message& m = rows[id.second];
-                // Still with us or the host when Ragtime closed: it may
-                // never have gone.
-                if (m.state == State::Queued || m.state == State::Sending || m.state == State::Held)
-                    m.state = State::NotSent;
-            }
+            Message& m = rows[id.second];
+            // Still with us or the host when Ragtime closed: it may
+            // never have gone.
+            if (m.state == State::Queued || m.state == State::Sending || m.state == State::Held)
+                m.state = State::NotSent;
+            visible = visible || !m.cleared;
+        }
+        if (visible)
+        {
             Message rule;
             rule.kind = Kind::Rule;
             rule.past = true;
             rule.atMs = endMs;
             rows.push_back(rule);
         }
-        any = false;
         ids.clear();
     };
 
@@ -110,6 +110,11 @@ std::vector<Message> parseBroadcastLog(const std::string& text, size_t max)
         {
             close(ms);
             lastMs = std::max(lastMs, ms);
+        }
+        else if (kind == "C")
+        {
+            // Keep these rows for duplicate detection and later updates.
+            for (Message& m : rows) m.cleared = true;
         }
         else if (kind == "M" && f.size() >= 12)
         {
@@ -146,7 +151,6 @@ std::vector<Message> parseBroadcastLog(const std::string& text, size_t max)
                 ids[id] = rows.size();
                 rows.push_back(std::move(m));
             }
-            any = true;
             lastMs = std::max(lastMs, atMs);
         }
         else if (kind == "S" && f.size() >= 3)
@@ -172,7 +176,6 @@ std::vector<Message> parseBroadcastLog(const std::string& text, size_t max)
             m.text = unescape(f[5]);
             ids[id] = rows.size();
             rows.push_back(std::move(m));
-            any = true;
             lastMs = std::max(lastMs, atMs);
         }
         else if ((kind == "X" && f.size() >= 6) || (kind == "Y" && f.size() >= 5))
@@ -292,6 +295,11 @@ void BroadcastLog::began(uint64_t nowMs)
 {
     compact();
     append(join({"B", std::to_string(nowMs)}));
+}
+
+void BroadcastLog::cleared()
+{
+    append("C");
 }
 
 void BroadcastLog::added(const Message& m, uint64_t before)

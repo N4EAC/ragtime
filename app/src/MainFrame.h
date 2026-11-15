@@ -311,6 +311,9 @@ private:
 
     // Globus on or off, and the toggle on the tab strip.
     void setGlobus(bool on);
+#ifdef RAGTIME_EMBED_DATA2G
+    void updateConstellationVisibility();
+#endif
     // The Ear, opened or closed (the ear button, View > Ear).
     void setEar(bool open);
     // The microphone deck, opened or closed (the microphone buttons, View >
@@ -340,6 +343,9 @@ private:
 #ifdef RAGTIME_EMBED_DATA2G
     std::unique_ptr<class EmbeddedModem> modem_;
     std::string modemError_;
+    class ConstellationPane* constellation_ = nullptr;
+    wxTimer constellationTimer_;
+    bool constellationOn_ = true;
 #endif
     std::unique_ptr<RigControl> rig_;
     ragtime::radio::PathLog pathLog_;
