@@ -2350,6 +2350,16 @@ is a roll call, and Jeff chose that Check in itself calls it.
   burst, `HostLink::handsSeen`), Check in sends a plain Hello and says
   why on the status bar. No Data2G release has Hands yet (PR #146 merged
   after v0.4.3).
+- **A window that gave up** (Jeff, 2026-11-15: "Ragtime came to the
+  conclusion far too quickly that no hands had been shown"). data2g-host
+  drops an armed window when the check-in hasn't gone 30 s after it,
+  with the `HAND END` a window's end gets (DATA2G.md, "Hands"). While
+  the check-in still waits, `HostLink` arms the window again; once it has
+  gone, a `HAND END` sooner than the window could close, with nothing
+  heard, makes the row "Roll call: no window, so no Hands heard.
+  data2g-host gave up waiting for your check-in to go (it waits 30 s);
+  check in again when the channel is quiet" (`Roll::Lost`), never "no
+  Hands heard".
 - **The bench.** The fake hosts collide two Hands in one channel unless
   one is 6 dB stronger, the bots' check-ins call the roll, and the bots
   answer every roll call they hear, yours included.
