@@ -406,7 +406,17 @@ const Message* rollRow(const End& end)
 {
     for (auto it = end.chat.messages().rbegin(); it != end.chat.messages().rend(); ++it)
     {
-        if (it->kind == Message::Kind::RollCall) return &*it;
+        if (it->kind == Message::Kind::RollCall && it->ours) return &*it;
+    }
+    return nullptr;
+}
+
+// The row of a station's roll call we heard, the newest.
+const Message* theirRow(const End& end)
+{
+    for (auto it = end.chat.messages().rbegin(); it != end.chat.messages().rend(); ++it)
+    {
+        if (it->kind == Message::Kind::RollCall && !it->ours) return &*it;
     }
     return nullptr;
 }
@@ -460,8 +470,22 @@ void testCheckInCallsTheRoll()
     }
     bool collide = b.hand && c.hand && b.hand->channel == c.hand->channel;
     CHECK(!collide);    // not with these calls and this round
+    // B's list has a row for W1AW's roll call, saying our Hand waits.
+    const Message* theirs = theirRow(b);
+    CHECK(theirs != nullptr && theirs->from == "W1AW" && theirs->answer == Message::Answer::Waiting);
+    if (theirs != nullptr && b.hand)
+    {
+        CHECK_EQ(theirs->answerChannel, b.hand->channel);
+        CHECK(rollCallLine(*theirs)
+              == "W1AW called the roll: checking in by Hand (Hand channel " + std::to_string(b.hand->channel) + ")");
+    }
+    CHECK(rollRow(b) == nullptr);   // not ours
     raiseHands(all);
     settle(all, 2);
+    // Once the Hand went, the row says so and stays (Spud, 2026-11-15).
+    theirs = theirRow(b);
+    CHECK(theirs != nullptr && theirs->answer == Message::Answer::Sent);
+    CHECK(theirs != nullptr && rollCallLine(*theirs).find("W1AW called the roll: checked in by Hand") == 0);
     row = rollRow(a);
     CHECK(row != nullptr && row->roll == Message::Roll::Done);
     if (!collide)
@@ -512,6 +536,11 @@ void testWhoStaysQuiet()
     const Message* row = rollRow(a);
     CHECK(row != nullptr && row->roll == Message::Roll::Done && row->hands.empty());
     CHECK(rollCallLine(*row) == "Roll call: no Hands heard");
+    // B still shows the roll call, and why it raised no Hand.
+    const Message* theirs = theirRow(b);
+    CHECK(theirs != nullptr && theirs->answer == Message::Answer::NotAnswered);
+    CHECK(theirs != nullptr
+          && rollCallLine(*theirs) == "W1AW called the roll: not answered, Check in by Hand is off in Settings");
 
     // A Hand whose call is in the wrong channel is a false decode.
     s.answerRollCalls = true;
