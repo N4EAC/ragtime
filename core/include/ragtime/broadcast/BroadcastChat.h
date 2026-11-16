@@ -296,6 +296,11 @@ public:
     // MAX_TYPED, or no callsign set.
     std::vector<uint64_t> send(const std::string& typed, const std::string& mode, uint64_t nowMs);
 
+    // A roll call's Hand of ours waits to go (the host sends one at a time).
+    bool handWaiting() const { return !handTo_.empty(); }
+    // A station's call from a Hand's 22-bit hash, if we have heard it.
+    std::string findCall(uint32_t hash) const;
+
     // Check in: a Hello of its own, calling the roll when it can
     // (canCallRoll), with a roll call row. False with no callsign set.
     bool checkIn(const std::string& mode, uint64_t nowMs);
@@ -415,7 +420,6 @@ private:
     Message* activeRoll();
     // Our Hand for handTo_'s roll call is settled: its row says how.
     void handSettled(Message::Answer answer, const std::string& why = std::string());
-    std::string findCall(uint32_t hash) const;
     // A burst of ours settled or was taken back: its reactions are on the
     // air, or wait again.
     void reactionsSettled(uint64_t burst, bool sent, uint64_t nowMs);

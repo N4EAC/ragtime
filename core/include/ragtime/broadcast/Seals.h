@@ -369,6 +369,7 @@ public:
     size_t refusalsHeard() const { return refusalsHeard_; }
     size_t paritySent() const { return paritySent_; }     // ItemParity and parity pieces of ours
     size_t itemsRebuilt() const { return itemsRebuilt_; }
+    size_t handsHeard() const { return handsHeard_; }      // repair Hands to us
     // Moves with every change the screen shows.
     uint64_t version() const { return version_; }
 
@@ -461,7 +462,9 @@ private:
     const OurSeal* sealFor(uint32_t seq) const;
     const OurItem* findItem(uint32_t seq) const;
     void sealIfDue(uint64_t nowMs);
-    void onRequest(const std::string& from, const protocol::RepairRequest& request, uint64_t nowMs);
+    // byHand: from a repair Hand, which gives counts, not which items.
+    void onRequest(const std::string& from, const protocol::RepairRequest& request, uint64_t nowMs,
+                   bool byHand = false);
     void onSealOver(const std::string& from, const protocol::RepairRequest& request, uint64_t nowMs);
     bool ours(uint16_t number) const;
     void refuse(uint16_t seal, protocol::RefusalReason reason, uint32_t file, const std::string& mode,
@@ -620,6 +623,31 @@ private:
     bool sealSoon_ = false;
 
     uint64_t windowEndsMs_ = 0;             // 0: no window open
+
+    // Repairs by Hand (docs/PROTOCOL.md, "Repairs by Hand"). Ours: the
+    // seal whose burst carries a SealRound, and its window's channels,
+    // until the host ends the window.
+    struct HandRound
+    {
+        uint16_t seal = 0;
+        int channels = 0;
+        uint64_t burst = 0;
+    };
+    std::optional<HandRound> handRound_;
+    size_t handsHeard_ = 0;
+    // Theirs: the reference of the burst whose records come next, and our
+    // repair Hand waiting to go, with what it asks for (counted as asked
+    // already, so no request goes for it unless the Hand doesn't).
+    std::optional<link::HandRef> lastRef_;
+    struct OurHand
+    {
+        std::string to;
+        uint16_t seal = 0;
+    };
+    std::optional<OurHand> ourHand_;
+    void answerSealRound(const std::string& call, const protocol::SealRound& round, uint64_t nowMs);
+    void heardRepairHand(const link::HostLink::Event& event, uint64_t nowMs);
+    void handNotSent(uint64_t nowMs);
     std::map<uint16_t, Asked> asked_;
     std::map<std::pair<uint16_t, uint8_t>, Refusing> refusing_;   // by seal and reason
     std::map<std::pair<uint16_t, uint8_t>, uint64_t> refusedMs_;  // the last went then

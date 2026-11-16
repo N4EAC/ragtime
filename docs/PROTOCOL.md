@@ -99,6 +99,7 @@ length.
 | `0x42` | RepairRefused | seal, reason, count, files | no |
 | `0x43` | RepairRequest | to, seal, seal digest, flags, items, items wanted, files | no |
 | `0x44` | ItemParity | seal, count, items, index, bytes | no |
+| `0x45` | SealRound | seal, delay, channels, flags | no |
 
 `0x41` was Ragtime 0.1's RepairRequest, which listed the pieces missing.
 It is retired: a newer station skips it as a type it doesn't know, and
@@ -293,6 +294,16 @@ lists (Parity, below).
 | items | count / 8, rounded up | One bit per item, as in RepairRequest: 1 = covered |
 | index | 2 | Which parity symbol: it is named 256 + index |
 | bytes | the rest | The symbol, an even number of bytes |
+
+**SealRound** (`0x45`): rides with a Seal in one burst, which opens a
+Hand window for repair requests (Repairs by Hand, below).
+
+| Field | Bytes | Meaning |
+| --- | --- | --- |
+| seal | 2 | The seal it rides with |
+| delay | 1 | Tenths of a second from the burst's end to the window |
+| channels | 1 | Hand channels in the window |
+| flags | 1 | 0; others ignore any bit they don't know |
 
 ### Fields
 
@@ -915,6 +926,47 @@ most: Ragtime 0.1 sent again the union of every piece anyone lacked,
 round after round, and its losers were still missing pieces hours
 later. With parity, a file usually reaches every station in a round or
 two.
+
+### Repairs by Hand
+
+An early version (Jeff, 2026-11-16; the plan is the doc "Repairs by
+Hand"): a station missing something under a seal asks for it with a
+Hand, 10.56 s at -19 dB, in place of a RepairRequest burst.
+
+- **The sender** sends a seal alone in its burst with a SealRound and a
+  Hand window over all its channels, 3 s after the burst. A seal that
+  won't fit one burst with the round, or a host with no Hands (no REF
+  yet), goes as before. The tag is byte 4 of SHA-256 over the sender's
+  call, a `0x01` byte and the seal number, big-endian, so a roll call's
+  Hand (seed `0x00`) never decodes as a repair Hand, nor the reverse.
+- **The listener** that heard the seal, lacks items or pieces of one
+  file under it, and isn't in a ragchew or waiting on a Hand of its own
+  answers with `HAND SEND` on the burst's reference, in the channel
+  given by the first 4 bytes of SHA-256(call, `0x01`, seal) modulo the
+  window's channels. That Hand is its request: no RepairRequest goes
+  for that lack unless the Hand doesn't go (refused or dropped), when
+  it asks by burst as before. A lack wider than one Hand holds (the
+  seal itself, two files, over the caps below) asks by burst.
+- **The sender** takes each Hand that unpacks and sits in its call's
+  channel as a RepairRequest for every item of the seal, with the
+  number of symbols wanted, and repairs as for any request. The repair
+  round keeps its normal window.
+
+**What a repair Hand says.** 63 bits, most significant first:
+
+| Field | Bits | Meaning |
+| --- | --- | --- |
+| version | 3 | 1 (a roll call's Hand is 0) |
+| call | 28 | As in a roll call's Hand |
+| S/N | 6 | As in a roll call's Hand |
+| items wanted | 7 | Parity symbols wanted over the seal's items, up to 127 |
+| pieces wanted | 9 | Parity symbols wanted over one file's pieces, up to 511 |
+| file | 8 | The file's place in the seal (its seq less the seal's first item), `0xFF` for none |
+| spare | 2 | 0 |
+
+A Hand that wants nothing, or pieces with no file, is dropped. Not yet
+built: holders answering, a shorter window, a confirmed-by list, and
+asking by Hand over a seal sent again.
 
 ### Broadcast files
 

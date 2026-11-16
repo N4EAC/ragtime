@@ -13,6 +13,7 @@
 #include "ragtime/broadcast/Airtime.h"
 #include "ragtime/files/Parity.h"
 #include "ragtime/gearbox/Submodes.h"
+#include "ragtime/protocol/Hands.h"
 
 namespace ragtime
 {
@@ -701,6 +702,37 @@ void Seals::sealIfDue(uint64_t nowMs)
     std::string mode = made.back().mode;
     std::vector<std::vector<uint8_t>> frames;
     for (const OurSeal& s : made) frames.push_back(protocol::encodeFrame({s.record}));
+
+    // One seal, and a host that does Hands: a SealRound beside it and a
+    // window after it, so stations lacking something say so by Hand
+    // (docs/PROTOCOL.md, "Repairs by Hand").
+    if (made.size() == 1 && !handRound_ && link_.handsSeen() && link_.handChannels() > 0)
+    {
+        protocol::SealRound round;
+        round.seal = made.front().number;
+        round.channels = (uint8_t)link_.handChannels();
+        std::vector<std::vector<uint8_t>> withRound = frames;
+        withRound.push_back(protocol::encodeFrame({chat_.record(round, time)}));
+        link::ModeInfo info = modeInfo(mode);
+        if (!info.valid() || packBursts(withRound, info).size() == 1)
+        {
+            link::HostLink::HandWindow window;
+            window.delayS = round.delayTenths / 10.0;
+            window.tag = protocol::repairTag(callsign_, round.seal);
+            for (int c = 0; c < round.channels; c++) window.channels.push_back(c);
+            uint64_t id = link_.broadcast(withRound, mode, nowMs, "seal, repairs by Hand", window);
+            if (id != 0)
+            {
+                made.front().burst = id;
+                made.front().tries = 1;
+                handRound_ = HandRound{round.seal, round.channels, id};
+                for (OurSeal& s : made) seals_.push_back(std::move(s));
+                version_++;
+                return;
+            }
+        }
+    }
+
     size_t index = 0;
     for (const auto& burst : packBursts(frames, modeInfo(mode)))
     {
@@ -755,7 +787,7 @@ void Seals::onSealOver(const std::string& from, const protocol::RepairRequest& r
     }
 }
 
-void Seals::onRequest(const std::string& from, const protocol::RepairRequest& request, uint64_t nowMs)
+void Seals::onRequest(const std::string& from, const protocol::RepairRequest& request, uint64_t nowMs, bool byHand)
 {
     if (request.seal == 0)
     {
@@ -774,7 +806,7 @@ void Seals::onRequest(const std::string& from, const protocol::RepairRequest& re
     // A station that heard the seal says, item by item, what it lacks: the
     // rest it holds.
     const protocol::Seal* listed = s->record.as<protocol::Seal>();
-    for (size_t i = 0; listed != nullptr && !zero(request.sealDigest) && i < listed->items.size()
+    for (size_t i = 0; !byHand && listed != nullptr && !zero(request.sealDigest) && i < listed->items.size()
                        && i < request.missingItems.size();
          i++)
     {
@@ -838,7 +870,9 @@ void Seals::onRequest(const std::string& from, const protocol::RepairRequest& re
     }
     if (!lacked.empty())
     {
-        uint32_t want = std::max<uint32_t>(request.itemsWant, (uint32_t)lacked.size());
+        // A Hand says how many symbols, not which items: all are listed.
+        uint32_t want = byHand ? std::max<uint32_t>(request.itemsWant, 1)
+                               : std::max<uint32_t>(request.itemsWant, (uint32_t)lacked.size());
         a.itemAskers.push_back({std::move(lacked), want});
     }
     for (const auto& file : request.files)
@@ -1259,6 +1293,36 @@ void Seals::flush(uint64_t nowMs)
 
 void Seals::onEvent(const Event& event, uint64_t nowMs)
 {
+    // Repairs by Hand: the reference of the burst whose records come next;
+    // Hands heard in our window; and how our own Hand went. The host has
+    // one Hand and one window at a time, shared with roll calls.
+    switch (event.type)
+    {
+        case Event::Type::Heard:
+            lastRef_ = event.handRef;
+            break;
+        case Event::Type::HandHeard:
+            heardRepairHand(event, nowMs);
+            break;
+        case Event::Type::HandEnd:
+            handRound_.reset();
+            break;
+        case Event::Type::HandLost:
+            if (handRound_ && handRound_->burst == event.id) handRound_.reset();
+            break;
+        case Event::Type::HandSent:
+            if (!chat_.handWaiting()) ourHand_.reset();
+            break;
+        case Event::Type::HandDropped:
+            if (!chat_.handWaiting()) handNotSent(nowMs);
+            break;
+        case Event::Type::Refused:
+            if (event.text.rfind("HAND SEND", 0) == 0 && !chat_.handWaiting()) handNotSent(nowMs);
+            if (event.text.rfind("HAND LISTEN", 0) == 0) handRound_.reset();
+            break;
+        default:
+            break;
+    }
     if (event.type == Event::Type::HeardFrom && event.snr)
         heardSnr(event.text, *event.snr, nowMs);
     else if (event.type == Event::Type::SessionSnr && event.snr)
@@ -1281,6 +1345,7 @@ void Seals::onEvent(const Event& event, uint64_t nowMs)
     }
 
     std::vector<OurSeal*> again;
+    if (!sent && handRound_ && handRound_->burst == event.id) handRound_.reset();
     for (OurSeal& s : seals_)
     {
         if (s.burst != event.id || s.sent) continue;
@@ -1387,6 +1452,10 @@ void Seals::onRecord(const protocol::Record& record, uint64_t nowMs)
     else if (const protocol::RepairRefused* refused = record.as<protocol::RepairRefused>())
     {
         heardRefusal(from, *refused, nowMs);
+    }
+    else if (const protocol::SealRound* round = record.as<protocol::SealRound>())
+    {
+        answerSealRound(from, *round, nowMs);
     }
     else if (record.as<protocol::ItemParity>() != nullptr)
     {
@@ -1837,6 +1906,95 @@ void Seals::ask(const std::string& call, Station& station, uint64_t nowMs)
     link::ModeInfo info = modeInfo(mode_);
     for (const auto& burst : packBursts(packFrames(records), info)) link_.broadcast(burst, mode_, nowMs, "repair request");
     version_++;
+}
+
+void Seals::answerSealRound(const std::string& call, const protocol::SealRound& round, uint64_t nowMs)
+{
+    // One Hand at a time, on the reference of the burst this came in, and
+    // none from a station in a ragchew.
+    if (!lastRef_ || ourHand_ || chat_.handWaiting() || callsign_.empty()) return;
+    if (link_.sessionState() != link::HostLink::SessionState::None) return;
+    int width = std::min<int>(round.channels, link_.handChannels());
+    if (width <= 0) return;
+    auto found = stations_.find(call);
+    if (found == stations_.end()) return;
+    Station& station = found->second;
+    auto heard = station.seals.find(round.seal);
+    if (heard == station.seals.end()) return;
+    for (const Lack& lack : lacks(call, station, nowMs))
+    {
+        if (lack.seal != round.seal || lack.sealDigest != heard->second.digest) continue;
+        // What a Hand can't say goes in a request, as before: the seal
+        // itself, pieces of two files, or more than its fields hold.
+        if (lack.wantSeal || lack.files.size() > 1) return;
+        protocol::RepairHand hand;
+        hand.call = callsign_;
+        hand.snr = snrOf(call, nowMs);
+        if (lack.missingItems() != 0) hand.itemsWant = std::max<uint32_t>(lack.itemsWant, (uint32_t)lack.missingItems());
+        if (!lack.files.empty())
+        {
+            uint32_t place = lack.files.begin()->first - heard->second.seal.firstItem;
+            if (place >= protocol::REPAIR_NO_FILE) return;
+            hand.file = (uint8_t)place;
+            hand.piecesWant = lack.files.begin()->second.want;
+        }
+        if (hand.itemsWant > protocol::REPAIR_ITEMS_MAX || hand.piecesWant > protocol::REPAIR_PIECES_MAX) return;
+        if (hand.itemsWant == 0 && hand.piecesWant == 0) return;
+        uint64_t payload = protocol::packRepairHand(hand);
+        int channel = protocol::repairChannel(callsign_, round.seal, width);
+        if (payload == 0 || !link_.handSend(lastRef_->id, protocol::repairTag(call, round.seal),
+                                            round.delayTenths / 10.0, channel, payload, nowMs))
+            return;
+        ourHand_ = OurHand{call, round.seal};
+        // Asked for now: the request waiting for the window holds it back,
+        // as if another station had asked for as much.
+        station.covered[round.seal].push_back(lack);
+        version_++;
+        return;
+    }
+}
+
+void Seals::handNotSent(uint64_t nowMs)
+{
+    if (!ourHand_) return;
+    auto found = stations_.find(ourHand_->to);
+    if (found != stations_.end())
+    {
+        // Ask by burst after all.
+        found->second.covered.erase(ourHand_->seal);
+        armAsk(ourHand_->to, found->second, 1000, nowMs);
+    }
+    ourHand_.reset();
+}
+
+void Seals::heardRepairHand(const Event& event, uint64_t nowMs)
+{
+    if (!handRound_) return;
+    std::optional<protocol::RepairHand> hand = protocol::unpackRepairHand(event.handPayload);
+    if (!hand) return;
+    std::string call = hand->call;
+    if (call.empty() && hand->hash) call = chat_.findCall(*hand->hash);
+    if (call.empty() || call == callsign_) return;
+    // In the wrong channel: a false decode.
+    if (!protocol::repairChannelFits(call, handRound_->seal, event.number, handRound_->channels)) return;
+    OurSeal* s = findSeal(handRound_->seal);
+    if (s == nullptr) return;
+    // As a request would ask: every item, with the symbols wanted, and the
+    // one file's pieces.
+    protocol::RepairRequest request;
+    request.to = callsign_;
+    request.seal = s->number;
+    request.sealDigest = s->digest;
+    request.snr = hand->snr;
+    if (hand->itemsWant != 0)
+    {
+        request.missingItems.assign(s->count, true);
+        request.itemsWant = (uint8_t)std::min<uint32_t>(255, hand->itemsWant);
+    }
+    if (hand->piecesWant != 0 && hand->file < s->count)
+        request.files.push_back({s->first + hand->file, (uint16_t)hand->piecesWant});
+    handsHeard_++;
+    onRequest(call, request, nowMs, true);
 }
 
 void Seals::heardItemParity(const std::string& call, const protocol::Record& record, uint64_t nowMs)

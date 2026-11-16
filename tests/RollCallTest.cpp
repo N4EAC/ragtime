@@ -17,6 +17,7 @@
 
 #include "Check.h"
 #include "ragtime/broadcast/BroadcastChat.h"
+#include "ragtime/broadcast/Seals.h"
 #include "ragtime/broadcast/Stations.h"
 #include "ragtime/link/Data2GLink.h"
 #include "ragtime/link/HostLink.h"
@@ -192,7 +193,7 @@ void testRecord()
 struct End
 {
     End(const std::string& call, const std::string& locator, double heardAtDb, bool narrow = false)
-        : link({call, true, narrow}), chat(link), db(heardAtDb)
+        : link({call, true, narrow}), chat(link), seals(link, chat), db(heardAtDb)
     {
         BroadcastChat::Settings s;
         s.callsign = call;
@@ -200,13 +201,31 @@ struct End
         s.software = "Ragtime test";
         chat.setSettings(s, 0);
         stations.setMyCallsign(call);
+        // Chat goes unsealed here but in testRepairsByHand.
+        seals.setChain(call, broadcast::Seals::Chain());
+        seals.setMode("qpsk-r1/3");
+        chat.onItems([this](const std::vector<protocol::Record>& items, uint64_t burst, const std::string& mode,
+                            uint64_t at) { seals.going(items, burst, mode, at); });
     }
 
     void events()
     {
         for (const HostLink::Event& e : link.takeEvents())
         {
-            for (const protocol::Record& r : chat.onEvent(e, now)) stations.onRecord(r, now);
+            seals.onEvent(e, now);
+            for (const protocol::Record& r : chat.onEvent(e, now))
+            {
+                stations.onRecord(r, now);
+                seals.onRecord(r, now);
+            }
+            for (std::vector<protocol::Record> again = seals.takeRebuilt(); !again.empty(); again = seals.takeRebuilt())
+            {
+                for (const protocol::Record& r : again)
+                {
+                    chat.onRebuilt(r, now);
+                    seals.onRecord(r, now);
+                }
+            }
         }
         for (const Message::Hand& h : chat.takeHandCheckIns())
         {
@@ -220,6 +239,7 @@ struct End
 
     HostLink link;
     BroadcastChat chat;
+    broadcast::Seals seals;
     broadcast::Stations stations;
     link::KissDecoder kiss;
     double db;                      // how loud the others hear this station
@@ -340,6 +360,7 @@ void step(std::vector<End*> ends)
         end->link.tick(now);
         end->events();
         end->chat.tick(now);
+        end->seals.tick(now);
     }
 }
 
@@ -753,6 +774,95 @@ void testWindowThatNeverOpened()
 
 } // namespace
 
+// A station that lost a line says so by Hand after the seal, and the
+// parity comes with no request burst (docs/PROTOCOL.md, "Repairs by Hand").
+void testRepairsByHand()
+{
+    End a("W1AW", "FN31", 9.0);
+    End b("KC2G", "FN20", -6.0);
+    a.seals.setSealText(true);
+    std::vector<End*> all{&a, &b};
+    up(all);
+    CHECK(!b.chat.send("Evening all", "", now).empty());    // A's host shows Hands with it
+    settle(all);
+    CHECK(a.link.handsSeen());
+    CHECK(!a.chat.send("Heard by A only", "", now).empty());
+    b.deaf = true;
+    settle(all);
+    b.deaf = false;
+    CHECK(!a.chat.send("Heard by both", "", now).empty());
+    settle(all);
+    // The seal goes after a quiet minute, with a SealRound and a window.
+    for (int i = 0; i < 70 && !b.hand; i++)
+    {
+        now += 1000;
+        step(all);
+    }
+    CHECK(b.hand.has_value());
+    CHECK(a.window.has_value());
+    if (b.hand)
+    {
+        std::optional<protocol::RepairHand> hand = protocol::unpackRepairHand(b.hand->payload);
+        CHECK(hand.has_value() && hand->call == "KC2G" && hand->itemsWant >= 1 && hand->piecesWant == 0);
+        if (a.window) CHECK_EQ(b.hand->tag, a.window->tag);
+    }
+    raiseHands(all);
+    CHECK_EQ(a.seals.handsHeard(), (size_t)1);
+    for (int i = 0; i < 40; i++)
+    {
+        now += 1000;
+        step(all);
+    }
+    // The line came back from parity, and B sent no request.
+    bool back = std::any_of(b.chat.messages().begin(), b.chat.messages().end(),
+                            [](const Message& m) { return m.text == "Heard by A only"; });
+    CHECK(back);
+    CHECK_EQ(b.seals.requestsSent(), (size_t)0);
+    CHECK(a.seals.paritySent() >= 1);
+}
+
+void testRepairHandPayload()
+{
+    protocol::RepairHand hand;
+    hand.call = "KC2G";
+    hand.snr = -14.0;
+    hand.itemsWant = 3;
+    hand.piecesWant = 40;
+    hand.file = 2;
+    uint64_t payload = protocol::packRepairHand(hand);
+    std::optional<protocol::RepairHand> back = protocol::unpackRepairHand(payload);
+    CHECK(back.has_value());
+    if (back)
+    {
+        CHECK(back->call == "KC2G" && back->snr && *back->snr == -14.0);
+        CHECK(back->itemsWant == 3 && back->piecesWant == 40 && back->file == 2);
+    }
+    // Not a roll call's Hand, nor the other way round.
+    CHECK(!protocol::unpackHand(payload).has_value());
+    protocol::HandCheckIn checkIn;
+    checkIn.call = "KC2G";
+    CHECK(!protocol::unpackRepairHand(protocol::packHand(checkIn)).has_value());
+    // A tag of its own: seed 1, where a roll call's is 0.
+    bool differs = false;
+    for (uint16_t round = 1; round < 20; round++)
+        differs = differs || protocol::repairTag("W1AW", round) != protocol::rollCallTag("W1AW", round);
+    CHECK(differs);
+    // The record, both ways.
+    protocol::SealRound r;
+    r.seal = 77;
+    r.channels = 20;
+    protocol::Record record;
+    record.header.callsign = "W1AW";
+    record.header.seq = 5;
+    record.header.time = 1792627200;
+    record.body = r;
+    std::vector<protocol::Record> decoded;
+    protocol::decodeFrame(protocol::encodeFrame({record}), decoded);
+    CHECK(decoded.size() == 1 && decoded[0].as<protocol::SealRound>() != nullptr);
+    if (decoded.size() == 1 && decoded[0].as<protocol::SealRound>() != nullptr)
+        CHECK(decoded[0].as<protocol::SealRound>()->seal == 77 && decoded[0].as<protocol::SealRound>()->channels == 20);
+}
+
 int main()
 {
     testStandardCalls();
@@ -767,5 +877,7 @@ int main()
     testNotInARagchew();
     testWindowArmedAgain();
     testWindowThatNeverOpened();
+    testRepairHandPayload();
+    testRepairsByHand();
     return ragtime_test::finish();
 }
