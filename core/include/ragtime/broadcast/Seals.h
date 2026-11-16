@@ -394,6 +394,11 @@ private:
         std::string mode;
         bool file = false;
         uint32_t nextParity = 0;    // a file's next parity piece, counted from its piece count
+        // A file's parity pieces numbered but never sent: taken back from
+        // the host (a gear picked, repairs closed) or cut from a round.
+        // They go first next time, so the numbers a listener hears have no
+        // holes it would count as lost (Jeff's bagel_bites.j2k, 2026-11-16).
+        std::set<uint16_t> unsent;
     };
 
     struct OurSeal
@@ -480,6 +485,12 @@ private:
     // The round's queued bursts that carry nothing but repairs under seal
     // number go back from HostLink.
     void takeBackRepairs(uint16_t number);
+    // A file's next parity piece's index: one numbered but never sent
+    // first, lowest first, else the next new one. And pieces that won't go
+    // after all, to go next time (OurItem::unsent).
+    uint16_t nextParityIndex(OurItem& item, uint16_t pieces);
+    void unsent(const std::map<uint32_t, std::vector<uint16_t>>& parity);
+    void unsent(const std::vector<std::vector<uint8_t>>& burst);
     // The round's queued bursts that carry nothing but file seq's pieces,
     // in a gear no asker but call wanted them in, go back from HostLink.
     void takeBackStationRepairs(uint32_t seq, const std::string& call);
@@ -623,6 +634,7 @@ private:
         std::map<uint32_t, uint32_t> filePieces;
         std::string mode;
         bool onlyPieces = true;     // nothing but file pieces in it
+        std::map<uint32_t, std::vector<uint16_t>> parity;   // file parity pieces in it, by file
     };
     std::map<uint64_t, RoundBurst> roundBursts_;
     // Per file, per gear, the stations the round going now answers.

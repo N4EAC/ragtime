@@ -323,7 +323,12 @@ figure the gearshift's Auto already shifts for.
   (Settings, 30 by default): then its seal closes, and askers hear so.
 
 **Closing and re-opening.** Close repairs now takes back the round's
-repairs still queued; the burst already on the air finishes. A file
+repairs still queued; the burst already on the air finishes. Repair
+pieces taken back (here, or on a gear change) keep their numbers and go
+first next time. A listener works out how much it loses from the
+numbers it hears, so a number skipped would look lost: on 2026-11-16 a
+string of gear changes left holes that AG7SU read as 93% loss, and it
+asked for 72 pieces of a 15-piece file. A file
 whose repairs closed, by hand or at the cap, has **Re-open repairs** on
 its right-click menu (in the chat and in Completed files) for the 2
 hours its seal is held, if the file on disk hasn't changed. The seal

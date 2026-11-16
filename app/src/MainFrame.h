@@ -56,7 +56,9 @@ class GlobusPanel;
 class GlobusToggle;
 class HostConnection;
 class PictureFrame;
+class PictureDialog;
 struct PictureGear;
+struct PictureTarget;
 class RecentWorkPane;
 class RigControl;
 class SessionPage;
@@ -200,6 +202,8 @@ private:
     // went in sentPicturesDir(); each picture shown among the messages as
     // it stands, on the shelf; and the picture window, one a picture.
     void sendPicture(bool broadcast);
+    // Send pressed in the picture window: the picture kept and sent.
+    void sendCodedPicture(const PictureTarget& target, const PictureDialog& dialog);
     // The gears a picture can be planned for, the first the one it starts
     // with: on D2G the gear in effect, in a session the one for the far
     // station's path over the last few minutes (PictureDialog).
@@ -358,6 +362,7 @@ private:
     ConnectionBar* bar_ = nullptr;
     EarFrame* ear_ = nullptr;               // while the Ear is open
     GearshiftDialog* gearDialog_ = nullptr; // while the gearshift is open
+    PictureDialog* pictureDialog_ = nullptr; // while a picture is being made
     // View > Keep tool windows on top: the Ear, the deck, the gearshift and
     // pictures and the modem monitor stay above the main window (off by default, Andrew's ask,
     // 2026-11-08). It counts from the next time each opens.

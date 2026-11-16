@@ -815,7 +815,10 @@ void BroadcastFiles::heardPiece(const protocol::Record& record, uint64_t nowMs)
         in->parityBytes += p->bytes.size();
         in->parity.emplace(p->index, p->bytes);
         in->parityTop = std::max(in->parityTop, p->index);
-        if (in->parityFrom != 0 && p->index >= in->parityFrom) in->parityHeard++;
+        // Since we asked: a sender sends again first the numbers it took
+        // back or cut (Seals::nextParityIndex), which may be under
+        // parityFrom.
+        if (in->parityFrom != 0) in->parityHeard++;
     }
     else
     {

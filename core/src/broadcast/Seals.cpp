@@ -300,6 +300,45 @@ Seals::FileRepairs Seals::fileRepairs(uint32_t seq) const
     return r;
 }
 
+uint16_t Seals::nextParityIndex(OurItem& item, uint16_t pieces)
+{
+    if (!item.unsent.empty())
+    {
+        uint16_t index = *item.unsent.begin();
+        item.unsent.erase(item.unsent.begin());
+        return index;
+    }
+    uint32_t span = 65536u - pieces;
+    return (uint16_t)(pieces + item.nextParity++ % span);
+}
+
+void Seals::unsent(const std::map<uint32_t, std::vector<uint16_t>>& parity)
+{
+    for (const auto& file : parity)
+    {
+        auto item = sealedItems_.find(file.first);
+        if (item == sealedItems_.end()) continue;
+        item->second.unsent.insert(file.second.begin(), file.second.end());
+    }
+}
+
+void Seals::unsent(const std::vector<std::vector<uint8_t>>& burst)
+{
+    std::map<uint32_t, std::vector<uint16_t>> parity;
+    for (const auto& frame : burst)
+    {
+        std::vector<protocol::Record> records;
+        if (!protocol::decodeFrame(frame, records)) continue;
+        for (const protocol::Record& r : records)
+        {
+            const protocol::FilePiece* p = r.as<protocol::FilePiece>();
+            uint16_t k = files_ != nullptr && p != nullptr ? files_->pieceCount(r.header.seq) : 0;
+            if (p != nullptr && k != 0 && p->index >= k) parity[r.header.seq].push_back(p->index);
+        }
+    }
+    unsent(parity);
+}
+
 void Seals::takeBackStationRepairs(uint32_t seq, const std::string& call)
 {
     const OurSeal* s = sealFor(seq);
@@ -314,6 +353,7 @@ void Seals::takeBackStationRepairs(uint32_t seq, const std::string& call)
                     && burst.filePieces.size() == 1 && burst.filePieces.begin()->first == seq;
         if (only && mine && link_.cancel(it->first))
         {
+            unsent(burst.parity);
             auto round = fileRound_.find(seq);
             uint32_t pieces = burst.filePieces.begin()->second;
             if (round != fileRound_.end()) round->second.pieces -= std::min(round->second.pieces, pieces);
@@ -335,6 +375,7 @@ void Seals::takeBackRepairs(uint16_t number)
         const std::set<uint16_t>& under = it->second.seals;
         if (under.size() == 1 && *under.begin() == number && link_.cancel(it->first))
         {
+            unsent(it->second.parity);
             for (const auto& pieces : it->second.filePieces)
             {
                 auto round = fileRound_.find(pieces.first);
@@ -939,16 +980,19 @@ void Seals::resend(uint64_t nowMs)
             if (askers != a.fileAskers.end()) fileRound_[seq].to = askers->second;
             auto gearAskers = a.fileGearAskers.find(seq);
             if (gearAskers != a.fileGearAskers.end()) roundGearAskers_[seq] = gearAskers->second;
-            uint32_t span = 65536u - k;
             for (const auto& gear : file.second)
             {
                 link::ModeInfo info = modeInfo(gear.first);
                 uint32_t limit = gear.second;
                 for (uint32_t i = 0; i < limit; i++)
                 {
-                    uint16_t index = (uint16_t)(k + item->second.nextParity++ % span);
+                    uint16_t index = nextParityIndex(item->second, k);
                     protocol::Record piece;
-                    if (!files_->piece(seq, index, time, piece)) break;
+                    if (!files_->piece(seq, index, time, piece))
+                    {
+                        item->second.unsent.insert(index);
+                        break;
+                    }
                     if (i == 0)
                     {
                         // No more than the round can carry: each parity
@@ -973,7 +1017,11 @@ void Seals::resend(uint64_t nowMs)
                             limit = std::min(limit, fits);
                             slowPlanned += each * limit;
                         }
-                        if (limit == 0) break;
+                        if (limit == 0)
+                        {
+                            item->second.unsent.insert(index);
+                            break;
+                        }
                     }
                     byMode[gear.first].push_back(std::move(piece));
                     paritySent_++;
@@ -1016,12 +1064,19 @@ void Seals::resend(uint64_t nowMs)
     {
         link::ModeInfo info = modeInfo(mode);
         bool slow = mode != own && ownSpeed > 0.0 && speedOf(mode) < ownSpeed;
+        bool cut = false;
         for (auto& burst : packBursts(packFrames(byMode[mode]), info))
         {
             double seconds = burstSeconds(burst, info);
             bool first = bursts.empty();
-            if (!first && (air + seconds > RESEND_MAX_SECONDS || (slow && slowAir + seconds > slowResendSeconds_)))
-                break;
+            cut = cut || (!first && (air + seconds > RESEND_MAX_SECONDS
+                                     || (slow && slowAir + seconds > slowResendSeconds_)));
+            if (cut)
+            {
+                // Its parity pieces go first next round.
+                unsent(burst);
+                continue;
+            }
             air += seconds;
             if (slow) slowAir += seconds;
             last = last.empty() ? mode : slower(last, mode);
@@ -1048,7 +1103,11 @@ void Seals::resend(uint64_t nowMs)
         // during an ack hold), so a station can answer between them.
         uint64_t id = link_.broadcast(burst.second, burst.first, nowMs,
                                       seals.empty() ? "repairs refused" : "repairs", true);
-        if (id == 0) continue;
+        if (id == 0)
+        {
+            if (i < repairs) unsent(burst.second);
+            continue;
+        }
         resendBursts_.insert(id);
         resendLast_ = id;
         if (i >= repairs) continue;
@@ -1077,9 +1136,12 @@ void Seals::resend(uint64_t nowMs)
                 round.fileAir[records.front().header.seq] += each;
             for (const protocol::Record& r : records)
             {
-                if (r.as<protocol::FilePiece>() == nullptr) continue;
+                const protocol::FilePiece* p = r.as<protocol::FilePiece>();
+                if (p == nullptr) continue;
                 round.filePieces[r.header.seq]++;
                 fileRound_[r.header.seq].pieces++;
+                uint16_t k = files_ != nullptr ? files_->pieceCount(r.header.seq) : 0;
+                if (k != 0 && p->index >= k) round.parity[r.header.seq].push_back(p->index);
             }
         }
     }
