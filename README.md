@@ -23,6 +23,10 @@ chats on the D2G broadcast group. Current features include:
 - Peer-to-peer sessions, which feature automatic rate negotiation and
   file transfer.
 - Group file transfer which includes repair rounds.
+- Progressive inline images using JPEG 2000, or the much more impressive
+  [Cool-Chic](https://github.com/Orange-OpenSource/Cool-Chic) low complexity
+  neural image codec.
+- Reactions to messages.
 - "Recent work," under the station list: the stations you hear and
   work, the ones likely around at this hour first, from two weeks of
   the path log (who was heard when, and on which band).
