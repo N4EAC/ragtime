@@ -2064,6 +2064,43 @@ void testStationRepairGearTakesBack()
     CHECK(fast > 0);
 }
 
+// Parity pieces taken back on a gear change go again first, in the new
+// gear: the numbers a listener hears have no holes, so it doesn't count
+// pieces never sent as lost and ask for ever more (Jeff's bagel_bites.j2k,
+// 2026-11-16: holes 15-52, 77-90, ... and requests for 38, 72, 57 and 30
+// pieces of a 15-piece file).
+void testTakenBackNumbersReused()
+{
+    WeakFile w("taken-back-reused");
+    for (int i = 0; i < 30 * 60 * 4 && w.ours().roundPieces < 2; i++) w.air.run(250);
+    BroadcastFile f = w.ours();
+    CHECK(f.roundSent < f.roundPieces);
+    // The file's gear changed while the round waits.
+    CHECK(w.a->files.setRepairGear(w.id, "qpsk-r1/3"));
+    CHECK(w.ours().roundPieces < f.roundPieces);
+    w.air.run(30 * 60 * 1000, 1000);
+    CHECK(fileFrom(*w.b, "AG7EW").state == FileState::Saved);
+    std::set<uint16_t> aired;
+    for (const Aired& on : w.air.aired)
+    {
+        const protocol::FilePiece* p = on.record.as<protocol::FilePiece>();
+        if (p != nullptr && p->index >= f.pieces) aired.insert(p->index);
+    }
+    CHECK(!aired.empty());
+    // From the first parity number to the last, every one went.
+    CHECK_EQ((size_t)(*aired.rbegin() - f.pieces + 1), aired.size());
+    // And KC2G never asked for more than it first did.
+    std::vector<uint32_t> wants;
+    for (const Aired& on : w.air.aired)
+    {
+        const protocol::RepairRequest* r = on.record.as<protocol::RepairRequest>();
+        if (r == nullptr || on.record.header.callsign != "KC2G") continue;
+        for (const auto& file : r->files) wants.push_back(file.second);
+    }
+    CHECK(!wants.empty());
+    for (uint32_t want : wants) CHECK(want <= wants.front());
+}
+
 // The cap on a file's repair airtime: once its repairs have had it, they
 // close, the asker hears so, and Re-open repairs gives as much again.
 void testRepairCapAndReopen()
@@ -2438,6 +2475,7 @@ int main()
     testRepairGearOverride();
     testStationRepairGear();
     testStationRepairGearTakesBack();
+    testTakenBackNumbersReused();
     testRepairCapAndReopen();
     testCloseTakesBack();
     testRepairsShown();

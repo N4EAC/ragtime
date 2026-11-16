@@ -765,7 +765,12 @@ the host's `MODES` lists them.
   next round, so other stations get a word in between. A round's first
   burst always goes. A file's parity pieces are made to fit the cap, as
   they are numbered one after another: one made and then cut would look
-  lost to its listeners (below, Wants).
+  lost to its listeners (below, Wants). One numbered but never sent all
+  the same (cut from a round, taken back as below, or not taken by the
+  host) goes first in the next round, lowest first, so the numbers a
+  listener hears have no holes (Jeff's bagel_bites.j2k, 2026-11-16:
+  holes from repairs taken back on gear changes read as 93% lost, and a
+  15-piece file was asked for 72 pieces).
 - **The repair airtime cap.** Once a file's repairs have taken the
   airtime its sender allows (Ragtime's "Close a file's repairs after N
   minutes of repair airtime", 30 by default), its seal closes, and a
@@ -779,7 +784,8 @@ the host's `MODES` lists them.
   takes back only those carrying nothing but that file's pieces in a
   gear no other asker wanted them in. The one with the host goes
   on; the round's seals still go, so the next requests are answered in
-  the new gear, or refused.
+  the new gear, or refused. The parity pieces taken back go first then,
+  under the same numbers.
 - **Refusals.** A request under a seal the sender won't serve is
   refused at the window's end, in the gear of the weakest station that
   asked, after the seals: a seal closed by the operator (reason 1 if a
@@ -899,7 +905,9 @@ x^16 + x^12 + x^3 + x + 1 (`0x1100B`).
   by their index from the first after the highest it held then to the
   highest it has heard, so pieces a round cut short never sent don't
   count as lost (in Jeff's test 4 of 21 came of a round cut at 5
-  minutes, and the next request asked for 41).
+  minutes, and the next request asked for 41). Every parity piece
+  heard since it asked counts as come, a number under that first one
+  too: the sender sends numbers it took back again first.
   A file's want is capped by the sender at four times its pieces.
 
 On paths where some stations lose most of every burst, this matters
