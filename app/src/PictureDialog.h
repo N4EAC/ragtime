@@ -3,6 +3,7 @@
 
 #include <atomic>
 #include <cstdint>
+#include <functional>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -11,7 +12,7 @@
 #include <utility>
 #include <vector>
 
-#include <wx/dialog.h>
+#include <wx/frame.h>
 #include <wx/image.h>
 #include <wx/timer.h>
 
@@ -25,6 +26,7 @@ class ArrivalBar;
 class PictureView;
 class wxButton;
 class wxChoice;
+class wxPanel;
 class wxSlider;
 class wxSpinCtrl;
 class wxStaticText;
@@ -62,10 +64,15 @@ struct PictureTarget
 // shows the picture as the fit has it, the bar its progress (filling from
 // the right, over a percent scale), and Cancel stops it after asking;
 // then the preview plays the picture arriving, as for JPEG 2000.
-class PictureDialog : public wxDialog
+//
+// A window of its own beside the main one, not modal (Jeff, 2026-11-15):
+// the chat stays in use while it encodes. Send hands it to onSend, then it
+// closes; onClosed hears it close either way. It destroys itself.
+class PictureDialog : public wxFrame
 {
 public:
-    PictureDialog(wxWindow* parent, const PictureTarget& target, const std::string& path);
+    PictureDialog(wxWindow* parent, const PictureTarget& target, const std::string& path, bool onTop,
+                  std::function<void(PictureDialog&)> onSend, std::function<void()> onClosed);
     ~PictureDialog() override;
 
     // After Send: the codestream or Cool-chic stream, and its name
@@ -99,6 +106,8 @@ private:
         std::string error;
     };
 
+    // Sent or not: onSend if sent, onClosed, and the window goes.
+    void finish(bool sent);
     void choose();
     bool load(const std::string& path);
     // The longest side or the time moved: again shortly after.
@@ -148,6 +157,9 @@ private:
     double airSeconds(uint64_t bytes) const;
 
     PictureTarget target_;
+    std::function<void(PictureDialog&)> onSend_;
+    std::function<void()> onClosed_;
+    bool finished_ = false;
     PictureGear gear_;
     std::string path_;
     std::string name_;
@@ -158,6 +170,7 @@ private:
     ragtime::image::Coded coded_;
     wxImage whole_;                     // the coded picture, decoded
 
+    wxPanel* panel_ = nullptr;          // the controls' parent
     PictureView* view_ = nullptr;
     wxStaticText* file_ = nullptr;
     wxSpinCtrl* side_ = nullptr;

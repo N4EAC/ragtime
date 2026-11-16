@@ -1642,6 +1642,16 @@ file with a kind byte (docs/PROTOCOL.md, "Pictures").
   768 screen Open and Cancel were off the bottom. Windows keeps its own
   dialog, whose preview pane (Alt+P) and thumbnails need nothing from
   us.
+- **Beside the chat.** The Reception Preview is a window of its own,
+  not a modal dialog (Jeff, 2026-11-15: "Encoding an image locks up the
+  input fields in the main window. There's no reason for this."). The
+  chat stays in use while a picture is made, Cool-chic's minutes
+  included. It floats on the main window only with View > Keep tool
+  windows on top, as the other tool windows do. One picture at a time:
+  the picture button or menu brings the open one forward. Escape is
+  Cancel, and while Cool-chic fits, Cancel, the close box and quitting
+  Ragtime all ask first. On Send, a picture for a session that ended
+  while it was made isn't sent, and Ragtime says so.
 - **Shrinking.** `picture::downscale` is "Rapid, Detail-Preserving Image
   Downscaling" (Weber, Waechter, Amirshahi and Goesele, 2016), with
   λ = 0.5: each output pixel is a weighted average of the pixels under

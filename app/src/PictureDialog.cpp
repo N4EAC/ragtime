@@ -17,6 +17,7 @@
 #include <wx/filedlg.h>
 #include <wx/filename.h>
 #include <wx/msgdlg.h>
+#include <wx/panel.h>
 #include <wx/settings.h>
 #include <wx/sizer.h>
 #include <wx/slider.h>
@@ -63,24 +64,32 @@ const wxSize PREVIEW_DIP(480, 224);
 
 } // namespace
 
-PictureDialog::PictureDialog(wxWindow* parent, const PictureTarget& target, const std::string& path)
-    : wxDialog(parent, wxID_ANY,
-               // What the preview shows (Jeff, 2026-10-29).
-               "Reception Preview",
-               wxDefaultPosition, wxDefaultSize, wxDEFAULT_DIALOG_STYLE | wxRESIZE_BORDER)
+PictureDialog::PictureDialog(wxWindow* parent, const PictureTarget& target, const std::string& path, bool onTop,
+                             std::function<void(PictureDialog&)> onSend, std::function<void()> onClosed)
+    // A frame, not a modal dialog (Jeff, 2026-11-15): the main window
+    // stays in use while a picture is made, Cool-chic's minutes included.
+    // Above the main window only with View > Keep tool windows on top, as
+    // the other tool windows.
+    : wxFrame(parent, wxID_ANY,
+              // What the preview shows (Jeff, 2026-10-29).
+              "Reception Preview",
+              wxDefaultPosition, wxDefaultSize, wxDEFAULT_FRAME_STYLE | (onTop ? wxFRAME_FLOAT_ON_PARENT : 0))
     , target_(target)
+    , onSend_(std::move(onSend))
+    , onClosed_(std::move(onClosed))
     , timer_(this)
     , play_(this)
     , watch_(this)
 {
     if (!target_.gears.empty()) gear_ = target_.gears.front();
+    panel_ = new wxPanel(this);
     auto* sizer = new wxBoxSizer(wxVERTICAL);
-    view_ = new PictureView(this, FromDIP(PREVIEW_DIP), false);
+    view_ = new PictureView(panel_, FromDIP(PREVIEW_DIP), false);
     view_->setNote("Reading the picture...");
     sizer->Add(view_, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
     // Under it, how much has come of the whole as it plays: a bar with
     // the picture's size on a scale, and "1.2k / 4.0k" (Jeff, 2026-10-29).
-    arrival_ = new ArrivalBar(this);
+    arrival_ = new ArrivalBar(panel_);
     // Over the bar the preview stops for the operator to drag through it,
     // and plays on from there once the pointer leaves (Jeff, 2026-10-29).
     arrival_->onHover = [this](bool over) {
@@ -105,12 +114,12 @@ PictureDialog::PictureDialog(wxWindow* parent, const PictureTarget& target, cons
         }
     };
     sizer->Add(arrival_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
-    sizeText_ = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
+    sizeText_ = new wxStaticText(panel_, wxID_ANY, "", wxDefaultPosition, wxDefaultSize,
                                  wxALIGN_CENTRE_HORIZONTAL | wxST_NO_AUTORESIZE);
     sizeText_->SetFont(sizeText_->GetFont().Bold());
     // Beside it while Cool-chic fits, Cancel; once stopped, Encode. Its
     // room is kept either side, so the count stays in the middle.
-    stop_ = new wxButton(this, wxID_ANY, "Encode", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+    stop_ = new wxButton(panel_, wxID_ANY, "Encode", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
     stop_->SetFont(stop_->GetFont().Smaller());
     const int stopWide = std::max(stop_->GetBestSize().x, stop_->GetSizeFromTextSize(stop_->GetTextExtent("Cancel")).x);
     stop_->SetMinSize(wxSize(stopWide, -1));
@@ -128,31 +137,31 @@ PictureDialog::PictureDialog(wxWindow* parent, const PictureTarget& target, cons
     // holds on the whole and goes round again (Jeff, 2026-10-27). The
     // slider sets how fast.
     auto* speedRow = new wxBoxSizer(wxHORIZONTAL);
-    speedRow->Add(new wxStaticText(this, wxID_ANY, "Simulation speed:"), 0, wxALIGN_CENTER_VERTICAL);
+    speedRow->Add(new wxStaticText(panel_, wxID_ANY, "Simulation speed:"), 0, wxALIGN_CENTER_VERTICAL);
     // 8× to start with, always (Jeff, 2026-10-29).
-    speed_ = new wxSlider(this, wxID_ANY, DEFAULT_SPEED_STEP, 0, MAX_SPEED_STEP);
+    speed_ = new wxSlider(panel_, wxID_ANY, DEFAULT_SPEED_STEP, 0, MAX_SPEED_STEP);
     speed_->SetToolTip("How fast the preview plays the picture arriving: from real time to 64 times as fast. "
                        "Only the preview: it changes nothing that is sent");
     speedRow->Add(speed_, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, 6);
-    speedText_ = new wxStaticText(this, wxID_ANY, wxString::FromUTF8("64\xc3\x97"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
+    speedText_ = new wxStaticText(panel_, wxID_ANY, wxString::FromUTF8("64\xc3\x97"), wxDefaultPosition, wxDefaultSize, wxALIGN_RIGHT);
     speedText_->SetMinSize(wxSize(speedText_->GetTextExtent(wxString::FromUTF8("64\xc3\x97")).x + FromDIP(4), -1));
     speedRow->Add(speedText_, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, 4);
     showSpeed();
     sizer->Add(speedRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
 
     auto* fileRow = new wxBoxSizer(wxHORIZONTAL);
-    file_ = new wxStaticText(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxST_ELLIPSIZE_MIDDLE);
+    file_ = new wxStaticText(panel_, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxST_ELLIPSIZE_MIDDLE);
     fileRow->Add(file_, 1, wxALIGN_CENTER_VERTICAL);
-    another_ = new wxButton(this, wxID_ANY, "Open...");
+    another_ = new wxButton(panel_, wxID_ANY, "Open...");
     another_->SetToolTip("Pick another picture to send");
     fileRow->Add(another_, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, 8);
     sizer->Add(fileRow, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
 
     auto* grid = new wxFlexGridSizer(2, FromDIP(4), FromDIP(8));
-    side_ = new wxSpinCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, picture::MIN_SIDE,
+    side_ = new wxSpinCtrl(panel_, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, picture::MIN_SIDE,
                            picture::MAX_SIDE, loadInt(keys::PICTURE_SIDE, picture::DEFAULT_MAX_SIDE));
     side_->SetToolTip("The most pixels across or down, whichever is longer; a smaller picture keeps its own size");
-    seconds_ = new wxSpinCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS,
+    seconds_ = new wxSpinCtrl(panel_, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS,
                               picture::MIN_SECONDS, picture::MAX_SECONDS,
                               loadInt(keys::PICTURE_SECONDS, picture::DEFAULT_SECONDS));
     seconds_->SetToolTip("The most airtime the picture may take in the gear it goes in. It is coded to fit, and "
@@ -161,18 +170,18 @@ PictureDialog::PictureDialog(wxWindow* parent, const PictureTarget& target, cons
     auto withUnit = [this](wxWindow* field, const char* unit) {
         auto* row = new wxBoxSizer(wxHORIZONTAL);
         row->Add(field, 0, wxALIGN_CENTER_VERTICAL);
-        row->Add(new wxStaticText(this, wxID_ANY, unit), 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(6));
+        row->Add(new wxStaticText(panel_, wxID_ANY, unit), 0, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(6));
         return row;
     };
-    sideLabel_ = new wxStaticText(this, wxID_ANY, "Longest side:");
+    sideLabel_ = new wxStaticText(panel_, wxID_ANY, "Longest side:");
     grid->Add(sideLabel_, 0, wxALIGN_CENTER_VERTICAL);
     grid->Add(withUnit(side_, "pixels"), 0, wxALIGN_CENTER_VERTICAL);
-    airLabel_ = new wxStaticText(this, wxID_ANY, "Max airtime:");
+    airLabel_ = new wxStaticText(panel_, wxID_ANY, "Max airtime:");
     grid->Add(airLabel_, 0, wxALIGN_CENTER_VERTICAL);
     grid->Add(withUnit(seconds_, "seconds"), 0, wxALIGN_CENTER_VERTICAL);
     // The gear: on D2G the one it goes in; in a session only what it is
     // planned for, as Data2G picks the session's gear burst by burst.
-    gears_ = new wxChoice(this, wxID_ANY);
+    gears_ = new wxChoice(panel_, wxID_ANY);
     for (const PictureGear& g : target_.gears) gears_->Append(utf8(g.label));
     if (!target_.gears.empty()) gears_->SetSelection(0);
     gears_->Enable(target_.gears.size() > 1);
@@ -184,12 +193,12 @@ PictureDialog::PictureDialog(wxWindow* parent, const PictureTarget& target, cons
                                       "picture: the first is from how we have heard ")
                                  + utf8(target_.peer)
                                  + " over the last few minutes, the path back being much the same");
-    gearLabel_ = new wxStaticText(this, wxID_ANY, target_.broadcast ? "Gear:" : "Plan for:");
+    gearLabel_ = new wxStaticText(panel_, wxID_ANY, target_.broadcast ? "Gear:" : "Plan for:");
     grid->Add(gearLabel_, 0, wxALIGN_CENTER_VERTICAL);
     grid->Add(gears_, 0, wxALIGN_CENTER_VERTICAL);
     // The codec (Jeff, 2026-10-29): JPEG 2000 at once, or Cool-chic,
     // sharper for its bytes but minutes in the making.
-    codec_ = new wxChoice(this, wxID_ANY);
+    codec_ = new wxChoice(panel_, wxID_ANY);
     codec_->Append("JPEG 2000 (made at once)");
     codec_->Append("Cool-chic (sharper, takes minutes)");
     codec_->SetSelection(loadInt(keys::PICTURE_CODEC, JPEG2000) == COOLCHIC ? COOLCHIC : JPEG2000);
@@ -197,12 +206,12 @@ PictureDialog::PictureDialog(wxWindow* parent, const PictureTarget& target, cons
                        "this one picture, which takes this computer a few minutes, and sends the network with "
                        "it: about 2 dB sharper for the same bytes. Ragtime 0.2 and older can't show a Cool-chic "
                        "picture, only save it as a file");
-    grid->Add(new wxStaticText(this, wxID_ANY, "Codec:"), 0, wxALIGN_CENTER_VERTICAL);
+    grid->Add(new wxStaticText(panel_, wxID_ANY, "Codec:"), 0, wxALIGN_CENTER_VERTICAL);
     grid->Add(codec_, 0, wxALIGN_CENTER_VERTICAL);
     sizer->Add(grid, 0, wxLEFT | wxRIGHT | wxTOP, 12);
 
-    air_ = new wxStaticText(this, wxID_ANY, "");
-    seal_ = new wxStaticText(this, wxID_ANY, "");
+    air_ = new wxStaticText(panel_, wxID_ANY, "");
+    seal_ = new wxStaticText(panel_, wxID_ANY, "");
     seal_->SetForegroundColour(secondaryText());
     sizer->Add(air_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 12);
     // A sizer's border is the same on every side flagged: the 4 px over
@@ -213,13 +222,13 @@ PictureDialog::PictureDialog(wxWindow* parent, const PictureTarget& target, cons
 
     auto* buttons = new wxBoxSizer(wxHORIZONTAL);
     buttons->AddStretchSpacer();
-    auto* cancel = new wxButton(this, wxID_CANCEL, "Cancel");
-    send_ = new wxButton(this, wxID_OK, target_.broadcast ? "Broadcast" : "Send");
+    auto* cancel = new wxButton(panel_, wxID_CANCEL, "Cancel");
+    send_ = new wxButton(panel_, wxID_OK, target_.broadcast ? "Broadcast" : "Send");
     send_->SetDefault();
     buttons->Add(cancel, 0);
     buttons->Add(send_, 0, wxLEFT, 8);
     sizer->Add(buttons, 0, wxEXPAND | wxALL, 12);
-    SetSizer(sizer);
+    panel_->SetSizer(sizer);
 
     another_->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) { choose(); });
     codec_->Bind(wxEVT_CHOICE, [this](wxCommandEvent&) { later(); });
@@ -234,10 +243,10 @@ PictureDialog::PictureDialog(wxWindow* parent, const PictureTarget& target, cons
             cancelled_ = false;     // Encode: fit it again
         remake();
     });
-    // Closing the dialog throws a fit away too: asked first.
-    cancel->Bind(wxEVT_BUTTON, [this](wxCommandEvent& event) {
+    // Closing the window throws a fit away too: asked first.
+    cancel->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
         if (fitting() && !askStop(true)) return;
-        event.Skip();
+        finish(false);
     });
     Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent& event) {
         if (fitting() && event.CanVeto() && !askStop(true))
@@ -245,7 +254,18 @@ PictureDialog::PictureDialog(wxWindow* parent, const PictureTarget& target, cons
             event.Veto();
             return;
         }
-        event.Skip();
+        finish(false);
+    });
+    // Escape is Cancel, as it was in the dialog.
+    Bind(wxEVT_CHAR_HOOK, [this, cancel](wxKeyEvent& event) {
+        if (event.GetKeyCode() != WXK_ESCAPE || event.HasAnyModifiers())
+        {
+            event.Skip();
+            return;
+        }
+        wxCommandEvent click(wxEVT_BUTTON, cancel->GetId());
+        click.SetEventObject(cancel);
+        cancel->GetEventHandler()->ProcessEvent(click);
     });
     Bind(wxEVT_TIMER, [this](wxTimerEvent&) { watchFit(); }, watch_.GetId());
     side_->Bind(wxEVT_SPINCTRL, [this](wxSpinEvent&) { later(); });
@@ -274,10 +294,12 @@ PictureDialog::PictureDialog(wxWindow* parent, const PictureTarget& target, cons
         saveInt(keys::PICTURE_SECONDS, seconds_->GetValue());
         saveInt(keys::PICTURE_CODEC, codec());
         sentAs_ = sentName();
-        EndModal(wxID_OK);
+        finish(true);
     });
 
-    Fit();
+    auto* frameSizer = new wxBoxSizer(wxVERTICAL);
+    frameSizer->Add(panel_, 1, wxEXPAND);
+    SetSizerAndFit(frameSizer);
     // Every dialog fits a 1366 × 768 screen.
     SetMinSize(GetSize());
     CentreOnParent();
@@ -479,9 +501,10 @@ void PictureDialog::remake()
     // Long lines wrap at the preview's width, and the dialog grows to fit
     // them.
     for (wxStaticText* line : {air_, seal_}) line->Wrap(view_->GetSize().x);
-    Layout();
-    wxSize room = GetSizer()->GetMinSize();
-    if (room.y > GetClientSize().y) SetClientSize(GetClientSize().x, room.y);
+    panel_->Layout();
+    const wxSize room = panel_->GetSizer()->GetMinSize();
+    const wxSize has = panel_->GetClientSize();
+    if (room.y > has.y) SetClientSize(GetClientSize().x, GetClientSize().y + room.y - has.y);
 }
 
 wxString PictureDialog::onTheAir(uint64_t bytes) const
@@ -621,7 +644,7 @@ void PictureDialog::showFitting(double done)
     if (!stop_->IsShown())
     {
         stop_->Show();
-        Layout();
+        panel_->Layout();
     }
 }
 
@@ -673,6 +696,17 @@ void PictureDialog::watchFit()
     if (stopped_.empty()) watch_.Stop();
     // The picture made: the lines, Send, and the preview playing it in.
     remake();
+}
+
+void PictureDialog::finish(bool sent)
+{
+    if (finished_) return;
+    finished_ = true;
+    Hide();
+    if (sent && onSend_) onSend_(*this);
+    if (onClosed_) onClosed_();
+    // A fit still going is stopped and joined as the window goes.
+    Destroy();
 }
 
 bool PictureDialog::askStop(bool closing)
