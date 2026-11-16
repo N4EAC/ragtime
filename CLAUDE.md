@@ -280,7 +280,9 @@ and the Part 97 check.
   encoder `image::coolchicEncode`, PRs #108 and #109), bitstream in
   `docs/PICTURE_CODEC.md`. The picture dialog's Codec list offers it;
   it fits on its own thread to the airtime's bytes with the preview
-  updating, Cancel asks first, then the arrival plays. Kind `0x02`
+  updating, Cancel asks first, then the arrival plays. The Reception
+  Preview is a window of its own beside the main one, not modal (Jeff,
+  2026-11-15). Kind `0x02`
   (`protocol::FILE_COOLCHIC`, told from JPEG 2000 by the bytes). What
   the port taught us and what could be better: `docs/COOLCHIC_NOTES.md`.
 - Voice messages (2026-10-31, Jeff's idea; plan in the thread "Plan

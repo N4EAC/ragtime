@@ -349,6 +349,13 @@ MainFrame::MainFrame()
     });
     clock_.Start(CLOCK_MS);
     Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent& e) {
+        // A picture being made asks before its work is thrown away, as
+        // closing its own window does.
+        if (pictureDialog_ && !pictureDialog_->Close(!e.CanVeto()))
+        {
+            e.Veto();
+            return;
+        }
         // What is under way ends here; a part received is kept, and the
         // log keeps it for next time.
         sessionFiles_.stopAll("Ragtime was closed");
@@ -2856,6 +2863,13 @@ void MainFrame::sendPicture(bool broadcast)
         return;
     }
     const wxString title = broadcast ? "Broadcast a picture" : "Send a picture";
+    // One picture at a time: the one being made comes forward.
+    if (pictureDialog_)
+    {
+        pictureDialog_->Iconize(false);
+        pictureDialog_->Raise();
+        return;
+    }
     if (!ragtime::image::available())
     {
         wxMessageBox("This Ragtime was built without pictures.", title, wxOK | wxICON_INFORMATION, this);
@@ -2881,8 +2895,29 @@ void MainFrame::sendPicture(bool broadcast)
     PicturePreview preview(pick);
     if (pick.ShowModal() != wxID_OK) return;
     saveString(keys::PICTURE_FOLDER, std::string(pick.GetDirectory().utf8_str()));
-    PictureDialog dialog(this, target, std::string(pick.GetPath().utf8_str()));
-    if (dialog.ShowModal() != wxID_OK || dialog.coded().empty()) return;
+    // Its own window, not modal (Jeff, 2026-11-15): the chat stays in use
+    // while it encodes, Cool-chic's minutes included.
+    pictureDialog_ = new PictureDialog(
+        this, target, std::string(pick.GetPath().utf8_str()), toolsOnTop_,
+        [this, target](PictureDialog& dialog) { sendCodedPicture(target, dialog); },
+        [this]() { pictureDialog_ = nullptr; });
+    pictureDialog_->Show();
+}
+
+void MainFrame::sendCodedPicture(const PictureTarget& target, const PictureDialog& dialog)
+{
+    const bool broadcast = target.broadcast;
+    const wxString title = broadcast ? "Broadcast a picture" : "Send a picture";
+    if (dialog.coded().empty()) return;
+    // The window stayed open while it was made: the session may have
+    // ended, or another begun.
+    if (!broadcast && (session_.phase() != session::SessionChat::Phase::Connected || session_.peer() != target.peer))
+    {
+        wxMessageBox("The session with " + utf8(target.peer) + " has ended, so the picture wasn't sent. Call " +
+                         utf8(target.peer) + " again, or broadcast it.",
+                     title, wxOK | wxICON_INFORMATION, this);
+        return;
+    }
 
     // The picture as it goes is kept: what repairs and a re-send are made
     // from, and what the window shows of ours. Each goes in a folder of
