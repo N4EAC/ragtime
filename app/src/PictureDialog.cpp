@@ -257,7 +257,7 @@ PictureDialog::PictureDialog(wxWindow* parent, const PictureTarget& target, cons
         finish(false);
     });
     // Escape is Cancel, as it was in the dialog.
-    Bind(wxEVT_CHAR_HOOK, [this, cancel](wxKeyEvent& event) {
+    Bind(wxEVT_CHAR_HOOK, [cancel](wxKeyEvent& event) {
         if (event.GetKeyCode() != WXK_ESCAPE || event.HasAnyModifiers())
         {
             event.Skip();
