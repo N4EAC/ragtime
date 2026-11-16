@@ -94,6 +94,34 @@ bool rollCallChannelFits(const std::string& call, uint16_t round, int channel, i
 // round, so a Hand can't be credited to another station's roll call.
 int rollCallTag(const std::string& netControl, uint16_t round);
 
+// A repair Hand (docs/PROTOCOL.md, "Repairs by Hand"): after a seal burst
+// with a SealRound, a station that lacks something under the seal says
+// how many repair symbols it wants, in the window after it.
+constexpr int REPAIR_HAND_VERSION = 1;
+constexpr uint32_t REPAIR_ITEMS_MAX = 127;
+constexpr uint32_t REPAIR_PIECES_MAX = 511;
+constexpr uint8_t REPAIR_NO_FILE = 0xFF;
+
+struct RepairHand
+{
+    std::string call;               // empty when only the hash came
+    std::optional<uint32_t> hash;
+    std::optional<double> snr;      // the seal's sender, as the asker hears it
+    uint32_t itemsWant = 0;         // ItemParity symbols for the seal's items, up to 127
+    uint32_t piecesWant = 0;        // parity pieces for one file under the seal, up to 511
+    uint8_t file = REPAIR_NO_FILE;  // that file's place in the seal (its seq less firstItem)
+};
+
+// 0 if the call isn't a callsign.
+uint64_t packRepairHand(const RepairHand& hand);
+// None for anything but a repair Hand that wants something.
+std::optional<RepairHand> unpackRepairHand(uint64_t payload);
+// The channel, and the tag, as for a roll call, with the seal's number
+// for the round and a seed byte of 1 in place of 0.
+int repairChannel(const std::string& call, uint16_t seal, int channels);
+bool repairChannelFits(const std::string& call, uint16_t seal, int channel, int channels);
+int repairTag(const std::string& sender, uint16_t seal);
+
 } // namespace protocol
 } // namespace ragtime
 

@@ -53,10 +53,14 @@ uint32_t firstWord(const files::Sha256::Digest& d)
     return ((uint32_t)d[0] << 24) | ((uint32_t)d[1] << 16) | ((uint32_t)d[2] << 8) | (uint32_t)d[3];
 }
 
-std::vector<uint8_t> roundBytes(uint16_t round)
+std::vector<uint8_t> roundBytes(uint16_t round, uint8_t seed = 0)
 {
-    return {0, (uint8_t)(round >> 8), (uint8_t)(round & 0xFF)};
+    return {seed, (uint8_t)(round >> 8), (uint8_t)(round & 0xFF)};
 }
+
+// A repair round's seed byte: its tag and channels never match a roll
+// call's, which has 0 there.
+constexpr uint8_t REPAIR_SEED = 0x01;
 
 constexpr int SNR_LOWEST = -30;
 constexpr int SNR_HIGHEST = 32;
@@ -244,6 +248,92 @@ bool rollCallChannelFits(const std::string& call, uint16_t round, int channel, i
 int rollCallTag(const std::string& netControl, uint16_t round)
 {
     return hashOf(normalCallsign(netControl), roundBytes(round))[4];
+}
+
+// Repair Hands: version 1 | call 28 | S/N 6 | items 7 | pieces 9 |
+// file 8 | spare 2.
+namespace
+{
+constexpr int REPAIR_SNR_SHIFT = 26;
+constexpr int REPAIR_ITEMS_SHIFT = 19;
+constexpr int REPAIR_PIECES_SHIFT = 10;
+constexpr int REPAIR_FILE_SHIFT = 2;
+constexpr uint64_t REPAIR_SPARE_MASK = 0x3;
+}
+
+uint64_t packRepairHand(const RepairHand& hand)
+{
+    std::string call = normalCallsign(hand.call);
+    if (call.empty()) return 0;
+    uint32_t field = 0;
+    if (std::optional<uint32_t> standard = packStandardCall(call)) field = *standard;
+    else field = HAND_HASH_BASE + handCallHash(call);
+    uint64_t snr = 0;
+    if (hand.snr && std::isfinite(*hand.snr))
+    {
+        long dB = std::lround(*hand.snr);
+        dB = std::min<long>(std::max<long>(dB, SNR_LOWEST), SNR_HIGHEST);
+        snr = (uint64_t)(dB - SNR_LOWEST + 1);
+    }
+    uint64_t out = (uint64_t)REPAIR_HAND_VERSION << VERSION_SHIFT;
+    out |= (uint64_t)field << CALL_SHIFT;
+    out |= snr << REPAIR_SNR_SHIFT;
+    out |= (uint64_t)std::min<uint32_t>(hand.itemsWant, REPAIR_ITEMS_MAX) << REPAIR_ITEMS_SHIFT;
+    out |= (uint64_t)std::min<uint32_t>(hand.piecesWant, REPAIR_PIECES_MAX) << REPAIR_PIECES_SHIFT;
+    out |= (uint64_t)hand.file << REPAIR_FILE_SHIFT;
+    return out & PAYLOAD_MASK;
+}
+
+std::optional<RepairHand> unpackRepairHand(uint64_t payload)
+{
+    payload &= PAYLOAD_MASK;
+    if ((int)((payload >> VERSION_SHIFT) & 7) != REPAIR_HAND_VERSION || (payload & REPAIR_SPARE_MASK) != 0)
+        return std::nullopt;
+    RepairHand hand;
+    uint32_t field = (uint32_t)((payload >> CALL_SHIFT) & 0x0FFFFFFF);
+    if (field < STANDARD_CALLS)
+    {
+        hand.call = unpackStandardCall(field);
+        if (hand.call.empty()) return std::nullopt;
+    }
+    else if (field >= HAND_HASH_BASE)
+    {
+        hand.hash = field - HAND_HASH_BASE;
+    }
+    else
+    {
+        return std::nullopt;
+    }
+    int snr = (int)((payload >> REPAIR_SNR_SHIFT) & 0x3F);
+    if (snr != 0) hand.snr = (double)(snr - 1 + SNR_LOWEST);
+    hand.itemsWant = (uint32_t)((payload >> REPAIR_ITEMS_SHIFT) & REPAIR_ITEMS_MAX);
+    hand.piecesWant = (uint32_t)((payload >> REPAIR_PIECES_SHIFT) & REPAIR_PIECES_MAX);
+    hand.file = (uint8_t)((payload >> REPAIR_FILE_SHIFT) & 0xFF);
+    // Nothing wanted is no answer: holders don't raise a hand yet.
+    if (hand.itemsWant == 0 && hand.piecesWant == 0) return std::nullopt;
+    if (hand.piecesWant != 0 && hand.file == REPAIR_NO_FILE) return std::nullopt;
+    return hand;
+}
+
+int repairChannel(const std::string& call, uint16_t seal, int channels)
+{
+    if (channels <= 0) return 0;
+    return (int)(firstWord(hashOf(normalCallsign(call), roundBytes(seal, REPAIR_SEED))) % (uint32_t)channels);
+}
+
+bool repairChannelFits(const std::string& call, uint16_t seal, int channel, int channels)
+{
+    for (int width : {8, 20, 40})
+    {
+        if (width > channels) break;
+        if (repairChannel(call, seal, width) == channel) return true;
+    }
+    return channels < 8 && repairChannel(call, seal, channels) == channel;
+}
+
+int repairTag(const std::string& sender, uint16_t seal)
+{
+    return hashOf(normalCallsign(sender), roundBytes(seal, REPAIR_SEED))[4];
 }
 
 } // namespace protocol

@@ -155,7 +155,7 @@ and the Part 97 check.
   clock check and no `in` list since 2026-11-15, only one roll call of
   ours at a time. A window the host gives up on (30 s
   armed with the burst not gone) is armed again while the burst waits,
-  else the row says no window (`HostLink`'s `HandLost`, `Roll::Lost`). Net control's traffic round is
+  else the row says no window (`HostLink`'s `HandLost`, `Roll::Lost`). Since 2026-11-16 a seal goes with a SealRound (`0x45`) and a Hand window, and a station missing something under it asks by Hand (PROTOCOL.md "Repairs by Hand", an early version). Net control's traffic round is
   Stage 2, still to build.
 - Data2G PR #186 (merged at d23a62b on 2026-11-14, in v0.5.1) puts
   mode_thresholds.json in the `MODES` answer (`CHANNELS`, then

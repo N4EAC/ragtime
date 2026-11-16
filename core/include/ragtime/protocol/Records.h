@@ -57,6 +57,7 @@ enum class RecordType : uint8_t
     RepairRefused = 0x42,
     RepairRequest = 0x43,
     ItemParity = 0x44,
+    SealRound = 0x45,
 };
 
 // Which header sequence number a record carries (docs/PROTOCOL.md,
@@ -108,6 +109,17 @@ struct RollCall
 
 // The most stations a roll call lists as in.
 constexpr size_t MAX_ROLL_CALL_IN = 64;
+
+// Beside a seal in its burst: the seal's sender listens for repair Hands
+// (docs/PROTOCOL.md, "Repairs by Hand") delay after the burst, over the
+// first so many channels. The seal's number is the round.
+struct SealRound
+{
+    uint16_t seal = 0;              // never 0
+    uint8_t delayTenths = 30;
+    uint8_t channels = 40;
+    uint8_t flags = 0;              // none yet
+};
 
 struct Status
 {
@@ -346,7 +358,7 @@ struct Unknown
 
 using Body = std::variant<Unknown, Hello, Status, Text, Ack, FileOffer, FileAnswer, FileData, FileSaved,
                           FileCancel, FileAnnounce, FilePiece, Seal, RepairRequest, RepairRefused, ItemParity,
-                          Ping, Pong, Reaction, RollCall>;
+                          Ping, Pong, Reaction, RollCall, SealRound>;
 
 struct Record
 {

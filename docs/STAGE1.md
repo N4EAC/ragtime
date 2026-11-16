@@ -2418,6 +2418,18 @@ is a roll call, and Jeff chose that Check in itself calls it.
   one is 6 dB stronger, the bots' check-ins call the roll, and the bots
   answer every roll call they hear, yours included.
 
+## Repairs by Hand
+
+Jeff, 2026-11-16: "let's finish out an early version of using Hand
+Mode to request repairs." A seal now goes alone in its burst with a
+SealRound record and a Hand window, and a station missing something
+under it asks with a Hand (-19 dB) rather than a RepairRequest burst
+(PROTOCOL.md, "Repairs by Hand"; `Seals::answerSealRound`,
+`Seals::heardRepairHand`, `protocol::RepairHand`). The sender repairs
+each Hand as a request. A Hand that doesn't go falls back to asking by
+burst. The plan's other parts (holders answering, a short window,
+chat seals' rounds, a confirmed-by list) wait for Jeff.
+
 ## Callsigns open a ragchew
 
 Jeff, 2026-11-13: "double-clicking on a callsign should take to a
