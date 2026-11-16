@@ -45,8 +45,9 @@ struct EarRig
 //
 // It drives ear::FilterEdit (MainFrame's, so that quitting can put the
 // rig back after the Ear has closed): a drag on the scope or a preset is a
-// change, written once the band is quiet, then on trial for 15 s. A change
-// that cuts into Data2G's passband needs Keep pressed twice. Calibrate
+// change, written at once (after our own burst, if we are sending one),
+// then on trial for 15 s. A change that cuts into what of Data2G's
+// passband it must keep (ear::data2gKept) needs Keep pressed twice. Calibrate
 // (ear::Calibration) turns the knobs, measures, and keeps what it learned
 // (ear::KnobModel) for the rig, mode and width. The write hook goes to
 // RigControl, which writes through Hamlib or rigctld, only with the box
@@ -63,8 +64,7 @@ public:
 
     EarFilterBar(wxWindow* parent, EarScope* scope, ragtime::ear::FilterEdit& edit, Write write);
 
-    // Every tick of the Ear's timer. quiet: not keyed and no burst heard
-    // for a moment.
+    // Every tick of the Ear's timer. quiet: data2g-host isn't transmitting.
     void tick(uint64_t nowMs, bool quiet, ragtime::ear::EdgeFinder& edges, const EarRig& rig, bool narrow);
     // The Ear is closing: an unkept change goes back, and Calibrate stops.
     void closing();
@@ -129,7 +129,7 @@ private:
     std::optional<ragtime::ear::Span> wanted_;  // what the change was for
     std::optional<ragtime::ear::Span> landing_; // just written: shown until the noise shows it
     bool keepArmed_ = false;                // a cut into Data2G: Keep again
-    bool quiet_ = true;                     // not keyed, no burst coming in
+    bool quiet_ = true;                     // not transmitting
     std::string miss_;                      // where the edges really went
     uint64_t writtenMs_ = 0;
     std::optional<ragtime::radio::RigFilter> restore_;  // to write once quiet

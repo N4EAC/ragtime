@@ -11,7 +11,12 @@ and update this page, with the new commit. What Data2G PR #122 adds
 on v0.3.0 (2026-10-26). The Hand ("Hands" below) was read where Data2G
 PR #146 merged,
 [e09e19d](https://github.com/arodland/Data2G/commit/e09e19d) (2026-11-11,
-after v0.4.3; no release has it yet, 2026-11-12).
+after v0.4.3; in v0.5.0), and its windows' timing again at v0.5.1,
+[dc9a95a](https://github.com/arodland/Data2G/commit/dc9a95a)
+(2026-11-15). The thresholds in `MODES` were read where
+Data2G PR #186 merged,
+[d23a62b](https://github.com/arodland/Data2G/commit/d23a62b) (2026-11-14,
+after v0.5.0; in v0.5.1).
 
 ## Where to look in Data2G
 
@@ -272,10 +277,45 @@ design is in Data2G's `docs/hand-burst.md`, the commands in `docs/arq.md`
   frame sent with ACKMODE tag `ack` (4 hex digits), 10.56 s plus 0.6 s
   either side. Each Hand decoded comes as `HAND c hex16 snr dt` (dt its
   lateness, ms), then `HAND SHORT ms` if our own burst ran into the
-  window's head, then `HAND END`; an armed window whose burst never goes
-  gives up after 30 s. Hosts with Data2G PR #201 report that expiry as
-  `HAND END EXPIRED`. Send it before the burst's frames: `HostLink`
-  holds the burst until the host's OK (`handListen`).
+  window's head, then `HAND END`. Send it before the burst's frames:
+  `HostLink` holds the burst until the host's OK (`handListen`).
+- **An armed window gives up** with a bare `HAND END`, the same line a
+  window's end gets, once 30 s have passed since `HAND LISTEN` and its
+  burst hasn't ended (`HAND_ARM_EXPIRE_S` in `native/core/arq/engine.cpp`
+  and `data2g/arq/engine.py`; the host counts only while it isn't
+  transmitting). A burst that waits behind someone else's, or a ragchew,
+  loses its window that way. `HostLink` tells the two apart: a `HAND END`
+  while the burst is still the host's arms the window again with the
+  same frame named (up to `HAND_REARMS` times), and one that comes
+  sooner after the burst went than the delay and the Hand less the
+  search, with no `HAND` line before it, is `HandLost`, as is a refused
+  rearm. Jeff's roll call of 2026-11-15 01:36 UTC ended that way 1.1 s
+  after its burst, and used to read "no Hands heard". Data2G PR #201
+  (merged at fc69e77 on 2026-11-15, in no release yet) has the expiry
+  say `HAND END EXPIRED`, which `Data2GLink` reads as `HandExpired`: no
+  timing guess then.
+- **Timing on the air.** Data2G's `docs/hand-burst.md` (§1) says each
+  host starts a Hand's audio early by its own PTT and output latency, so
+  the RF lands on time. At v0.5.1 neither end does: `Engine::hand_send`
+  starts the Hand's audio at the reference's end plus d (less the PTT
+  delay, sent as silence), and `HAND LISTEN`'s window is timed from the
+  sample where the engine finished the burst (its ACKMODE ack), while the
+  transmit thread keys, leads the card by `--tx-lead-ms` (100 ms) and
+  drains the card's output latency after it. In Jeff's flight log
+  (2026-11-08 to 15, 139 bursts) PTT OFF follows the ack by 0.64 s
+  (median), and his one Hand keyed 0.56 s longer than its 10.56 s. So
+  net control's burst leaves the air about half a second after its
+  window's clock starts, and the answer leaves its station about as
+  late again: a Hand reaches net control about a second late, past the
+  ±0.6 s search. None of his eight roll calls on the air (2026-11-13 to
+  15) decoded a Hand. Andrew's fix, Data2G PR #201 (issue #200, merged
+  at fc69e77 on 2026-11-15, in no release yet), has the native transmit
+  thread measure each burst's lag (engine clock to the card: the capture
+  backlog, the queued lead, the card's output latency), average it (0.7
+  old, 0.3 new), start a Hand that much early and open a `HAND LISTEN`
+  window that much late, at the burst's end on air; the Python host uses
+  lead plus output latency. Ragtime's delays stay as they are. `HAND
+  c`'s dt shows what is left once Hands decode.
 - **`HAND CANCEL`** stops a waiting Hand and any window, always OK. A
   command client that leaves cancels its own.
 - **Holds.** While a Hand waits or a window is open the host starts no

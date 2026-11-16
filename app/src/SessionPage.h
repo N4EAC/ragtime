@@ -7,8 +7,10 @@
 #include <string>
 #include <vector>
 
+#include <wx/font.h>
 #include <wx/panel.h>
 
+#include "FrontWindow.h"
 #include "ragtime/files/FileTraffic.h"
 #include "ragtime/session/SessionChat.h"
 
@@ -37,6 +39,14 @@ class SessionMessages;
 class SessionPage : public wxPanel
 {
 public:
+    // The notebook gives the page the focus as it shows it: only in a
+    // window already in front, or a tab brought up by something heard
+    // lifts the main window over the Ear (FrontWindow.h).
+    void SetFocus() override
+    {
+        if (inFrontWindow(this)) wxPanel::SetFocus();
+    }
+
     SessionPage(wxWindow* parent, const ragtime::session::SessionChat& session,
                 const ragtime::files::FileTraffic& files);
 
@@ -145,6 +155,8 @@ private:
     SessionMessages* list_ = nullptr;
     wxStaticText* paused_ = nullptr;
     wxTextCtrl* compose_ = nullptr;
+    wxFont composeFont_;
+    bool showingLost_ = false;      // the line holds the red "Session lost" words
     wxButton* send_ = nullptr;
     wxButton* sendFile_ = nullptr;
     wxButton* sendPicture_ = nullptr;
@@ -155,6 +167,7 @@ private:
     uint64_t shownVersion_ = ~0ull;
     std::string shownStrip_;
     bool shownAmber_ = false;
+    std::string shownHint_;
     int shownPhase_ = -1;
 
     std::function<bool(const std::string&)> onSend_;

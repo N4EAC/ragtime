@@ -205,7 +205,7 @@ A quiet link is still a session: only Leave, a lost link, or the far end leaving
 
 - **Leave** sends `DISCONNECT`, which waits for outstanding data to be acknowledged. The strip shows **Leaving, waiting for 312 bytes to be acknowledged**, and a second button, **Leave now**, sends `ABORT`.
 - If files are moving, Leave asks first, once: "A file is still coming from W1AW. Leave anyway? It can carry on next time."
-- When the far end leaves, or data2g-host gives up the link, the Session tab greys out, its messages still readable, with a banner: "Session ended by W1AW at 14:32" or "Link lost at 14:32 after 3 min without contact", and **Call again**.
+- When the far end leaves, or data2g-host gives up the link, the Session tab greys out, its messages still readable, with a banner: "Session ended by W1AW at 14:32" or "Link lost at 14:32 after 3 min without contact", and **Call again**. A lost link also puts **Session lost; try Broadcast**, in bold red, in the typing line where the grey "No session" hint would be (Jeff, 2026-11-14 and 11-15). It isn't shown when the far end left, when we left, when the far end called again, or when data2g-host hung up a quiet session.
 - An optional idle limit in Preferences (off by default, or 15 minutes) leaves a session nobody has typed in, with a 60 s warning in the strip first.
 
 **Messages to a station outside a session.** Glissando's directed broadcast message with its own chat ACK is light and works over the air. My suggestion is to keep it in the Broadcast tab as "@W1AW" addressing, so short exchanges don't need a session, but you may prefer one rule: one station means a session. That's a question below.
@@ -224,6 +224,7 @@ A quiet link is still a session: only Leave, a lost link, or the far end leaving
 | In a session | ● QSO w/ KC2G | Its QRL message, or its busy answer to our CONNECT |
 | In a session, partner unknown | ● QRL | Overheard session bursts from it (needs the host report) |
 | In a session with you | ● QSO w/ AG7EW (our own call, so every session reads alike; your ask, 2026-10-23) | Our own session |
+| Free again after our session | ● QRV | Its QRL named us, but our session with it has ended, though its QRV hasn't come (a fade took it; Jeff, 2026-11-14: Ping stayed greyed) |
 | Probably free again | ○ QRL? 25 min ago | A QRL older than 20 minutes with no session bursts heard since |
 | Not taking sessions | ○ No sessions | Its announce says Accept sessions is off |
 | Automatic services | Badge: board, mail, pages | Its signed announce |

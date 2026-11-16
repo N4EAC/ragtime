@@ -133,8 +133,9 @@ public:
             HandDropped,        // number: our Hand's channel, not sent (the radio busy past its slot)
             HandHeard,          // number: channel, handPayload, snr, value: its lateness, ms
             HandShort,          // value: ms of the window's head missed
-            HandEnd,            // the window is over (older hosts also use this for expiry)
-            HandExpired,        // the armed window expired before its anchoring burst
+            HandEnd,            // the window is over
+            HandLost,           // id: the burst whose window never opened (the
+                                // host's armed listen gave up before it ended)
         } type = Type::GroupOpen;
 
         int number = 0;
@@ -430,6 +431,26 @@ private:
     bool modeAsked_ = false;            // BCAST MODE sent for the current burst, not yet answered
     bool listenAsked_ = false;          // HAND LISTEN sent for the current burst, not yet answered
     std::optional<HandRef> kissRef_;    // the burst the KISS port's next frames came in
+    // The window the host took HAND LISTEN for. The host gives an armed
+    // listen up after HAND_ARM_EXPIRE_S if its burst hasn't gone by then
+    // (it was busy, or held by a ragchew), with a HAND END that is not a
+    // window's end: so while the burst waits it is armed again.
+    struct Window
+    {
+        uint64_t burst = 0;
+        double delayS = 0.0;
+        int tag = 0;
+        uint16_t ack = 0;
+        std::vector<int> channels;
+        bool open = false;          // the burst has gone: the window is the host's
+        uint64_t openMs = 0;        // when it went
+        int rearms = 0;
+        bool rearmAsked = false;    // HAND LISTEN sent again, not yet answered
+        bool heard = false;         // a HAND or HAND SHORT line came for it
+    };
+    std::optional<Window> window_;
+    void handEnded(uint64_t nowMs, bool expired);
+    void handLost(uint64_t burst);
     bool handsSeen_ = false;            // a REF since the command port came up
     std::vector<ModeInfo> modesComing_;
     std::vector<std::string> channelsComing_;  // the MODES answer's CHANNELS

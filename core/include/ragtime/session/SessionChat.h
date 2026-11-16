@@ -422,7 +422,12 @@ public:
         std::string text;
         bool amber = false;     // Link quiet
         bool live = false;      // a session is up or being called
+        // In the typing line, in red, once a session has lost its link:
+        // LOST_HINT. The far end may still hear a broadcast (Jeff,
+        // 2026-11-14). Empty otherwise.
+        std::string hint;
     };
+    static constexpr const char* LOST_HINT = "Session lost; try Broadcast";
     // utcOffsetS turns the clock times into local time.
     Strip strip(uint64_t nowMs, long utcOffsetS = 0) const;
 

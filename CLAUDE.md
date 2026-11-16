@@ -95,7 +95,9 @@ and the Part 97 check.
   `0x42`). Since 2026-10-25 the S/N is the mean of the last 5 bursts,
   repairs have a floor, a per-file gear and an airtime cap
   (`setRepairFloor`, `setRepairGear`, `setRepairCapSeconds`), and a
-  closed share can re-open (`BroadcastFiles::reopen`). Since 2026-10-25 repairs are Reed-Solomon parity
+  closed share can re-open (`BroadcastFiles::reopen`). Since 2026-11-15
+  a file's repairs can have a gear per station (Repair gear for KC2G,
+  with the station picked; `Seals::setStationRepairGear`). Since 2026-10-25 repairs are Reed-Solomon parity
   (`files/Parity`, PROTOCOL.md "Parity"): requests (`0x43`) ask how
   many repair symbols they want, files get parity pieces and sealed
   chat ItemParity (`0x44`), and `Seals::takeRebuilt` hands back lines
@@ -110,8 +112,11 @@ and the Part 97 check.
   release; 0.1.1-beta adds the session file cancel fix (#49) with the
   same protocol. 0.2.0-beta has everything since (parity repair, rig
   control, the Ear, reactions); it chats with 0.1 but can't repair with
-  it. Stage 1 is done once Jeff has run the two-host bench on
-  Hamlet.
+  it. 0.3.0-beta was never tagged; 0.3.1-beta ships it with the
+  fixes after it: Cool-chic pictures, voice messages, Hands and roll
+  calls, and the thresholds from `MODES`. It chats with 0.2 (new
+  records are skipped, pictures and voice arrive as plain files). Stage
+  1 is done once Jeff has run the two-host bench on Hamlet.
 - Data2G PR #118 (CLEANTXBUFFER, DATA2G ON) gives cuts, for 0.2.0:
   `HostLink` asks for DATA2G ON (WRONG from an older host is fine),
   `SessionChat` cuts and mends the stream from `session::StreamLog`,
@@ -141,16 +146,20 @@ and the Part 97 check.
   until the host's OK) and `handCancel`, with the REF and HAND lines as
   events (docs/DATA2G.md, "Hands"). The fake hosts do references and
   Hands (`--no-hands` for an older one), and collide two in one channel.
-  Check in calls the roll with them (Jeff, 2026-11-12; PROTOCOL.md "Roll
+  Request roll call (Ctrl+I, named Check in until 2026-11-15) calls the roll with them (Jeff, 2026-11-12; PROTOCOL.md "Roll
   calls", STAGE1.md "Check in by Hand"): the Hello goes with a RollCall
   record (`0x03`) and a window, and every Ragtime that hears it answers
   by Hand (`protocol/Hands.h`: callsign, square, S/N, flags in 63 bits;
   `BroadcastChat::answerRollCall`), unless in a ragchew or turned off in
-  Settings; the row lists who answered. Net control's traffic round is
+  Settings; the row lists who answered. Everyone answers every round: no
+  clock check and no `in` list since 2026-11-15, only one roll call of
+  ours at a time. A window the host gives up on (30 s
+  armed with the burst not gone) is armed again while the burst waits,
+  else the row says no window (`HostLink`'s `HandLost`, `Roll::Lost`). Net control's traffic round is
   Stage 2, still to build.
-- Data2G PR #186 (open 2026-11-14) puts mode_thresholds.json in the
-  `MODES` answer (`CHANNELS`, then `THRESHOLD name dB...` lines).
-  `HostLink` collects them into `ModeInfo::thresholds`, they win over the
+- Data2G PR #186 (merged at d23a62b on 2026-11-14, in v0.5.1) puts
+  mode_thresholds.json in the `MODES` answer (`CHANNELS`, then
+  `THRESHOLD name dB...` lines). `HostLink` collects them into `ModeInfo::thresholds`, they win over the
   files' in the gearshift (`HostMode::hasThresholds`), and the popup then
   names data2g-host as the source and hides Load thresholds.
 - The dial, the path log and the watch list (2026-10-25,
@@ -226,11 +235,13 @@ and the Part 97 check.
   drawing both. Step 3: with "Let the Ear change the rig's filters"
   ticked (off by default; through Hamlib or rigctld, Jeff's OK
   2026-10-26), the edges are dragged on the scope and the filter is set
-  between bursts
+  at once, but never while data2g-host transmits (receiving is fine,
+  Jeff 2026-11-15)
   (`ear::FilterEdit`, `ear::Calibration` in `ear/FilterControl`;
   `app/src/EarFilterBar`, `EarControls`): on trial for 15 s with a
   clock beside Undo and Keep, Keep pressed twice for a cut into Data2G's
-  passband, Disable (PBT centred, notch off) and four presets (tap
+  passband (with the 500 Hz switch on, only into its 200 Hz middle,
+  `ear::data2gKept`), Disable (PBT centred, notch off) and four presets (tap
   recalls, hold stores, pushed in while the rig has them), the notch's
   bar dragged out of its NF OFF bay (`ear::NotchModel`, learned from the
   dip, `EdgeFinder::dip`), Revert (the
@@ -436,7 +447,8 @@ and the Part 97 check.
   opens with Hamlib, where PTT is the only thing it sets, the SWR
   trip (off by default) the only thing that sets the power, to 0. The
   Ear, with its own box ticked (off by default), is the only thing that
-  sets the receive filter's width, PBT and manual notch, between bursts,
+  sets the receive filter's width, PBT and manual notch, never while
+  data2g-host transmits,
   through Hamlib or rigctld (`M`, `L PBT_IN`, `L PBT_OUT`,
   `L NOTCHF_RAW` and `U MN`, Jeff's OK 2026-10-26); it is the only set
   command Ragtime ever sends rigctld. It

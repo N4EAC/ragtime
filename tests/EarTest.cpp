@@ -633,7 +633,14 @@ void twinPbtModel()
     CHECK(!cutsData2G(Span{300, 2700}, false));
     CHECK(cutsData2G(Span{300, 2450}, false));
     CHECK(!cutsData2G(Span{1100, 1900}, true));
-    CHECK(cutsData2G(Span{1300, 1900}, true));
+    // With the 500 Hz switch on a narrow filter is no cut (Jeff,
+    // 2026-11-15), as long as it keeps the 200 Hz modes in the middle.
+    CHECK(!cutsData2G(Span{1300, 1900}, true));
+    CHECK(!cutsData2G(Span{1280, 1720}, true));     // a 500 Hz filter, -6 dB
+    CHECK(!cutsData2G(Span{1375, 1625}, true));     // a 250 Hz one
+    CHECK(cutsData2G(Span{1450, 1900}, true));      // shifted off the middle
+    CHECK(cutsData2G(Span{1100, 1550}, true));
+    CHECK(cutsData2G(Span{1300, 1900}, false));
 
     CHECK_EQ(changeText(Span{300, 2700}, Span{300, 2450}), std::string("High edge 2700 \xe2\x86\x92 2450 Hz"));
     CHECK_EQ(changeText(Span{300, 2700}, Span{450, 2850}), std::string("Shifted 150 Hz up"));

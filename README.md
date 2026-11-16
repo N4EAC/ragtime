@@ -12,14 +12,14 @@ and on which band, each of your friends gets through, so it can tell you
 who is likely around now, and the best time of day to check in to the
 D2G net to find them.
 
-Status: 0.2.0-beta. Ragtime connects to data2g-host,
+Status: 0.3.1-beta. Ragtime connects to data2g-host,
 chats on the D2G broadcast group. Current features include:
 - "Globus," which plots your friend's maidenhead coordinates
    on a globe,
 - "Gearshift," a graphical representation of different Data2G modes,
   which aids in the selection of the optimal rate for chatting with
-  the group. NOTE: THIS REQUIRES DATA2G's mode_thresholds.json
-  -- see below for more details.
+  the group. It reads thresholds from Data2G v0.5.1 and newer. An older
+  host uses the local `mode_thresholds.json` file described below.
 - Peer-to-peer sessions, which feature automatic rate negotiation and
   file transfer.
 - Group file transfer which includes repair rounds.
@@ -53,7 +53,7 @@ the Ear waterfall following the built-in Data2G modem over TCI.
 
 ## Downloads
 
-Ragtime 0.2.0 beta 2 bundles Data2G v0.5.1 with the upstream Hand timing
+Ragtime 0.3.1 beta bundles Data2G v0.5.1 with the upstream Hand timing
 fix. It is available as a DMG or ZIP for Apple Silicon with macOS 27 or
 later. The app is ad hoc signed and has no Apple notarization.
 [Ragtime macOS releases](https://github.com/N4EAC/ragtime-data2g/releases)
@@ -61,8 +61,9 @@ later. The app is ad hoc signed and has no Apple notarization.
 Linux and Windows source builds connect to an external `data2g-host`.
 Enter its address and ports under **Settings > Station**.
 
-The gearshift reads Data2G's `data2g/codes_data/mode_thresholds.json`
-from your Data2G clone: from `$DATA2G_HOME`, or a `Data2G` or `data2g`
+The gearshift takes its thresholds from Data2G's `MODES` response when
+available. With an older host, it reads `data2g/codes_data/mode_thresholds.json`
+from your Data2G checkout under `$DATA2G_HOME`, or a `Data2G` or `data2g`
 folder in your home folder or its `src`, `git`, `code`, `projects`,
 `Projects`, `repos` or `dev` folder. Otherwise load the file with **Load
 thresholds...** in the gearshift. See [docs/GEARBOX.md](docs/GEARBOX.md).
@@ -77,6 +78,10 @@ On Ubuntu 24.04:
     cmake --build build -j$(nproc)
     ctest --test-dir build --output-on-failure
     ./build/app/ragtime
+
+On Fedora 44:
+
+    sudo dnf install wxGTK-devel libde265-devel libheif-devel openjpeg-devel libwebp-devel pipewire-devel hamlib-devel
 
 ### macOS
 
@@ -93,6 +98,7 @@ Install the build dependencies with Homebrew:
     brew install cmake ninja pkg-config wxwidgets hamlib openjpeg webp libheif
     brew install --skip-link qtbase qtsvg qtdeclarative qtwebsockets
     cmake -S . -B build-macos -G Ninja -DCMAKE_BUILD_TYPE=Release \
+        -DCMAKE_OSX_DEPLOYMENT_TARGET=27.0 \
         -DRAGTIME_DATA2G_SOURCE_DIR="$PWD/../Data2G-ragtime" \
         -DCMAKE_PREFIX_PATH="$(brew --prefix qtbase)" \
         -DQT_ADDITIONAL_PACKAGES_PREFIX_PATH="$(brew --prefix qtwebsockets)"

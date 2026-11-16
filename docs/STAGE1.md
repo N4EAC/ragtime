@@ -137,7 +137,7 @@ bench"). Choices made there, for Jeff to keep or change:
   while a session is up; with none, the item is greyed and says so.
 - **Check-ins.** A Hello rides along in the first frame of the first
   message after the group opens, after the callsign, locator or Accept
-  sessions changes, and every 10 minutes after that; Station > Check in
+  sessions changes, and every 10 minutes after that; Station > Request roll call
   sends one alone. Ragtime never transmits on its own except to answer an
   `@` message with an Ack, or a ping with a Pong.
 - **Ping (Jeff, 2026-10-25).** **Ping W1AW** on a station's right-click
@@ -310,6 +310,20 @@ keep or change:
   host, such as Pat: "Another program on data2g-host ended the session
   with W1AW ... Is Pat or another VARA program connected to it?"
   (docs/DATA2G.md, "One host, many clients").
+- **Session lost; try Broadcast (2026-11-14, Jeff).** A session that
+  ends as a lost link (`Ending::LinkLost`: "Link lost", "Link failed",
+  or an older host's bare `DISCONNECTED` that isn't its idle timeout)
+  puts `SessionChat::LOST_HINT` in the strip's `hint`, and the Session
+  tab shows it in bold red (`badText`) in the typing line until the next
+  call, in place of the grey "No session" hint (Jeff, 2026-11-15: no
+  separate line). A wx hint can't be coloured and a disabled line greys
+  its text, so it is the line's text, read-only, never sent; a line
+  with something typed in it keeps that instead. Not for
+  `PEER_RECONNECTED`, a farewell, our own Leave or the host's idle
+  hang-up. After those and every other ending, the grey hint says "No
+  session; try Broadcast, or Call the remote station again." (Jeff,
+  2026-11-15); before any session it is still "No session: nothing to
+  type into".
 - **A call we stopped stops only itself.** Cancel, or a call given up
   after `CALL_GIVE_UP_MS`, no longer cuts off the next session someone
   else starts with us (before, it was ABORTed as it opened).
@@ -635,6 +649,17 @@ The brief:
   (`files::PIECE_COVERED`). The status bar says when a round starts,
   and on both ends when repairs re-open (`BroadcastFiles` events
   Repairing and Reopened).
+- A repair gear per station (Jeff, 2026-11-15): with a station picked
+  in the station list (or Recent work), a share's right-click menu
+  (the card and the Files tab row) has "Repair gear for KC2G": "As the
+  file goes" and each gear of the ladder. KC2G's requests for that
+  file are then answered in it, over the file's Repair gear and
+  whatever its S/N says, and the round's bursts only KC2G wanted go
+  back (`Seals::setStationRepairGear`, `takeBackStationRepairs`); any
+  other asker keeps its own gear. The menu's first line names the
+  stations with gears of their own ("repairs to KC2G in G3C"). With no
+  station picked and someone asking, a greyed line says to pick one.
+  Not kept across a restart, as the file's gear isn't.
 
 ## I. Packaging and the first release
 
@@ -1171,8 +1196,13 @@ stays lit while it is open. It stacks as any other window, so the main
 window can come in front of it; View > Keep tool windows on top keeps
 it above (off by default; Andrew asked, 2026-11-08), from the next time
 it opens. The same goes for the microphone deck, the gearshift and
-pictures. It listens only while open: closing it stops
-the recording.
+pictures. Nothing heard brings the main window up over it: a tab that
+comes to the front by itself (the Session tab when a ragchew starts)
+takes the focus only if the main window is already in front, since in
+GTK a control taking the focus presents its window (`FrontWindow.h`;
+Jeff, 2026-11-15: the Ear "jumps into the background", 2.5 s after a
+CONNECTED in his flight log). It listens only while open: closing it
+stops the recording.
 
 **What it listens to.** Jeff's call: assume PipeWire (or PulseAudio on
 PipeWire), find the sound card data2g-host records from, and listen to
@@ -1361,23 +1391,22 @@ words and the scope.
   (`EdgeFinder::restart`), so the swell is neither measured as the
   passband nor taken for a burst-free moment, and Calibrate's measures
   start after it.
-- **At once, greyed while on the air** (`ear::FilterEdit`). A drag, a
-  notch move, a preset, Disable, Undo or Revert goes to the rig at once.
-  While data2g-host is keyed or says `BUSY` (its own carrier sense: a
-  burst's header, held while the burst's pilots or energy are there),
-  the handles, the notch's bar, the presets, Disable, Revert, Calibrate
-  and Undo are greyed and the line says "On the air: the filter holds
-  still until the burst ends" (Jeff, 2026-10-26: "Rather than holding
-  back, just grey everything out when the modem is BUSY"). Keep, which
-  writes nothing, stays. A change dropped just as a burst begins, or a
-  trial running out during one, waits for it to end. With no command
-  link the noise says when a burst is on: none in the last half second,
-  and the AGC's swell after our own write, made in a quiet moment,
-  counts as quiet. Before, every change waited for the noise to be
-  quiet, and the noise is left out for 7 s after each write (the AGC
-  swell, below), so a second drag, an Undo or a notch move went seconds
-  late and looked like a snap back. `HamlibRig` itself never writes
-  while it is keying or a PTT change is pending.
+- **At once, greyed only while we transmit** (`ear::FilterEdit`). A
+  drag, a notch move, a preset, Disable, Undo or Revert goes to the rig
+  at once, while data2g-host hears a burst too (Jeff, 2026-11-15: "If
+  the modem is receiving data2g, adjustments to the filters must be
+  allowed"). Only while data2g-host is keyed are the handles, the
+  notch's bar, the presets, Disable, Revert, Calibrate and Undo greyed,
+  the line saying "Transmitting: the filter holds still until our burst
+  ends"; Keep, which writes nothing, stays, and a change dropped just as
+  our burst begins, or a trial running out during one, waits for it to
+  end. From 2026-10-26 to 2026-11-15 they were greyed while the host
+  said `BUSY` as well (its carrier sense), with the noise standing in
+  with no command link; before that every change waited for the noise
+  to be quiet, which the AGC's swell after each write made a second
+  drag, an Undo or a notch move go seconds late and look like a snap
+  back. `HamlibRig` itself never writes while it is keying or a PTT
+  change is pending.
 - **On trial.** Once written, the change is on trial for 15 s,
   with a kitchen-timer clock running down beside **Undo** and **Keep**,
   and it goes back when the clock runs out unless kept. More drags during
@@ -1408,9 +1437,17 @@ words and the scope.
   second write before the first is read back (an Undo at once) still
   turns the knob back.
 - **Cutting into Data2G.** A change that cuts more than 10 Hz into
-  Data2G's passband (the wide one, or the 500 Hz one with the 500 Hz
-  switch on) turns the line red, and Keep needs a second press ("Keep
-  anyway"). So does a notch anywhere in Data2G's passband. The warning
+  what of Data2G's passband it must keep (`ear::data2gKept`) turns the
+  line red, and Keep needs a second press ("Keep anyway"). That is the
+  whole wide passband; with the 500 Hz switch on it is only the 200 Hz
+  in the middle, where the narrowest modes sit, so a narrow filter
+  about the 500 Hz modes (a 500 Hz one, whose -6 dB edges fall inside
+  1250 to 1750 Hz, or a 250 Hz one) is no cut (Jeff, 2026-11-15:
+  "narrow filters should not be rejected if 500 Hz mode is selected").
+  Until then the whole 500 Hz passband counted, so every narrow filter
+  needed Keep twice and went back at the end of its trial on one
+  press. A notch anywhere in Data2G's passband (the 500 Hz one with the
+  switch on) still needs Keep twice. The warning
   leads the line ("Cuts into Data2G's 350–2650 Hz: press Keep twice"),
   so a narrow window can't cut it off.
 - **Presets** (Jeff, 2026-10-26). Four along the top. A tap recalls one
@@ -1589,6 +1626,22 @@ file with a kind byte (docs/PROTOCOL.md, "Pictures").
   rest of EXIF, its GPS included. From the air only a JPEG 2000
   codestream is ever decoded, up to 4,096 pixels either way: decoders
   are where an attack comes in.
+- **Picking.** The file picker (File > Send a picture, Broadcast a
+  picture, the picture buttons, and Open... in the dialog) shows the
+  picture under the cursor on its right (Jeff, 2026-11-15), with its
+  size in pixels and on disk, or why Ragtime can't read it
+  (`app/src/PicturePreview`). It is GTK's own preview pane, filled by
+  Ragtime's loader rather than GTK's, so JPEG 2000, WebP and HEIF show
+  too, turned the way their EXIF says; wx's `wxFD_PREVIEW` reads only
+  what GdkPixbuf does, at 128 pixels, unturned. Pictures are read on a
+  thread of their own, one at a time, so arrowing through a folder of
+  24-megapixel photos never holds the picker up: the last preview
+  stays, dimmed, until the newest is read. The picker is held to the
+  screen less room for its title bar: on its first opening GTK made it
+  822 pixels high (the filter takes a row of its own), and on a 1366 ×
+  768 screen Open and Cancel were off the bottom. Windows keeps its own
+  dialog, whose preview pane (Alt+P) and thumbnails need nothing from
+  us.
 - **Shrinking.** `picture::downscale` is "Rapid, Detail-Preserving Image
   Downscaling" (Weber, Waechter, Amirshahi and Goesele, 2016), with
   λ = 0.5: each output pixel is a weighted average of the pixels under
@@ -2302,18 +2355,21 @@ Jeff, 2026-11-12: "can we make checkin use hand mode?" A Hand can only
 answer a burst whose sender opened a window for it, so a Hand check-in
 is a roll call, and Jeff chose that Check in itself calls it.
 
-- **Check in** (Station > Check in, Ctrl+I) sends the Hello with a
+- **Request roll call** (Station > Request roll call, Ctrl+I; Check in
+  until Jeff renamed it on 2026-11-15) sends the Hello with a
   RollCall record and a 10.6 s Hand window 3 s after the burst
   (`BroadcastChat::checkIn`, `HostLink::broadcast` with a `HandWindow`).
   Every Ragtime that hears it answers by Hand at once, up to 40 at 2.4
   kHz (8 at 500 Hz). The Hello still rides along with messages as
-  before; only Check in calls the roll.
+  before; only Request roll call sends a RollCall.
 - **The row.** Our roll call is a row in the Broadcast tab, greyed like
   a ping's: "Your check-in, calling the roll (40 Hand channels),
   sending", "Roll call: listening for Hands", then "Roll call: 2 checked
   in by Hand: KC2G (FN20, −6.0 dB), G4XYZ (IO91, +3.0 dB)"
-  (`rollCallLine`). Its menu has Check in again, which lists those
-  already in so they stay quiet and the rest get the channels.
+  (`rollCallLine`). Its menu has Request roll call again, once the
+  window has closed. Everyone answers every round, those already in too
+  (Jeff, 2026-11-15: no limits on roll calls but one at a time); the
+  `in` list goes empty and is ignored, and so is the record's time.
 - **Who answered** joins the station list ("Checked in by Hand to our
   roll call" in the Status tooltip; `Stations::handCheckIn`), the path
   log and the watch list's bells, as if heard.
@@ -2321,15 +2377,33 @@ is a roll call, and Jeff chose that Check in itself calls it.
   ("Checked in by Hand to W1AW's roll call"). Settings > Station, "Check
   in by Hand when a station calls the roll" (on by default), turns it
   off; a station in a ragchew never answers.
+- **A roll call heard** is a row too, greyed like ours, which keeps what
+  we did about it in sight (Spud, 2026-11-15: the status bar's note went
+  at the next one, a burst that didn't decode, and his check-in seemed
+  lost): "W1AW called the roll: checking in by Hand (Hand channel 12)",
+  then "checked in by Hand", "our Hand didn't go, the radio was busy",
+  "data2g-host wouldn't send our Hand", or "not answered" and why (Check
+  in by Hand off, a ragchew, our Hand for another still waiting). One
+  row a round, however often it is heard (`Message::Answer`).
 - **What a Hand says** (PROTOCOL.md, "Roll calls"): the callsign in 28
   bits, a standard call packed as a number and any other (with `/` or
   `-`) as a 22-bit hash that net control puts back to a call it has
   heard; the square; the S/N the roll call was heard at; Accepts
   sessions, automatic and 500 Hz; 8 bits spare. `protocol/Hands.h`.
 - **Older hosts.** Until the host has shown it does Hands (a REF for any
-  burst, `HostLink::handsSeen`), Check in sends a plain Hello and says
+  burst, `HostLink::handsSeen`), Request roll call sends a plain Hello and says
   why on the status bar. No Data2G release has Hands yet (PR #146 merged
   after v0.4.3).
+- **A window that gave up** (Jeff, 2026-11-15: "Ragtime came to the
+  conclusion far too quickly that no hands had been shown"). data2g-host
+  drops an armed window when the check-in hasn't gone 30 s after it,
+  with the `HAND END` a window's end gets (DATA2G.md, "Hands"). While
+  the check-in still waits, `HostLink` arms the window again; once it has
+  gone, a `HAND END` sooner than the window could close, with nothing
+  heard, makes the row "Roll call: no window, so no Hands heard.
+  data2g-host gave up waiting for your check-in to go (it waits 30 s);
+  request a roll call again when the channel is quiet" (`Roll::Lost`), never "no
+  Hands heard".
 - **The bench.** The fake hosts collide two Hands in one channel unless
   one is 6 dB stronger, the bots' check-ins call the roll, and the bots
   answer every roll call they hear, yours included.

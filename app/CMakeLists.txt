@@ -45,6 +45,7 @@ add_executable(ragtime WIN32 MACOSX_BUNDLE
     src/Html.cpp
     src/PhraseHighlight.cpp
     src/PictureDialog.cpp
+    src/PicturePreview.cpp
     src/PictureFrame.cpp
     src/PictureView.cpp
     src/Pictures.cpp
@@ -104,6 +105,10 @@ if(APPLE)
 
     set_source_files_properties(res/ragtime.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
     target_sources(ragtime PRIVATE res/ragtime.icns)
+    set(ragtimeNotice "${CMAKE_CURRENT_BINARY_DIR}/generated/Ragtime-LICENSE.txt")
+    configure_file("${PROJECT_SOURCE_DIR}/LICENSE" "${ragtimeNotice}" COPYONLY)
+    set_source_files_properties("${ragtimeNotice}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources/Licenses)
+    target_sources(ragtime PRIVATE "${ragtimeNotice}")
     set_target_properties(ragtime PROPERTIES
         MACOSX_BUNDLE_ICON_FILE ragtime.icns
         OUTPUT_NAME Ragtime
@@ -160,9 +165,13 @@ if(RAGTIME_EMBED_DATA2G)
         endif()
     endif()
 
-    foreach(component IN ITEMS Data2G miniaudio pocketfft)
+    foreach(component IN ITEMS Data2G Data2G-interface-exception Ion miniaudio pocketfft)
         if(component STREQUAL "Data2G")
             set(license "${RAGTIME_DATA2G_SOURCE_DIR}/LICENSE")
+        elseif(component STREQUAL "Data2G-interface-exception")
+            set(license "${RAGTIME_DATA2G_SOURCE_DIR}/LICENSE_exception")
+        elseif(component STREQUAL "Ion")
+            set(license "${RAGTIME_DATA2G_SOURCE_DIR}/LICENSE_ion")
         else()
             set(license "${RAGTIME_DATA2G_SOURCE_DIR}/native/third_party/${component}/LICENSE")
         endif()

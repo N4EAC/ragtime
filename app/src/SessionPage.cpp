@@ -328,6 +328,7 @@ SessionPage::SessionPage(wxWindow* parent, const SessionChat& session, const rag
     paused_->Hide();
     compose_ = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER | PHRASE_ENTRY_STYLE);
     compose_->SetMaxLength((unsigned long)SessionChat::MAX_TYPED);
+    composeFont_ = compose_->GetFont();
     send_ = new wxButton(this, wxID_ANY, "Send");
     // A floppy disk rather than "Send file...", as on the Broadcast tab.
     sendFile_ = new wxBitmapButton(this, wxID_ANY, floppyIcon(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT)));
@@ -469,10 +470,11 @@ void SessionPage::refresh(uint64_t nowMs, long utcOffsetS)
 {
     SessionChat::Strip strip = session_.strip(nowMs, utcOffsetS);
     int phase = (int)session_.phase();
-    if (strip.text != shownStrip_ || strip.amber != shownAmber_ || phase != shownPhase_)
+    if (strip.text != shownStrip_ || strip.amber != shownAmber_ || strip.hint != shownHint_ || phase != shownPhase_)
     {
         shownStrip_ = strip.text;
         shownAmber_ = strip.amber;
+        shownHint_ = strip.hint;
         stripText_->SetLabel(wxString::FromUTF8(strip.text));
         stripText_->SetToolTip(wxString::FromUTF8(strip.text));
         // Amber when the link is quiet; a session that's up stands out from
@@ -494,13 +496,41 @@ void SessionPage::refresh(uint64_t nowMs, long utcOffsetS)
         callAgain_->Show(p == Phase::Ended && !session_.peer().empty());
         callAgain_->SetLabel("Call " + wxString::FromUTF8(session_.peer()) + " again");
         bool connected = p == Phase::Connected;
-        compose_->Enable(connected);
+        // A lost link says so in the typing line itself, in bold red, where
+        // the grey "No session" hint would be (Jeff, 2026-11-15). It is the
+        // line's text, read-only, since a hint can't be coloured and a
+        // disabled line greys its text; anything typed and not sent stays.
+        if (!strip.hint.empty() && !showingLost_ && compose_->IsEmpty())
+        {
+            compose_->ChangeValue(wxString::FromUTF8(strip.hint));
+            highlightPhrases(compose_, std::string(), {});
+            compose_->SetFont(composeFont_.Bold());
+            if (compose_->HasFocus()) list_->SetFocus();   // no caret blinking in words that can't be edited
+            showingLost_ = true;
+        }
+        else if (strip.hint.empty() && showingLost_)
+        {
+            compose_->ChangeValue(wxString());
+            compose_->SetFont(composeFont_);
+            compose_->SetForegroundColour(wxNullColour);
+            showingLost_ = false;
+        }
+        if (showingLost_) compose_->SetForegroundColour(badText());
+        compose_->SetEditable(connected);
+        compose_->Enable(connected || showingLost_);
         send_->Enable(connected);
         sendFile_->Enable(connected);
         sendPicture_->Enable(connected);
-        compose_->SetHint(connected ? "Message to " + wxString::FromUTF8(session_.peer()) + " in the session"
-                                    : wxString("No session: nothing to type into"));
-        if (phase != shownPhase_ && connected && IsShownOnScreen()) CallAfter([this]() { compose_->SetFocus(); });
+        // After a session ends any other way than a lost link (Jeff,
+        // 2026-11-15), the grey hint points the same two ways.
+        compose_->SetHint(connected       ? "Message to " + wxString::FromUTF8(session_.peer()) + " in the session"
+                          : p == Phase::Ended ? wxString("No session; try Broadcast, or Call the remote station again.")
+                                              : wxString("No session: nothing to type into"));
+        // Only in a window already in front (FrontWindow.h).
+        if (phase != shownPhase_ && connected && IsShownOnScreen())
+            CallAfter([this]() {
+                if (inFrontWindow(this)) compose_->SetFocus();
+            });
         shownPhase_ = phase;
         strip_->Layout();
         strip_->Refresh();
@@ -757,11 +787,12 @@ void SessionPage::setPaused(bool paused, const wxString& why)
 
 void SessionPage::focusCompose()
 {
-    if (compose_->IsEnabled()) compose_->SetFocus();
+    if (compose_->IsEnabled() && !showingLost_) compose_->SetFocus();
 }
 
 void SessionPage::send()
 {
+    if (showingLost_) return;
     std::string typed(compose_->GetValue().utf8_str());
     if (onSend_ && onSend_(typed)) compose_->Clear();
     compose_->SetFocus();

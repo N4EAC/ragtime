@@ -9,6 +9,7 @@
 
 #include <wx/panel.h>
 
+#include "FrontWindow.h"
 #include "ragtime/broadcast/BroadcastChat.h"
 #include "ragtime/broadcast/Seals.h"
 
@@ -40,18 +41,23 @@ struct FileCard
     // greyed: it says why something can't be done.
     std::string title;
     std::vector<std::pair<std::string, std::string>> menu;
-    // A submenu after them when it has items (subLabel, "Repair gear"):
-    // radio items (action, label), the one whose action is subChosen ticked.
-    std::string subLabel;
-    std::vector<std::pair<std::string, std::string>> sub;
-    std::string subChosen;
+    // Submenus after them, each shown when it has items (label, "Repair
+    // gear"): radio items (action, label), the one whose action is chosen
+    // ticked.
+    struct Submenu
+    {
+        std::string label;
+        std::vector<std::pair<std::string, std::string>> items;
+        std::string chosen;
+    };
+    std::vector<Submenu> subs;
 };
 
 // A file card's right-click menu, the same in the chat and on the Files
-// tab: its greyed title, its menu (or links), and its submenu, with ids
+// tab: its greyed title, its menu (or links), and its submenus, with ids
 // from firstId on (FILE_MENU_IDS of them at most). act gets the action
 // picked.
-constexpr int FILE_MENU_IDS = 48;
+constexpr int FILE_MENU_IDS = 64;
 void fillFileMenu(wxMenu& menu, const FileCard& card, int firstId, std::function<void(const std::string&)> act);
 
 // The Broadcast tab (docs/STAGE1.md, package E): the messages on D2G; the
@@ -76,6 +82,14 @@ void fillFileMenu(wxMenu& menu, const FileCard& card, int firstId, std::function
 class BroadcastPage : public wxPanel
 {
 public:
+    // The notebook gives the page the focus as it shows it: only in a
+    // window already in front, or a tab brought up by something heard
+    // lifts the main window over the Ear (FrontWindow.h).
+    void SetFocus() override
+    {
+        if (inFrontWindow(this)) wxPanel::SetFocus();
+    }
+
     BroadcastPage(wxWindow* parent, const ragtime::broadcast::BroadcastChat& chat);
 
     // Send pressed: true when the text went, and the line is cleared.
@@ -95,7 +109,7 @@ public:
         onPing_ = std::move(ping);
         whyNoPing_ = std::move(whyNot);
     }
-    // A roll call row's Check in again: checkIn goes, and whyNot says
+    // A roll call row's Request roll call again: checkIn goes, and whyNot says
     // why it wouldn't call the roll, or "".
     void onCheckIn(std::function<void()> checkIn, std::function<std::string()> whyNot)
     {

@@ -38,6 +38,11 @@ class Decoder;
 // the reason, if it can't be.
 bool loadPicture(const std::string& path, ragtime::picture::Image& out, std::string& error);
 
+// The handlers wxImage reads pictures from disk with, each added once (wx
+// keeps one of each). loadPicture adds them; call this on the window's
+// thread before loadPicture runs on another.
+void addPictureReadHandlers();
+
 wxImage toWxImage(const ragtime::picture::Image& image);
 
 // Decodes a picture's bytes, or as much of them as has come: a JPEG 2000
