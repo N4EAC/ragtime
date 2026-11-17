@@ -113,6 +113,8 @@ private:
     void showThemeButton();     // its icon and tooltip, for the theme showing
     void showStatus();
     void refreshMessages();
+    // The fix strip's words: what fixing line id costs, and how long it stays open.
+    std::string editInfo(uint64_t id) const;
     // A station reacted to one of our lines: a line in the status bar for a
     // while, and one more unread on the tab out of sight.
     void noteReaction(const std::string& from, uint8_t code, const std::string& line);

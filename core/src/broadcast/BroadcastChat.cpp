@@ -401,6 +401,7 @@ std::vector<uint64_t> BroadcastChat::send(const std::string& typed, const std::s
         helloMs_ = nowMs;
     }
     uint64_t burst = broadcast(frames, mode, nowMs, link::snippet(typed));
+    if (!first.empty()) helloBurst_ = burst;
     for (Message& m : messages_)
     {
         if (std::find(made.begin(), made.end(), m.id) == made.end()) continue;
@@ -1013,6 +1014,7 @@ bool BroadcastChat::resend(uint64_t id, const std::string& mode, uint64_t nowMs)
         t.text = m->text;
         t.to = m->to;
         t.ackWanted = m->ackWanted;
+        t.edited = m->edited;
         protocol::Record r;
         r.body = t;
         r.header.callsign = m->from;
@@ -1107,6 +1109,7 @@ std::vector<protocol::Record> BroadcastChat::onEvent(const Event& event, uint64_
                 State state = fromBurst(event.burstState);
                 if (state == m.state) continue;
                 m.state = state;
+                if (state == State::Sent) m.aired = true;
                 if (state == State::Sent && m.ackWanted) holdForAck(m, nowMs);
                 if (m.kind == Message::Kind::RollCall && m.roll == Message::Roll::Calling)
                 {
@@ -1206,13 +1209,19 @@ void BroadcastChat::onRecord(const protocol::Record& record, uint64_t nowMs)
             acksDue_.push_back(numbering_.record(ack, seconds(nowMs)));
         }
         ItemKey key{from, record.header.seq, record.header.time};
-        if (!seen_.insert(key).second) return;
+        if (!seen_.insert(key).second)
+        {
+            // The same line again: a fix of it, or a copy.
+            if (text->edited) onEdit(from, record, *text);
+            return;
+        }
         Message m;
         m.id = nextId_++;
         m.from = from;
         m.to = text->to;
         m.ackWanted = text->ackWanted;
         m.text = text->text;
+        m.edited = text->edited;
         m.seq = record.header.seq;
         m.time = record.header.time;
         m.atMs = nowMs;
@@ -1261,6 +1270,157 @@ void BroadcastChat::onRecord(const protocol::Record& record, uint64_t nowMs)
             }
         }
     }
+}
+
+void BroadcastChat::onEdit(const std::string& from, const protocol::Record& record, const protocol::Text& text)
+{
+    for (Message& m : messages_)
+    {
+        if (m.kind != Message::Kind::Text || m.ours || m.from != from || m.seq != record.header.seq
+            || m.time != record.header.time)
+            continue;
+        // A copy of the fix we hold changes nothing; a later fix replaces
+        // it (the seal's repairs bring the last one).
+        if (m.edited && m.text == text.text && m.to == text.to && m.ackWanted == text.ackWanted) return;
+        if (!m.edited) m.firstText = typedForm(m);
+        m.edited = true;
+        m.text = text.text;
+        m.to = text.to;
+        m.ackWanted = text.ackWanted;
+        if (log_ != nullptr) log_->edited(m);
+        version_++;
+        return;
+    }
+}
+
+std::string BroadcastChat::typedForm(const Message& m)
+{
+    return m.to.empty() ? m.text : "@" + m.to + " " + m.text;
+}
+
+bool BroadcastChat::editWaits(const Message& m) const
+{
+    return m.kind == Message::Kind::Text && m.ours && !m.past
+           && (m.state == State::Sending || m.state == State::Held);
+}
+
+bool BroadcastChat::canEdit(const Message& m) const
+{
+    if (m.kind != Message::Kind::Text || !m.ours || m.past || m.seq == 0) return false;
+    if (settings_.callsign.empty() || m.from != settings_.callsign) return false;
+    if (records_.count(m.id) == 0) return false;
+    switch (m.state)
+    {
+        case State::Queued:
+        case State::Sent:
+        case State::NotSent:
+        case State::Cancelled:
+        case State::Acknowledged:
+            break;
+        default:
+            return false;
+    }
+    // Never on the air: nobody holds it, so nothing to keep.
+    if (!m.aired) return true;
+    return !draftCheck_ || draftCheck_(m.seq, m.time);
+}
+
+BroadcastChat::EditResult BroadcastChat::edit(uint64_t id, const std::string& typed, const std::string& mode,
+                                              uint64_t nowMs)
+{
+    Message* m = findMine(id);
+    if (m == nullptr) return EditResult::Final;
+    if (editWaits(*m)) return EditResult::Busy;
+    if (!canEdit(*m)) return EditResult::Final;
+    if (blank(typed) || typed.size() > MAX_TYPED) return EditResult::Unchanged;
+
+    std::string to, text = typed;
+    std::string call, rest;
+    if (addressee(typed, call, rest))
+    {
+        to = call;
+        text = rest;
+    }
+    if (blank(text) || (text == m->text && to == m->to)) return EditResult::Unchanged;
+
+    auto stored = records_.find(id);
+    protocol::Record record = stored->second;
+    protocol::Text t;
+    t.text = text;
+    t.to = to;
+    t.ackWanted = !to.empty();
+    // Heard already: the fix says so, and the seal will list it.
+    t.edited = m->aired || m->edited;
+    record.body = t;
+    std::vector<uint8_t> frame = protocol::encodeFrame({record});
+    if (frame.empty() || frame.size() > protocol::MAX_BROADCAST_FRAME) return EditResult::TooLong;
+
+    uint64_t old = m->burst;
+    bool queued = m->state == State::Queued;
+    // Still ours (not yet the host's): its burst is made again with the fix.
+    if (queued && !link_.cancel(old)) return EditResult::Busy;
+
+    std::string before = typedForm(*m);
+    stored->second = record;
+    if (t.edited && !m->edited) m->firstText = before;
+    m->edited = t.edited;
+    m->text = text;
+    m->to = to;
+    m->ackWanted = t.ackWanted;
+    if (log_ != nullptr) log_->edited(*m);
+
+    std::vector<std::vector<uint8_t>> frames;
+    std::vector<protocol::Record> items;
+    std::vector<Message*> lines;
+    std::string burstMode = mode;
+    if (queued)
+    {
+        // The burst's lines go again, in their order, with the Hello it
+        // carried, and its reactions wait to ride again.
+        reactionsSettled(old, false, nowMs);
+        burstMode = m->mode;
+        for (Message& line : messages_)
+        {
+            if (!line.ours || line.burst != old || line.state != State::Queued) continue;
+            auto r = records_.find(line.id);
+            if (r == records_.end()) continue;
+            lines.push_back(&line);
+            items.push_back(r->second);
+        }
+        std::vector<protocol::Record> first;
+        if (old != 0 && old == helloBurst_) first.push_back(helloRecord(seconds(nowMs)));
+        for (size_t i = 0; i < items.size(); i++)
+        {
+            std::vector<protocol::Record> records = i == 0 ? first : std::vector<protocol::Record>();
+            records.push_back(items[i]);
+            std::vector<uint8_t> f = protocol::encodeFrame(records);
+            if (f.size() > protocol::MAX_BROADCAST_FRAME && records.size() > 1)
+            {
+                frames.push_back(protocol::encodeFrame({records.front()}));
+                f = protocol::encodeFrame({items[i]});
+            }
+            frames.push_back(std::move(f));
+        }
+    }
+    else
+    {
+        lines.push_back(m);
+        items.push_back(record);
+        frames.push_back(std::move(frame));
+    }
+
+    uint64_t burst = broadcast(frames, burstMode, nowMs, link::snippet(typedForm(*m)) + (queued ? "" : " (fixed)"));
+    if (queued && old == helloBurst_) helloBurst_ = burst;
+    for (Message* line : lines)
+    {
+        line->burst = burst;
+        line->mode = burstMode;
+        line->state = burst != 0 ? State::Queued : State::NotSent;
+        logState(*line);
+    }
+    if (onItems_ && burst != 0) onItems_(items, burst, burstMode, nowMs);
+    version_++;
+    return EditResult::Edited;
 }
 
 bool BroadcastChat::canReact(const Message& m) const

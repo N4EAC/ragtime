@@ -9,6 +9,10 @@
 //   B <ms>                                 Ragtime opened the tab
 //   M <id> <atMs> <time> <seq> <ours> <state> <from> <to> <ack> <mode> <text> [<before>]
 //   S <id> <state> <mode>                  a message of ours settled
+//   T <id> <to> <ack> <edited> <text> <first>  a line fixed before its seal:
+//                                          its addressee, ack, whether it
+//                                          shows edited, its text now and
+//                                          the first text we held
 //   F <id> <atMs> <ours> <from> <name>     a broadcast file's card
 //   R <id> <outcome> [<path> <inline>]     how that file ended ("Saved"),
 //                                          where it is, and p for a
@@ -68,6 +72,9 @@ public:
     // before: the id of the row it goes above, 0 for the end.
     void added(const Message& message, uint64_t before = 0);
     void settled(const Message& message);
+    // A line's text changed: fixed before its seal (docs/PROTOCOL.md,
+    // "Edits"), ours or theirs.
+    void edited(const Message& message);
     // A station's reaction to a line, and ours once it has gone.
     void reacted(const Message& line, const std::string& call, uint8_t code);
     void weReacted(const Message& line, uint8_t code);

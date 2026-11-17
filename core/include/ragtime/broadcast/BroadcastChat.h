@@ -132,6 +132,13 @@ struct Message
     std::string to;             // addressed to one station, or empty
     bool ackWanted = false;
     std::string text;           // the exact UTF-8
+    // Fixed before its seal (docs/PROTOCOL.md, "Edits"): shown edited,
+    // with what it first said ("@W1AW hello" when it was addressed); empty
+    // when it came fixed already. Ours: aired once it has been on the air,
+    // so a fix goes marked as one.
+    bool edited = false;
+    std::string firstText;
+    bool aired = false;
     uint32_t seq = 0;
     uint32_t time = 0;          // the record's, Unix seconds
     uint64_t atMs = 0;          // when we made or heard it
@@ -353,6 +360,31 @@ public:
     bool resend(uint64_t id, const std::string& mode, uint64_t nowMs);
     bool canResend(const Message& message) const;
 
+    // Edits (docs/PROTOCOL.md, "Edits"): one of our lines fixed before
+    // its seal. Still Queued, its text is swapped before it goes; on the
+    // air, the same record (number and time) goes again with the new text,
+    // marked edited, in a burst of its own; Not sent or Cancelled, fixed
+    // and sent. It stays editable while it is a draft: the check the app
+    // sets (Seals::draft) says so for a line that has been on the air.
+    using DraftFn = std::function<bool(uint32_t seq, uint32_t time)>;
+    void setDraftCheck(DraftFn fn) { draftCheck_ = std::move(fn); }
+    enum class EditResult
+    {
+        Edited,
+        Unchanged,      // the same text, or blank
+        TooLong,        // it wouldn't fit the line's one frame
+        Busy,           // with the host (Sending, Held): wait until it has gone
+        Final,          // sealed (or a seal would have gone), from the log, or not ours
+    };
+    // The line can be fixed now (Edit... in its menu). One with the host
+    // can't for now, though it may be once it has gone: editWaits().
+    bool canEdit(const Message& message) const;
+    bool editWaits(const Message& message) const;
+    // typed as send() takes it ("@W1AW hello"); mode for the fix's burst.
+    EditResult edit(uint64_t id, const std::string& typed, const std::string& mode, uint64_t nowMs);
+    // What the entry line shows to fix it: "@W1AW hello" for one addressed.
+    static std::string typedForm(const Message& message);
+
     // Reactions. A text line of another station's, with a number, takes
     // one: of ours and the rule, pings and files, none.
     bool canReact(const Message& message) const;
@@ -396,6 +428,8 @@ private:
     using ItemKey = std::tuple<std::string, uint32_t, uint32_t>;  // call, seq, time
 
     void onRecord(const protocol::Record& record, uint64_t nowMs);
+    // A line heard again under the same name with its text fixed.
+    void onEdit(const std::string& from, const protocol::Record& record, const protocol::Text& text);
     Message* findMine(uint64_t id);
     protocol::Record helloRecord(uint32_t time);
     bool helloDue(uint64_t nowMs) const;
@@ -488,6 +522,9 @@ private:
     std::set<std::string> calls_;                   // every call heard on the group
     std::set<uint64_t> armed_;                      // bursts whose window the host took
     CallFinder callFinder_;
+
+    DraftFn draftCheck_;
+    uint64_t helloBurst_ = 0;       // the burst of messages our latest Hello rode in
 
     bool helloSent_ = false;        // since the group opened or the settings changed
     uint64_t helloMs_ = 0;

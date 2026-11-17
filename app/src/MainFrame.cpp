@@ -314,6 +314,8 @@ MainFrame::MainFrame()
     // Every broadcast item of ours is sealed once it has gone.
     chat_.onItems([this](const std::vector<protocol::Record>& items, uint64_t burst, const std::string& mode,
                          uint64_t now) { seals_.going(items, burst, mode, now); });
+    // A line of ours can be fixed in place until its seal goes (or would).
+    chat_.setDraftCheck([this](uint32_t seq, uint32_t time) { return seals_.draft(seq, time); });
     setAutoReceive(loadBool(keys::AUTO_RECEIVE_BROADCAST, false));
 
     loadGearshift();
@@ -775,6 +777,14 @@ void MainFrame::buildLayout()
         host_->flush();
         refreshMessages();
     });
+    broadcast_->onEdit(
+        [this](uint64_t id, const std::string& typed) {
+            broadcast::BroadcastChat::EditResult r = chat_.edit(id, typed, broadcastMode(), HostConnection::nowMs());
+            host_->flush();
+            refreshMessages();
+            return r;
+        },
+        [this](uint64_t id) { return editInfo(id); });
     broadcast_->onReact([this](uint64_t id, uint8_t code) {
         uint64_t now = HostConnection::nowMs();
         if (code == 0) chat_.unreact(id);
@@ -1271,7 +1281,34 @@ void MainFrame::refreshMessages()
         if (!(tabs_->GetSelection() == TAB_BROADCAST && IsActive())) reactionsUnread_++;
     }
     broadcast_->refresh();
+    broadcast_->refreshEdit();
     updateTabLabels();
+}
+
+std::string MainFrame::editInfo(uint64_t id) const
+{
+    // What the fix costs, never discounted: a burst of its own in the
+    // gear, unless the line is still queued (its text swapped for free).
+    const broadcast::Message* m = chat_.find(id);
+    if (m == nullptr) return std::string();
+    if (m->state == broadcast::Message::State::Queued && !m->aired) return "it hasn't gone yet, so the fix is free";
+    std::string mode = broadcastMode();
+    if (mode.empty()) mode = modeUsed_;
+    link::ModeInfo info = broadcast::findMode(link_.modes(), mode, link_.groupMode());
+    double seconds = info.valid() ? broadcast::oneCodewordSeconds(info) : broadcast::UNKNOWN_BURST_SECONDS;
+    std::string name = info.valid() ? (gearshift_.shortName(info.name)) : std::string();
+    std::string out = "one more burst, about " + std::to_string((int)std::lround(seconds)) + " s";
+    if (!name.empty()) out += " in " + name;
+    std::optional<uint64_t> until = seals_.draftUntilMs(m->seq, m->time);
+    uint64_t now = HostConnection::nowMs();
+    if (until && *until > now)
+    {
+        uint64_t left = (*until - now + 999) / 1000;
+        char buf[32];
+        std::snprintf(buf, sizeof buf, "; open %u:%02u more", (unsigned)(left / 60), (unsigned)(left % 60));
+        out += buf;
+    }
+    return out;
 }
 
 void MainFrame::refreshStations()

@@ -261,6 +261,13 @@ and the Part 97 check.
   once (`SessionChat::react`). Chips under the line and a React submenu
   (`app/src/ReactionChips`); Hello takes bit 6, so `TAKES_ALL_V0` is
   `0x7F`.
+- Edits (2026-11-17, Jeff's ask, `docs/STAGE1.md` "Fix a line before
+  its seal", PROTOCOL.md "Edits"): a broadcast line of ours can be fixed
+  until its seal goes, or would go with chat seals off (60 s quiet, 10
+  minutes at most; `Seals::draft`). The fix is the same Text record
+  (number and time) with flag bit 6, so the seal lists it and repairs
+  bring it to a station that missed it (`BroadcastChat::edit`, Edit...
+  and Up in the entry line). Broadcast only.
 - Inline pictures (2026-10-27, Jeff's idea, `docs/STAGE1.md`): the
   picture button left of the floppy on both tabs opens `PictureDialog`
   (the most airtime, the longest side, 640 by default), which shrinks

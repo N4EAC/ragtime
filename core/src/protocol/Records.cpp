@@ -22,6 +22,7 @@ constexpr uint8_t HELLO_AUTOMATIC = 0x02;
 constexpr uint8_t TEXT_CODING_MASK = 0x0F;
 constexpr uint8_t TEXT_ADDRESSED = 0x10;
 constexpr uint8_t TEXT_ACK_WANTED = 0x20;
+constexpr uint8_t TEXT_EDITED = 0x40;
 
 constexpr uint8_t REPAIR_WANT_SEAL = 0x01;
 constexpr int REPAIR_SNR_SHIFT = 1;
@@ -101,7 +102,8 @@ bool encodeBody(const Body& body, std::vector<uint8_t>& out, bool canonical)
                 }
                 bool addressed = !b.to.empty();
                 out.push_back((uint8_t)(coding | (addressed ? TEXT_ADDRESSED : 0) |
-                                        (addressed && b.ackWanted ? TEXT_ACK_WANTED : 0)));
+                                        (addressed && b.ackWanted ? TEXT_ACK_WANTED : 0) |
+                                        (b.edited ? TEXT_EDITED : 0)));
                 if (addressed && !putCallsign(out, b.to)) return false;
                 if (coding == CODING_RAW) out.insert(out.end(), b.text.begin(), b.text.end());
                 else out.insert(out.end(), coded.begin(), coded.end());
@@ -319,6 +321,7 @@ DecodeResult decodeBody(uint8_t type, Reader& in, Record& out)
             if (!in.u8(flags)) return DecodeResult::Malformed;
             if ((flags & TEXT_ADDRESSED) != 0 && !in.callsign(b.to)) return DecodeResult::Malformed;
             b.ackWanted = (flags & TEXT_ACK_WANTED) != 0 && !b.to.empty();
+            b.edited = (flags & TEXT_EDITED) != 0;
             b.coding = flags & TEXT_CODING_MASK;
             std::vector<uint8_t> rest = in.rest();
             if (b.coding == CODING_RAW) b.text.assign(rest.begin(), rest.end());

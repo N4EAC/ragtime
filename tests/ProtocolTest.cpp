@@ -208,7 +208,15 @@ void testEveryRecord()
         addressed.ackWanted = true;
         Record backAddressed = roundTrip(make(addressed));
         const Text* t = backAddressed.as<Text>();
-        CHECK(t != nullptr && t->to == "W1AW" && t->ackWanted && t->text == addressed.text);
+        CHECK(t != nullptr && t->to == "W1AW" && t->ackWanted && t->text == addressed.text && !t->edited);
+
+        // A correction carries flag bit 6.
+        Text edited = addressed;
+        edited.edited = true;
+        Record editedRecord = make(edited);
+        Record backEdited = roundTrip(editedRecord);
+        CHECK(backEdited.as<Text>() != nullptr && backEdited.as<Text>()->edited &&
+              backEdited.as<Text>()->text == edited.text && backEdited.as<Text>()->ackWanted);
 
         // Text that codes longer than it is goes raw.
         Text cyrillic;
@@ -497,6 +505,10 @@ void testDigests()
     CHECK(recordDigest(other) != digest);
     other = record;
     other.as<Text>()->to = "W1AW";
+    CHECK(recordDigest(other) != digest);
+    // A correction is a different line from the one it fixes.
+    other = record;
+    other.as<Text>()->edited = true;
     CHECK(recordDigest(other) != digest);
 }
 

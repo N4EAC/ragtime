@@ -159,6 +159,19 @@ std::vector<Message> parseBroadcastLog(const std::string& text, size_t max)
             rows[it->second].state = state;
             if (f.size() >= 4 && !f[3].empty()) rows[it->second].mode = unescape(f[3]);
         }
+        else if (kind == "T" && f.size() >= 7)
+        {
+            uint64_t id = 0;
+            if (!number(f[1], id)) continue;
+            auto it = ids.find(id);
+            if (it == ids.end() || rows[it->second].kind != Kind::Text) continue;
+            Message& row = rows[it->second];
+            row.to = unescape(f[2]);
+            row.ackWanted = f[3] == "1";
+            row.edited = f[4] == "1";
+            row.text = unescape(f[5]);
+            row.firstText = unescape(f[6]);
+        }
         else if (kind == "F" && f.size() >= 6)
         {
             uint64_t id = 0, atMs = 0;
@@ -312,6 +325,13 @@ void BroadcastLog::settled(const Message& m)
 {
     if (m.kind != Kind::Text) return;
     append(join({"S", std::to_string(m.id), std::string(1, stateLetter(m.state)), escape(m.mode)}));
+}
+
+void BroadcastLog::edited(const Message& m)
+{
+    if (m.kind != Kind::Text) return;
+    append(join({"T", std::to_string(m.id), escape(m.to), m.ackWanted ? "1" : "0", m.edited ? "1" : "0",
+                 escape(m.text), escape(m.firstText)}));
 }
 
 void BroadcastLog::reacted(const Message& line, const std::string& call, uint8_t code)
