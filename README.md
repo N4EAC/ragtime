@@ -217,9 +217,11 @@ that folder where it is. The microphone deck shows which sotto loaded (hover
 over its codec line to see the path), or why none did.
 
 The AppImage carries libsotto and its Codec 2 (`make-appimage.sh` runs
-`build-sotto.sh`). There is no Windows `sotto.dll` yet, so the Windows
-zip can't record or play voice. `make-zip.sh` adds one when
-`RAGTIME_SOTTO_DLL_DIR` names a folder that holds it.
+`build-sotto.sh`). The Windows zip carries `sotto.dll` and
+`libcodec2.dll` beside `ragtime.exe`: `make-zip.sh` cross-builds them
+with `packaging/windows/build-sotto.sh` at the same pinned commit, or
+takes them from `RAGTIME_SOTTO_DLL_DIR`. (Zips up to 0.3.1-beta had none, so
+they couldn't record or play voice: issue #166.)
 
 The helper scripts need a few more tools: `tools/ear/pretend_radio.sh`
 wants `pipewire-pulse`, `pulseaudio-utils` (`pactl`),

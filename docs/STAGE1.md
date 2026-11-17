@@ -2199,9 +2199,15 @@ in the deck's own ink and follows a theme switch (`inked` in
   margins do the same.
 - **Packages.** The AppImage carries libsotto and the Codec 2 it links,
   built by `packaging/build-sotto.sh`, with their licences (and
-  RNNoise's) in `usr/share/doc/ragtime/licences`. The Windows zip takes
-  `sotto.dll` and its Codec 2 DLL from `RAGTIME_SOTTO_DLL_DIR`; sotto has
-  no MinGW build yet, so until it does the zip has no voice coding.
+  RNNoise's) in `usr/share/doc/ragtime/licences`. The Windows zip
+  carries `sotto.dll` and `libcodec2.dll`, cross-built with MinGW-w64 by
+  `packaging/windows/build-sotto.sh` (sotto's own Makefile compiles the
+  objects, one DLL is linked from them, and the GCC runtime goes inside
+  both, so they need no MinGW DLLs), or taken from
+  `RAGTIME_SOTTO_DLL_DIR`. The Windows unit tests under Wine run sotto's
+  round trip through it. Zips before issue #166's fix had none, and Play
+  said why only on the status line, so it looked as if nothing happened;
+  now Play and Save as WAV say so in a box.
 
 ## Voice at 16 kHz: sotto v3.8
 
