@@ -335,8 +335,11 @@ and the Part 97 check.
   (or the space bar) and Monitor. libsotto is loaded at run time, never
   linked (`voice::Sotto` in `audio/`, `$RAGTIME_SOTTO` to point at
   one); its commit is pinned in `packaging/sotto.sh` and
-  `packaging/build-sotto.sh` builds it for the AppImage. There is no
-  Windows `sotto.dll` yet (`RAGTIME_SOTTO_DLL_DIR` for make-zip.sh).
+  `packaging/build-sotto.sh` builds it for the AppImage;
+  `packaging/windows/build-sotto.sh` cross-builds `sotto.dll` and
+  `libcodec2.dll` for the Windows zip (make-zip.sh runs it, or takes
+  them from `RAGTIME_SOTTO_DLL_DIR`; before issue #166's fix the zip had
+  none). Play and Save as WAV say in a box when sotto won't load.
 - Voice cards (2026-10-31, voice PR 5 of the sotto plan,
   `app/src/VoiceCards`, docs/STAGE1.md "Voice cards"): a
   play button, the pitch strip and the length under the line on both

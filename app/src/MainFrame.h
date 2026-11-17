@@ -237,6 +237,10 @@ private:
     bool startArrivingVoice(const std::string& key, uint32_t fromFrame, std::string& why);
     // The clip's sound saved as a WAV file the operator picks.
     void saveVoiceAsWav(const std::string& key);
+    // Says so in a box when the voice codec can't be loaded, for a play or
+    // Save as WAV the operator asked for (issue #166: the status line alone
+    // looked like nothing at all).
+    bool voiceCodecReady(const wxString& title);
     void voiceDone(const std::string& key, bool played);
     // A line in the flight recorder about voice: what played, and how it
     // ended.

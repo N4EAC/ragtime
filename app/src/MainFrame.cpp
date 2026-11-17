@@ -3404,6 +3404,7 @@ void MainFrame::voiceAction(const std::string& key, const std::string& href)
         return;
     }
     if (action != "play" && action != "seek") return;
+    if (!voiceCodecReady("Play the voice message")) return;
     if (key[0] == 'p') voices_.shelveFile(key.substr(1));
     startVoice(voiceQueue_.play(key, (uint32_t)frame));
     redrawVoices();
@@ -3444,22 +3445,27 @@ void MainFrame::startVoice(const std::optional<voice::PlayQueue::Start>& start)
     }
 }
 
+bool MainFrame::voiceCodecReady(const wxString& title)
+{
+    std::string why;
+    if (VoicePlayer::canDecode(why)) return true;
+    note_ = "Voice messages can't play: " + why;
+    showStatus();
+    wxMessageBox("Voice messages need sotto, the voice codec, and Ragtime couldn't load it:\n\n" + utf8(why), title,
+                 wxOK | wxICON_WARNING, this);
+    return false;
+}
+
 void MainFrame::saveVoiceAsWav(const std::string& key)
 {
+    if (!voiceCodecReady("Save as WAV")) return;
     // The clip as it stands: whole, or what came of it, lost frames
     // covered as sotto covers them.
     if (key.size() > 1 && key[0] == 'p') voices_.shelveFile(key.substr(1));
     const VoiceShelf::Shelved* s = voices_.find(key);
-    std::string why;
     if (s == nullptr || !s->playable())
     {
         note_ = "Save as WAV: nothing of that voice message can play yet.";
-        showStatus();
-        return;
-    }
-    if (!VoicePlayer::canDecode(why))
-    {
-        note_ = "Save as WAV: " + why;
         showStatus();
         return;
     }
