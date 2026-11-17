@@ -987,10 +987,7 @@ void MainFrame::onHostEvents(const std::vector<Event>& events)
                 if (!link::isAckMode(e.text)) modeUsed_ = e.text;
                 break;
             case Event::Type::HeardFrom:
-                stations_.heard(e.text, now, e.snr);
-                watch_.heard(e.text, now, e.snr);
-                logPath(e.text, e.snr, false, now);
-                updatePathSnr(now);
+                heardBurst(e.text, e.snr, now);
                 break;
             case Event::Type::SessionSnr:
                 stations_.heard(e.peer, now, e.snr);
@@ -1047,6 +1044,10 @@ void MainFrame::onHostEvents(const std::vector<Event>& events)
         broadcastFiles_.onEvent(e, now);
         for (const protocol::Record& r : chat_.onEvent(e, now))
         {
+            // A burst whose header was lost (its frames found under D2G's
+            // key) has a HEARD line with no call; its SNR comes on the Hand
+            // reference its frames carry instead.
+            if (e.type == Event::Type::Heard && e.handRef) heardBurst(r.header.callsign, e.handRef->snr, now);
             stations_.onRecord(r, now);
             logLocator(r, now);
             watch_.onRecord(r, now);
@@ -4309,6 +4310,15 @@ void MainFrame::applySendGuard()
         showStatus();
     }
     showDial();
+}
+
+void MainFrame::heardBurst(const std::string& call, std::optional<double> snr, uint64_t nowMs)
+{
+    // Told once by its HEARD line and again by its frames: counted once.
+    if (!stations_.heard(call, nowMs, snr)) return;
+    watch_.heard(call, nowMs, snr);
+    logPath(call, snr, false, nowMs);
+    updatePathSnr(nowMs);
 }
 
 void MainFrame::logPath(const std::string& call, std::optional<double> snr, bool session, uint64_t nowMs)

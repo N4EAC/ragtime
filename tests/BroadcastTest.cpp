@@ -646,6 +646,19 @@ void testStations()
     CHECK(!list.pathFrom("W1AW", t + 3 * 60000, 2 * 60000));
     CHECK(!list.pathFrom("JA1XYZ", t, 5 * 60000)); // heard with no SNR
     CHECK(!list.pathFrom("G4XYZ", t, 5 * 60000));  // never heard
+
+    // One burst told twice, by its HEARD line and by the Hand reference on
+    // its frames, in either order, counts once; the next burst counts.
+    t += 60000;
+    CHECK(list.heard("W1AW", t, 3.5));
+    CHECK(!list.heard("W1AW", t + 200, 3.5));
+    CHECK(list.heard("W1AW", t + 300, 3.4));        // another burst, another figure
+    CHECK(list.heard("W1AW", t + broadcast::SAME_BURST_MS + 400, 3.4)); // the same figure, later
+    path = list.pathFrom("W1AW", t + broadcast::SAME_BURST_MS + 400, 60000);
+    CHECK(path && path->bursts == 3);
+    CHECK(list.heard("JA1XYZ", t));                 // no SNR: heard, nothing to tell apart
+    CHECK(list.heard("JA1XYZ", t));
+    CHECK(!list.heard("", t, 1.0));
 }
 
 void testReconnect()
