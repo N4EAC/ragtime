@@ -119,6 +119,12 @@ private:
     // A station reacted to one of our lines: a line in the status bar for a
     // while, and one more unread on the tab out of sight.
     void noteReaction(const std::string& from, uint8_t code, const std::string& line);
+    // Lines heard on D2G since the last look, while the window is in the
+    // background: one desktop notification for them all.
+    void notifyBroadcast();
+    // The notification itself: count lines heard, the newest from `from`.
+    // where is " on D2G" or empty (a session).
+    void notifyHeard(size_t count, const std::string& from, const std::string& text, const std::string& where);
     void refreshStations();
     void stationPicked(const std::string& call);
     void stationMenu(const std::string& call);
@@ -404,6 +410,7 @@ private:
 
     uint64_t seenMessage_ = 0;  // the newest message id the operator has seen
     size_t unread_ = 0;
+    uint64_t notifiedMessage_ = 0;  // the newest message id notifyBroadcast has looked at
     size_t sessionUnread_ = 0;  // heard in the session while its tab is out of sight
     bool canBoldTabs_ = false;  // a tab's label can be bold here (GTK)
     int sessionBold_ = -1;      // the Session tab's label is bold (1) or plain (0); -1 not yet set

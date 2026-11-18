@@ -42,6 +42,9 @@ struct StationPrefs
     std::vector<std::string> autoAccept;   // stations whose files are saved without asking
     bool sealChat = false;      // our broadcast chat is sealed too (files always are)
     bool answerRollCalls = true;    // check in by Hand to the roll calls heard
+    // A desktop notification for every message heard on D2G with the
+    // window in the background; off, only for those addressed to us.
+    bool notifyBroadcast = true;
     // Pictures up to picture::AUTO_PICTURE_BYTES are received without
     // asking, from anyone, and show as they come.
     bool picturesAsTheyCome = true;
