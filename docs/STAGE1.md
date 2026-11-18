@@ -703,6 +703,21 @@ adds VARA's `SN` for the session partner (`docs/PROTOCOL.md`).
   refusal.
 - `Stations` keeps each station's last SNR (the SNR column, sortable,
   blank from an older host) and the mean of its last 5 bursts.
+- **Always on the left (Jeff, 2026-11-17).** The narrow list beside
+  Globus shows the SNR under the heard time. A pane dragged narrow drops
+  the distance from the locator line, then the locator, never the SNR,
+  and the first line sits in a table of its own so a long status can't
+  push the SNR aside. Recent work's rows show the newest SNR the path log
+  holds for the station, before the time (`WorkRow::snrDb`).
+- **A burst with its header lost.** When a burst's control is lost but
+  its data is found under D2G's key, data2g-host's line is
+  `BCAST n HEARD snr`, with no call, so no `HeardFrom`. Its frames still
+  carry the burst's Hand reference (`REF id end offset snr`, the same
+  figure), so the sender of each record in them is heard at that SNR
+  (`MainFrame::heardBurst`). `Stations::heard` counts one burst once:
+  the same SNR from the same station within 5 s (`SAME_BURST_MS`) is the
+  burst already told, by whichever of the HEARD line and the frames came
+  first over their two sockets, and isn't logged again.
 - **Auto** shifts for the weakest station heard in the last 15 minutes
   (`Stations::weakestPath`, `PATH_WINDOW_MS`): a broadcast goes to every
   station, so it has to reach the weakest. The gearshift names the
@@ -712,7 +727,10 @@ adds VARA's `SN` for the session partner (`docs/PROTOCOL.md`).
 - A MISSED shows in the status bar: "Heard a E2C burst at +3.1 dB that
   didn't decode; it may not be D2G's".
 - `ragtime_fake_air` reports SNRs: each bot at its own strength, +12 to
-  −11 dB, give or take 2 dB a burst; `--no-snr` plays an older host.
+  −11 dB, give or take 2 dB a burst; `--no-snr` plays an older host
+  (with `--no-hands`, for a host before both: Hand references carry an
+  SNR too); `--lose-headers PCT` loses that share of the headers of the
+  group bursts hosts A and B hear, so their HEARD lines name no call.
 
 ## The dial, the path log and the watch list
 

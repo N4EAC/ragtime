@@ -251,10 +251,44 @@ void locators()
     CHECK(workTip(*w1aw, work, NOW, "CN87ux").find("No locator heard from it.") != std::string::npos);
 }
 
+// Each row keeps the SNR of the newest burst that came with one; a
+// station only ever heard without one, or only worked, has none.
+void snrs()
+{
+    std::vector<PathEntry> all;
+    PathEntry older = heard(NOW - 3 * HOUR, "KC2G", "20 m");
+    older.snrDb = -6.5;
+    all.push_back(older);
+    PathEntry newer = heard(NOW - 2 * HOUR, "KC2G", "20 m");
+    newer.snrDb = 4.0;
+    all.push_back(newer);
+    PathEntry quiet = heard(NOW - HOUR, "KC2G", "20 m");  // an older host's: no SNR
+    quiet.snrDb.reset();
+    all.push_back(quiet);
+    PathEntry early = heard(NOW - 4 * HOUR, "KC2G", "20 m"); // later in the file, older by time
+    early.snrDb = -12.0;
+    all.push_back(early);
+    PathEntry plain = heard(NOW - HOUR, "W1AW", "20 m");
+    plain.snrDb.reset();
+    all.push_back(plain);
+    all.push_back(worked(NOW - HOUR, "K7ABC"));
+
+    RecentWork work = recentWork(all, NOW, 14, "", WorkOrder::LikelyNow);
+    const WorkRow* kc2g = row(work, "KC2G");
+    const WorkRow* w1aw = row(work, "W1AW");
+    const WorkRow* k7abc = row(work, "K7ABC");
+    CHECK(kc2g != nullptr && w1aw != nullptr && k7abc != nullptr);
+    if (kc2g == nullptr || w1aw == nullptr || k7abc == nullptr) return;
+    CHECK(kc2g->snrDb && *kc2g->snrDb == 4.0);
+    CHECK(!w1aw->snrDb);
+    CHECK(!k7abc->snrDb);
+}
+
 int main()
 {
     likelyNow();
     locators();
+    snrs();
     bandNow();
     orders();
     sessionsAndMidnight();

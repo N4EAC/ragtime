@@ -4,6 +4,7 @@
 #include <cmath>
 #include <cstdio>
 #include <map>
+#include <optional>
 #include <set>
 #include <tuple>
 #include <utility>
@@ -64,6 +65,8 @@ RecentWork recentWork(const std::vector<PathEntry>& entries, uint64_t nowMs, siz
         uint64_t lastHeardMs = 0, lastWorkedMs = 0;
         std::string locator;
         uint64_t locatorMs = 0;
+        std::optional<double> snrDb;
+        uint64_t snrMs = 0;
     };
     std::map<std::string, Gather> byCall;
     for (const PathEntry& e : entries)
@@ -77,6 +80,11 @@ RecentWork recentWork(const std::vector<PathEntry>& entries, uint64_t nowMs, siz
             g.locatorMs = e.atMs;
         }
         if (e.locatorOnly) continue;
+        if (e.snrDb && e.atMs >= g.snrMs)
+        {
+            g.snrDb = e.snrDb;
+            g.snrMs = e.atMs;
+        }
         // A session's bursts are work as well as bursts heard.
         if (e.worked || e.session)
         {
@@ -117,6 +125,7 @@ RecentWork recentWork(const std::vector<PathEntry>& entries, uint64_t nowMs, siz
         row.onNow = g.lastHeardMs != 0 && g.lastHeardMs + ON_NOW_MS >= nowMs;
         row.score = (1 + row.workedDays) * (1 + row.hourDays);
         row.locator = g.locator;
+        row.snrDb = g.snrDb;
         work.rows.push_back(std::move(row));
     }
 

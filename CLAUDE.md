@@ -547,7 +547,9 @@ of their bulletin, so it plays while it arrives (slowly with `--rate
 from host A or B is answered on its second try, and each host says
 `BUSY ON` and `BUSY OFF` around the others' group bursts. The hosts report SNRs,
 each bot at its own strength; `--no-snr` plays a host from before Data2G
-PR #98. `--rig PORT` plays a rigctld for the dial (14.105 MHz, or
+PR #98; `--lose-headers PCT` loses that share of the burst headers
+hosts A and B hear, so the HEARD line names no call and the SNR comes
+on the frames' Hand reference. `--rig PORT` plays a rigctld for the dial (14.105 MHz, or
 `--dial HZ`; `--dial-hop` moves it outside the data segments one minute
 in three; `--rig-vfo` plays a rigctld started with `--vfo`; it answers
 the meters too, its SWR 1.3 or `--rig-swr X`, an ALC that follows host

@@ -64,6 +64,9 @@ std::string heardAgo(uint64_t thenMs, uint64_t nowMs);
 constexpr uint64_t QRL_STALE_MS = 20 * 60 * 1000;
 // The gearshift's Auto serves the weakest station heard this recently.
 constexpr uint64_t PATH_WINDOW_MS = 15 * 60 * 1000;
+// A burst's HEARD line and the Hand reference on its frames come over two
+// sockets within this of each other.
+constexpr uint64_t SAME_BURST_MS = 5 * 1000;
 
 struct Station
 {
@@ -130,8 +133,11 @@ public:
     // A record heard on the group.
     void onRecord(const protocol::Record& record, uint64_t nowMs);
     // The host heard a burst from this call ("BCAST <port> HEARD <call>
-    // [snr]", or SN for the session partner), with its SNR when it gave one.
-    void heard(const std::string& call, uint64_t nowMs, std::optional<double> snr = std::nullopt);
+    // [snr]", SN for the session partner, or the Hand reference of a burst
+    // whose frames came from it), with its SNR when it gave one. False when
+    // it is the burst just told (the same SNR within SAME_BURST_MS), or our
+    // own call: nothing new to log.
+    bool heard(const std::string& call, uint64_t nowMs, std::optional<double> snr = std::nullopt);
     // It checked in by Hand to our roll call (docs/PROTOCOL.md, "Roll
     // calls"), saying its locator (empty: none) and whether it takes
     // sessions. Only a Ragtime that takes every v0 record sends Hands, so

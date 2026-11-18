@@ -292,6 +292,9 @@ private:
     // Pause sending (the operator's) and the guard's hold, to the link,
     // the session and the pages.
     void applySending();
+    // A D2G burst heard from this call: the station list, the watch list
+    // and the path log, once a burst.
+    void heardBurst(const std::string& call, std::optional<double> snr, uint64_t nowMs);
     void logPath(const std::string& call, std::optional<double> snr, bool session, uint64_t nowMs);
     // A contact for the path log: a session came up, or a message went
     // between the station and us.

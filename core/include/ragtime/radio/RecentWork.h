@@ -23,6 +23,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -61,6 +62,7 @@ struct WorkRow
     bool onNow = false;             // heard in the last ON_NOW_MS
     size_t score = 0;               // (1 + workedDays) x (1 + hourDays)
     std::string locator;            // the newest it reported in the span ("CN87ux"), or empty
+    std::optional<double> snrDb;    // its newest burst's SNR in the span, when the host gave one
 };
 
 struct RecentWork
