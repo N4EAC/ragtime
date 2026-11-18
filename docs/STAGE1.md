@@ -2481,6 +2481,34 @@ boldface."
   (`boldTab` in `Theme`); wx can't bold one tab elsewhere, so on
   Windows a dot leads the label instead.
 
+## Fix a line before its seal
+
+Jeff, 2026-11-17: "Allow edit of typos before a seal window closes."
+The plan, with the choices put to Jeff, is the Claude Doc "Ragtime:
+edit a line before its seal"; what goes on the air is PROTOCOL.md,
+"Edits".
+
+- **Edit...** on our line's menu, or Up in an empty entry line (our
+  newest line still open), puts its text in the entry line, `@CALL`
+  included, with a strip over it: "Fixing your line: Enter sends the fix
+  (one more burst, about 16 s in A32; open 0:42 more). Esc cancels."
+  Send reads Fix meanwhile. A line with data2g-host shows "Edit (once it
+  has gone)", greyed. If the seal goes while the operator types, the
+  strip says so and Enter sends the text as a new line.
+- **The engine** is `BroadcastChat::edit` (`canEdit`, `editWaits`): a
+  queued line's burst is made again with the fix (and the Hello and
+  reactions it carried); one on the air goes again as the same record
+  with `Text::edited`. `Seals::going` takes the fix's record and digest
+  for a line it hasn't sealed, and `Seals::draft` says whether a line is
+  still open, for sealed chat and, by the seal's clock, unsealed
+  (`draftUntilMs` gives the strip its countdown). The app joins them
+  with `BroadcastChat::setDraftCheck`.
+- **Heard**, a fix replaces the line's text and shows "(edited)" after
+  it; the tooltip gives the first text ("First heard as: ..."). The
+  Broadcast log keeps it with a `T` line.
+- Not in ragchews yet: a session has no seal, so it would need a window
+  of its own.
+
 ## Waiting on Andrew (via Jeff)
 
 - Read from Data2G's source on 2026-10-25 (`docs/DATA2G.md`): `BW1200`

@@ -97,6 +97,18 @@ public:
     void onGear(std::function<void()> fn) { onGear_ = std::move(fn); }
     void onCancel(std::function<void(uint64_t id)> fn) { onCancel_ = std::move(fn); }
     void onResend(std::function<void(uint64_t id)> fn) { onResend_ = std::move(fn); }
+    // Fixing a line of ours before its seal (docs/PROTOCOL.md, "Edits"):
+    // Edit... on its menu, or Up in an empty line, puts its text in the
+    // line with a strip over it. edit sends the fix; info says what it
+    // costs and how long the line stays open ("one more burst, about 16 s
+    // in A32; open for 0:42 more").
+    using EditResult = ragtime::broadcast::BroadcastChat::EditResult;
+    void onEdit(std::function<EditResult(uint64_t id, const std::string& typed)> edit,
+                std::function<std::string(uint64_t id)> info)
+    {
+        onEdit_ = std::move(edit);
+        editInfo_ = std::move(info);
+    }
     // A reaction picked on a line's menu or chip: its palette code, or 0 to
     // take back ours still waiting to go.
     void onReact(std::function<void(uint64_t id, uint8_t code)> fn) { onReact_ = std::move(fn); }
@@ -170,6 +182,8 @@ public:
 
     // Redraws the messages when the chat has changed.
     void refresh();
+    // The fix strip's cost and countdown, each tick while a line is fixed.
+    void refreshEdit();
     void setGearLabel(const wxString& label, const wxString& tooltip, double bitsPerSecond = 0.0);
     // Pause sending shows a line saying so; with a reason (receive only,
     // outside the US data segments) the line gives it instead.
@@ -182,6 +196,10 @@ private:
     friend class MessageList;
 
     void send();
+    // Edits: the line taken into the entry line, and back out of it.
+    void startEdit(uint64_t id);
+    void endEdit();
+    void showEditStrip();
     // The ham phrases on the line, highlighted as they are typed.
     void showPhrases();
     void showMenu(int row);
@@ -195,6 +213,9 @@ private:
     const ragtime::broadcast::BroadcastChat& chat_;
     MessageList* list_ = nullptr;
     wxStaticText* paused_ = nullptr;
+    wxStaticText* editStrip_ = nullptr;
+    uint64_t editing_ = 0;          // the line of ours being fixed
+    bool editClosed_ = false;       // its seal went meanwhile: Enter sends a new line
     wxTextCtrl* compose_ = nullptr;
     wxButton* file_ = nullptr;
     wxButton* picture_ = nullptr;
@@ -213,6 +234,8 @@ private:
     std::function<bool(const std::string&)> onSend_;
     std::function<void()> onGear_;
     std::function<void(uint64_t)> onCancel_, onResend_;
+    std::function<EditResult(uint64_t, const std::string&)> onEdit_;
+    std::function<std::string(uint64_t)> editInfo_;
     std::function<void(uint64_t, uint8_t)> onReact_;
     std::function<void(const std::string&)> onPing_;
     std::function<std::string(const std::string&)> whyNoPing_;

@@ -146,7 +146,7 @@ when QRL.
 
 | Field | Bytes | Meaning |
 | --- | --- | --- |
-| flags | 1 | Bits 0 to 3: the coding (0: text table 0; 15: raw UTF-8; 1 to 14 for later tables). Bit 4: addressed. Bit 5: ack wanted (only when addressed) |
+| flags | 1 | Bits 0 to 3: the coding (0: text table 0; 15: raw UTF-8; 1 to 14 for later tables). Bit 4: addressed. Bit 5: ack wanted (only when addressed). Bit 6: edited, a fix of a line sent before (Edits, below). Bit 7: 0 |
 | to | 2 to 8, when addressed | The station it is for |
 | text | the rest | Coded as the flags say |
 
@@ -710,6 +710,44 @@ station doesn't know is kept and shown as `?`.
 - Reactions aren't items: they carry the newest item's number, no seal
   lists them, they are never repaired, and when signing comes they stay
   unsigned. A station before 0.2.0 skips them as a type it doesn't know.
+
+### Edits
+
+A broadcast line is a draft until its seal goes (Jeff, 2026-11-17:
+"allow edit of typos before a seal window closes"). Until then its
+sender may fix it: the line's Text goes again under the **same number
+and time**, with the new text (and addressee, if that was the typo) and
+flag bit 6 set. There is no record of its own and no diff: the whole
+line stands alone, so a station that missed the first copy can read the
+fix.
+
+- **When.** Still with the sender (not yet the host's), the text is
+  swapped before it goes, and nothing is marked, as nobody saw it. With
+  the host, it waits until the burst has gone. On the air, it may be
+  fixed while no seal lists it. With chat seals off (the default), by
+  the same clock: until a seal would have gone, 60 s with nothing new of
+  ours on the way, and at most 10 minutes after the line went. A fix
+  starts that quiet afresh, as any item of ours does. After that the
+  line is final.
+- **Airtime.** A fix is a burst of its own: a one-codeword burst, about
+  16 s in fsk16r25-r1/3. Ragtime says so before it goes.
+- **The seal.** The bit is in the flags byte, so in the record digest:
+  the seal lists the line as it was last sent, and a station holding the
+  first copy finds it "heard differently" and asks for it (a line it
+  heard in the same over, 15 minutes or less before the seal, counts as
+  being there for that over). The repair brings the fix. With chat seals
+  off nothing repairs a line, and a station that missed the fix keeps
+  the first copy.
+- **A receiver** that holds the line (sender, number and time) and hears
+  it with bit 6 replaces its text, addressee and ack flag, keeps its
+  reactions, and shows it edited, with what it first said. A copy
+  without bit 6, or the fix it already holds, changes nothing; a later
+  fix replaces an earlier one. A line first heard with bit 6 shows
+  edited too. An addressed fix asks for an Ack as any line does.
+- Each fix is one item, and must fit one frame. A long message split
+  into several Texts is fixed a part at a time.
+- Ragtime 0.3.1 and earlier hold the first copy: the fix is a duplicate
+  to them.
 
 ### Seals and repair
 

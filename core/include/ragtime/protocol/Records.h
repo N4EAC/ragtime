@@ -142,6 +142,9 @@ struct Text
     std::string text;           // the exact UTF-8 bytes typed
     std::string to;             // addressed to one station, or empty
     bool ackWanted = false;     // only with to: the station answers with an Ack
+    // A correction: the same item (seq and time) sent again with its text
+    // fixed before its seal went (docs/PROTOCOL.md, "Edits").
+    bool edited = false;
     // Decoded: how it was coded. Encoded: left alone, the shorter of
     // table 0 and raw is chosen.
     uint8_t coding = CODING_TABLE_0;

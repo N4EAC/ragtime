@@ -132,6 +132,9 @@ public:
     // When a seal goes.
     static constexpr uint64_t QUIET_MS = 60 * 1000;
     static constexpr uint64_t SEAL_EVERY_MS = 10 * 60 * 1000;
+    // The longest an over runs before its seal, with room for the seal
+    // itself: an item heard this long before a seal was heard in its over.
+    static constexpr uint64_t OVER_MS = SEAL_EVERY_MS + 5 * 60 * 1000;
     // A seal burst the host doesn't send goes again, this many times in all.
     static constexpr int SEAL_TRIES = 3;
     // A seal over a file goes again after a window that brought no
@@ -241,6 +244,16 @@ public:
     void addAirtime(uint32_t seq, double seconds);
     // A file's pieces have all gone: seal now, not after QUIET_MS.
     void sealSoon() { sealSoon_ = true; }
+    // Our line seq (with its record time) is still a draft, to be fixed
+    // in place (BroadcastChat::edit; docs/PROTOCOL.md, "Edits"): sealed
+    // chat that no seal lists yet, or unsealed chat (the default) that a
+    // seal would not yet have gone over, by the same clock (QUIET_MS with
+    // nothing new of ours, SEAL_EVERY_MS at most). A line handed over and
+    // never on the air is a draft too. False once it is final.
+    bool draft(uint32_t seq, uint32_t time) const;
+    // When the draft becomes final, as things stand: nothing while
+    // something of ours is still going, or once it is final.
+    std::optional<uint64_t> draftUntilMs(uint32_t seq, uint32_t time) const;
     // When our next seal is due, for the status bar's countdown (Jeff,
     // 2026-10-25): items of ours have gone with no seal yet, and none is
     // still going. It may be now or past while a resend round, a seal
@@ -620,6 +633,19 @@ private:
     uint16_t lastNumber_ = 0;
     protocol::Digest lastDigest_{};
     uint64_t lastItemMs_ = 0;               // our newest item went then
+    // Our unsealed chat still to be fixed in place (draft()): by number,
+    // its record time, burst, fate and when it went. Gone once final.
+    struct Draft
+    {
+        uint32_t time = 0;
+        uint64_t burst = 0;
+        Fate fate = Fate::Going;
+        uint64_t sentMs = 0;
+    };
+    std::map<uint32_t, Draft> drafts_;
+    uint64_t lastDraftMs_ = 0;              // our newest unsealed chat went then
+    bool somethingGoing() const;
+    void finalDrafts(uint64_t nowMs);
     bool sealSoon_ = false;
 
     uint64_t windowEndsMs_ = 0;             // 0: no window open

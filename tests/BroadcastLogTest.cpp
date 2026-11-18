@@ -252,6 +252,40 @@ void testNoPath()
     CHECK(log.load(100).empty());
 }
 
+// A line fixed before its seal comes back fixed, marked, with what it
+// first said; text with a tab in it survives.
+void testEdited()
+{
+    std::filesystem::path dir = scratch("broadcast-log-edited");
+    std::string path = (dir / "broadcast.log").string();
+    BroadcastLog log(path);
+    log.began(T0);
+    Message mine = text(1, true, "AG7EW", "helo", T0 + 1000, MState::Sent);
+    log.added(mine);
+    Message theirs = text(2, false, "KC2G", "you\tthere", T0 + 2000);
+    log.added(theirs);
+    mine.firstText = "helo";
+    mine.text = "hello";
+    mine.edited = true;
+    log.edited(mine);
+    theirs.firstText = "you\tthere";
+    theirs.text = "are you there";
+    theirs.to = "AG7EW";
+    theirs.ackWanted = true;
+    theirs.edited = true;
+    log.edited(theirs);
+    log.ended(T0 + 3000);
+    std::vector<Message> rows = log.load(100);
+    CHECK_EQ(rows.size(), (size_t)3);
+    if (rows.size() == 3)
+    {
+        CHECK(rows[0].text == "hello" && rows[0].edited && rows[0].firstText == "helo");
+        CHECK(rows[1].text == "are you there" && rows[1].edited && rows[1].firstText == "you\tthere");
+        CHECK(rows[1].to == "AG7EW" && rows[1].ackWanted);
+    }
+    std::filesystem::remove_all(dir);
+}
+
 } // namespace
 
 int main()
@@ -261,5 +295,6 @@ int main()
     testCutBack();
     testRepairedInPlace();
     testNoPath();
+    testEdited();
     return ragtime_test::finish();
 }
