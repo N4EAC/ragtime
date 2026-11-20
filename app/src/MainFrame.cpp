@@ -603,6 +603,8 @@ void MainFrame::buildMenus()
                                                            : wxString()));
         info.SetLicence("MIT");
         info.SetWebSite("https://github.com/baitisj/ragtime");
+        info.AddDeveloper("Jeff Baitis, AG7EW");
+        info.AddDeveloper("Tim Vetter: the macOS port");
         wxAboutBox(info, this);
     }, wxID_ABOUT);
 }

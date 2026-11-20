@@ -117,6 +117,17 @@ and the Part 97 check.
   calls, and the thresholds from `MODES`. It chats with 0.2 (new
   records are skipped, pictures and voice arrive as plain files). Stage
   1 is done once Jeff has run the two-host bench on Hamlet.
+- The macOS port (2026-11-20) is Tim Vetter's (GitHub `finitor`), brought
+  in with his commits as he wrote them: the Cocoa build (wxWidgets
+  3.2.11 on the Mac, `-DRAGTIME_BUILD_WX=ON`), the app bundle
+  (`packaging/macos/`), Core Audio voice and Ear (`platform/macos/`,
+  macOS 14.2 or later), `/dev/cu.*` serial ports, sotto as dylibs in
+  `Contents/Frameworks`, and the Mac tests (`tests/macos/`).
+  `docs/MACOS.md` is the record; `docs/PORTING.md` the original
+  investigation. `packaging/macos/make-zip.sh` makes the release zip
+  (Apple Silicon, signed ad hoc, Hamlib and the picture libraries built
+  statically) and the full CI run's `macos` job builds, tests and keeps
+  it. He is credited in the README's Contributors and the About box.
 - Data2G PR #118 (CLEANTXBUFFER, DATA2G ON) gives cuts, for 0.2.0:
   `HostLink` asks for DATA2G ON (WRONG from an older host is fine),
   `SessionChat` cuts and mends the stream from `session::StreamLog`,
@@ -472,14 +483,15 @@ and the Part 97 check.
 | --- | --- |
 | `core/` | `ragtime_core`, the socket-free library: no wx, no sockets in the engines, all unit-tested. Headers in `core/include/ragtime/`, sources in `core/src/`, one subfolder per area: `protocol/`, `link/`, `text/`, `files/` (package B; G adds `FileRows`, `FileTraffic`), `globus/` (C), `gearbox/` (D), `broadcast/` (E, with `BroadcastLog`; H adds `Airtime`, `Seals`, `BroadcastFiles`), `session/` (F, and `SessionLog`; `StreamLog` for cuts), `radio/` (the dial from rigctld, the US data segments, the path log, Recent work, the rig settings and the PTT follower), `picture/` (inline pictures with no codec: the image, DPID downscaling, EXIF orientation, what fits a number of seconds), `ear/` (the Ear's spectrum, finding data2g-host's sound card in PipeWire's graph, the host's process by its port, Data2G's passbands, the filter's edges from the noise, the filter model, its trials and Calibrate), `voice/` (the `.sot` voice file, the pitch strip, voice airtime; and the voice chain from the microphone to sotto: high-pass, leveller, limiter, resampler, P.56 and the Level check, with the noise reducer handed in; the microphones and speakers with the radio's card left out, and the microphone Test's verdict; no codec). Add sources to `core/CMakeLists.txt` |
 | `denoise/` | `ragtime_denoise`: RNNoise as the voice chain's `voice::Denoiser` (`denoise::makeRnNoise`). RNNoise 0.1.1 (BSD-3) is fetched with git at configure time and its C built here without our warning flags; `-DFETCHCONTENT_SOURCE_DIR_RNNOISE=<checkout>` builds offline, and `-DRAGTIME_RNNOISE=OFF` gives a stand-in that makes none |
-| `audio/` | `ragtime_audio`: `audio::VoiceAudio`, voice's microphone and speaker (PipeWire or WASAPI, never the radio's card); `audio::EarAudio`, the Ear's listener, PipeWire loaded with `dlopen` (never linked) on its own thread, or on Windows WASAPI in shared mode (`WasapiEar.cpp`) on a thread of its own; `processListeningOn` (the host's process by its port: /proc, or Windows' TCP table); with `-DRAGTIME_PIPEWIRE=OFF` (and on the Mac) stand-ins that say the Ear can't listen and voice can't record |
+| `audio/` | `ragtime_audio`: `audio::VoiceAudio`, voice's microphone and speaker (PipeWire or WASAPI, never the radio's card); `audio::EarAudio`, the Ear's listener, PipeWire loaded with `dlopen` (never linked) on its own thread, or on Windows WASAPI in shared mode (`WasapiEar.cpp`) on a thread of its own; `processListeningOn` (the host's process by its port: /proc, or Windows' TCP table); on macOS Core Audio, from `platform/macos/`; with `-DRAGTIME_PIPEWIRE=OFF` stand-ins that say the Ear can't listen and voice can't record |
+| `platform/macos/` | The Mac's own code (Tim Vetter's port): Core Audio voice and Ear (`CoreAudioVoice.mm`, `CoreAudioEar.mm`, devices, the radio's devices left out by the modem processes using them), the microphone permission, `/dev/cu.*` serial ports and where sotto's dylib is looked for. The audio and rig libraries pick these sources only on Apple (`docs/MACOS.md`) |
 | `image/` | `ragtime_image`: the picture codecs, `image::load` (JPEG 2000, WebP, HEIF from disk), `image::encode` and `image::decode` (JPEG 2000 only, from the air). Kept out of core (no codecs there); with `-DRAGTIME_PICTURES=OFF` a stand-in that says pictures can't be made or shown. `cmake/BuildImageLibs.cmake` builds the four libraries statically for Windows (`-DRAGTIME_BUILD_IMAGE_LIBS=ON`) |
 | `rig/` | `ragtime_rig`: `rig::HamlibRig`, the rig opened with Hamlib on a thread of its own, Hamlib's rig list and the serial ports. Kept out of core (no ports there); with `-DRAGTIME_HAMLIB=OFF` a stand-in that says Hamlib is missing |
 | `app/` | The wxWidgets app (`app/src/`). It draws and wires; logic goes in core. `MainFrame` is the one main window and owns the engines; `HostConnection` (data2g-host) and `RigConnection` (rigctld: questions, and the Ear's filter settings) are the only code with sockets, and `RigControl` holds the rig as Settings > Rig has it; `Prefs` holds every wxConfig key, and `appDataDir()` is where Ragtime keeps its own files (never wx's `GetUserDataDir()`: on Linux that is `~/.Ragtime`, the settings file); `app/src/globus/` is the Globus pane (`GlobusPanel`, `GlobusView`, `GlobusToggle`) |
-| `tests/` | ctest unit tests for core, plain executables on `tests/Check.h` (`CHECK`, `CHECK_EQ`). Add one with `ragtime_test(<name> <source>)` in `tests/CMakeLists.txt`. `FakeHost.*` is a fake data2g-host on loopback sockets (POSIX, so its test and the bench build only `if(UNIX)`); `FakeAirMain.cpp` is the bench `ragtime_fake_air`, and `ReplayHost.*` its `--replay`; `VoiceSynth.h` makes synthetic voices for the voice tests, and `VoiceChainMain.cpp` is `ragtime_voice_chain` (a WAV through the voice chain); `ChatListTest.cpp` is the one wx test, the chat list's scrolling on a real window |
+| `tests/` | ctest unit tests for core, plain executables on `tests/Check.h` (`CHECK`, `CHECK_EQ`). Add one with `ragtime_test(<name> <source>)` in `tests/CMakeLists.txt`. `FakeHost.*` is a fake data2g-host on loopback sockets (POSIX, so its test and the bench build only `if(UNIX)`); `FakeAirMain.cpp` is the bench `ragtime_fake_air`, and `ReplayHost.*` its `--replay`; `VoiceSynth.h` makes synthetic voices for the voice tests, and `VoiceChainMain.cpp` is `ragtime_voice_chain` (a WAV through the voice chain); `ChatListTest.cpp` and `RecentWorkPaneTest.cpp` are the wx tests, on real windows (`ragtime_widget_test` in `app/CMakeLists.txt`); `macos/` has the Mac's own tests (Core Audio, sotto in a bundle, the app quitting cleanly) |
 | `tools/` | Reference scripts: `icon/` (`make_leaf_svg.py` draws the icon, the Maple Leaf Rag's leaf going digital, as `app/res/ragtime.svg`; `make_icons.sh` renders its PNG and ICO), `globe/` (sunlit globe renderer, and the generators of the map tables in `core/src/globus/`: coasts and borders from Natural Earth, the big lakes from `ne_110m_lakes.geojson`, state and province lines from Natural Earth's 1:10m admin-1 lines, fetched for the run, for the countries in `gen_admin1_lines.py`), `gearbox/` (ladders), `ear/` (`pretend_radio.sh`, a pretend radio and data2g-host recorder in PipeWire for the Ear, and `make_radio_noise.py`, its audio), `ham_table/` (text table 0 generator and corpus: `gen_table.py --check`), `gcc16/check.py` (GCC 16 check), `codecs/` (the 2026-10-29 test of Ragtime's JPEG 2000 against JPEG XL, CompressAI and Cool-chic at 1.6 and 4 kB: scripts, bitstreams and results, its README says how to run them; not built) |
-| `cmake/` | CMake helpers. `ragtime_warnings(<target>)` gives every target `-Wall -Wextra` and, with `RAGTIME_WERROR` (on by default), `-Werror`; `Toolchain-mingw64.cmake` (the Windows cross build), `BuildWxWidgets.cmake` (wxWidgets 3.2.9 cloned and built statically with `-DRAGTIME_BUILD_WX=ON`), `BuildHamlib.cmake` (Hamlib 4.5.5 cloned and built statically with autotools, `-DRAGTIME_BUILD_HAMLIB=ON`), `BuildImageLibs.cmake` (OpenJPEG 2.5.3, libwebp 1.4.0, libde265 1.0.15 and libheif 1.18.2 cloned and built statically, `-DRAGTIME_BUILD_IMAGE_LIBS=ON`), `EmbedFile.cmake` (the window icon built in), `BuildSotto.cmake` (libsotto built when configuring, if missing) |
-| `packaging/` | Release recipes: `linux/make-appimage.sh` (with `ragtime.desktop`), `windows/make-zip.sh` (with the zip's `README.txt`). Both write to `dist/`, named by `release-name.sh`. `sotto.sh` pins sotto's commit and `build-sotto.sh` builds libsotto with its Codec 2 |
+| `cmake/` | CMake helpers. `ragtime_warnings(<target>)` gives every target `-Wall -Wextra` and, with `RAGTIME_WERROR` (on by default), `-Werror`; `Toolchain-mingw64.cmake` (the Windows cross build), `BuildWxWidgets.cmake` (wxWidgets 3.2.9, 3.2.11 on the Mac, cloned and built statically with `-DRAGTIME_BUILD_WX=ON`), `BuildHamlib.cmake` (Hamlib 4.5.5 cloned and built statically with autotools, `-DRAGTIME_BUILD_HAMLIB=ON`), `BuildImageLibs.cmake` (OpenJPEG 2.5.3, libwebp 1.4.0, libde265 1.0.15 and libheif 1.18.2 cloned and built statically, `-DRAGTIME_BUILD_IMAGE_LIBS=ON`), `EmbedFile.cmake` (the window icon built in), `BuildSotto.cmake` (libsotto built when configuring, if missing) |
+| `packaging/` | Release recipes: `linux/make-appimage.sh` (with `ragtime.desktop`), `windows/make-zip.sh` (with the zip's `README.txt`), `macos/make-zip.sh` (on a Mac; the bundle's CMake, `Info.plist.in`, the icon and `build-sotto.sh` for the dylibs are beside it). All write to `dist/`, named by `release-name.sh`. `sotto.sh` pins sotto's commit and `build-sotto.sh` builds libsotto with its Codec 2 |
 | `docs/` | The plan and specs. Change them in the same PR as the code they describe. `docs/images/readme/` holds the README's screenshots, taken on the bench (`ragtime_fake_air`) at 1366×768 and squeezed with `pngquant`; retake one when its screen changes much |
 
 The version is `project(ragtime VERSION ...)` in the top-level
@@ -508,22 +520,25 @@ if it can't, `-DRAGTIME_BUILD_SOTTO=OFF` to skip; Linux only).
 
 Tests are on by default (`-DRAGTIME_TESTS=OFF` turns them off), and
 every test runs headless, the app included (`ragtime --version`), but
-one: `ragtime_chat_list_test` (`tests/ChatListTest.cpp`, built in
-`app/CMakeLists.txt`) scrolls a real chat list, so it needs a display
-(`DISPLAY=:91` with Xvfb) and is skipped without one.
+two: `ragtime_chat_list_test` and `ragtime_recent_work_pane_test`
+(`tests/ChatListTest.cpp`, `tests/RecentWorkPaneTest.cpp`, built in
+`app/CMakeLists.txt`) use real windows, so they need a display
+(`DISPLAY=:91` with Xvfb) and are skipped without one.
 `-DRAGTIME_APP=OFF` builds only core, the rig library and their tests,
 with no wx needed. Rig tests use Hamlib's dummy rig (model 1), never a
 real radio.
 
-CI (`.github/workflows/build.yml`) runs only when started by hand; pushes
-and pull requests never start it. Run local builds and tests before
-submitting changes. The full set runs through Actions > Build and test >
-Run workflow (or
+CI (`.github/workflows/build.yml`) runs only the Ubuntu 24.04 build with
+tests on each PR (Jeff's choice, 2026-10-22: threads already build and
+test before pushing). Nothing runs on a push to `main`. The full set runs
+only when started by hand (Actions > Build and test > Run workflow, or
 the GitHub `actions_run_trigger` tool on the branch): Ubuntu, the same
 build and tests in the `gcc:16` image with `-Werror` at `-O2`
 (RelWithDebInfo) and `-O3` (Release), the Windows cross build with the
-unit tests run under Wine, and the AppImage. The last two keep the zip and
-the AppImage as the run's artifacts. Before pushing C++, run `tools/gcc16/check.py` (needs docker;
+unit tests run under Wine, the AppImage, and the macOS app on GitHub's
+Apple Silicon runner. The last three keep the zips and the AppImage as
+the run's artifacts. Start a full run on a PR that
+changes CMake, packaging or platform code, and always on a release PR. Before pushing C++, run `tools/gcc16/check.py` (needs docker;
 start `dockerd &` in a cloud session): it compiles every source in
 `gcc:16` at both levels without apt, which the cloud sandbox can't reach.
 
@@ -599,15 +614,17 @@ The bench's fake hosts are POSIX, but `wine ragtime.exe` talks to a Linux
 1. A PR sets the version, `project(ragtime VERSION ...)`, and gets a full
    CI run, started by hand on its branch (no `[skip ci]`).
 2. After Jeff merges it, build from the merge commit:
-   `packaging/linux/make-appimage.sh` and `packaging/windows/make-zip.sh`.
-   Or take the AppImage and zip from a full CI run on that commit (the
+   `packaging/linux/make-appimage.sh` and `packaging/windows/make-zip.sh`
+   (and `packaging/macos/make-zip.sh`, which needs a Mac).
+   Or take the AppImage and zips from a full CI run on that commit (the
    artifacts download from `*.blob.core.windows.net`); those jobs print
    each file's sha256sum in the log and the run summary, so check the
    download against it. Files are named
    `Ragtime-<version>-beta-<hash>-...` (`release-name.sh`).
 3. Write `SHA256SUMS-<version>-beta` beside them (`sha256sum`), and
    smoke-test headless: the AppImage under Xvfb and `ragtime.exe` under
-   Wine, each against `ragtime_fake_air`. Put the files in the project's
+   Wine, each against `ragtime_fake_air` (the Mac zip is tested only by
+   its CI job's ctest, as the cloud has no Mac). Put the files in the project's
    `ragtime-release/` folder.
 4. Draft release notes: say whether it talks to the last release (a
    protocol change breaks that), that data2g-host is the operator's to run
@@ -621,8 +638,9 @@ The bench's fake hosts are POSIX, but `wine ragtime.exe` talks to a Linux
 
 - C++17, wxWidgets, CMake, the same toolchain as Glissando. The AppImage
   and the Windows zip follow Glissando's recipes (its `docs/APP.md`),
-  simpler for having no audio or codec2. There is no Mac or ARM
-  build yet.
+  simpler for having no audio or codec2. The Mac build (Apple Silicon
+  only, so far) is in `docs/MACOS.md`; there is no Linux ARM or Intel
+  Mac build yet.
 - Engines worth porting from Glissando (logic and tests, adapted to the
   new records): `Data2GLink` (KISS, command lines, `MODES`, session
   stream), `Data2GFileTransfer`, `Data2GBroadcast`, `Sha256`, `HamText`

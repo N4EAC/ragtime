@@ -54,6 +54,30 @@ implemented. The explicit voice-codec option below collects sotto and
 Codec 2 with their licences. Other optional dependencies and a shared
 wxWidgets are not collected; those builds are not self-contained.
 
+## The release zip and CI
+
+`packaging/macos/make-zip.sh` builds the zip a release carries,
+`dist/Ragtime-<version>-beta-<hash>-macos-<arch>.zip`, on the Mac it runs
+on: wxWidgets, Hamlib and the picture libraries (OpenJPEG, libwebp,
+libde265, libheif) built statically as the Windows zip has them
+(`-DRAGTIME_BUILD_HAMLIB=ON -DRAGTIME_BUILD_IMAGE_LIBS=ON`), RNNoise,
+sotto and Codec 2 from `build-sotto.sh` in the bundle, the app signed ad
+hoc (`codesign --sign -`) and zipped with `ditto`, with
+`packaging/macos/README.txt` and the libraries' licences beside it. Hamlib
+needs Homebrew's `autoconf automake libtool`. `MACOSX_DEPLOYMENT_TARGET`
+(14.2 by default) is the oldest macOS it runs on.
+
+The full CI run (Actions > Build and test > Run workflow) has a `macos`
+job on GitHub's Apple Silicon runner (`macos-15`) that runs the script,
+then `ctest --test-dir build-macos`, prints the zip's SHA-256 and keeps
+the zip as the run's `ragtime-macos-arm64` artifact, beside the AppImage
+and the Windows zip. Pull requests run only the quick Ubuntu job.
+
+The app is not signed with a Developer ID or notarized, so macOS asks
+once before it opens it (System Settings > Privacy & Security > Open
+Anyway); the zip's README says so. An Intel or universal build is still
+open.
+
 ## Directory layout
 
 - `platform/macos/`: native serial-device, codec-path and Core Audio voice
@@ -284,8 +308,7 @@ The initial demo acceptance covers session/file exchange, restart,
 reconnect, native file dialogs and menus on the development Mac. Other
 display scales, Intel Macs and release packaging still need validation.
 See [PORTING.md](PORTING.md) for the original investigation and later
-audio/distribution work. GitHub workflows are manual-only; run local
-validation before submitting changes.
+audio/distribution work.
 
 ## Validation of the initial port
 
