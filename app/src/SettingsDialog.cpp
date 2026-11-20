@@ -1073,6 +1073,15 @@ void SettingsDialog::onVoiceTimer()
 
     if (voiceTest_ == VoiceTest::Recording)
     {
+        if (status.microphonePermissionPending)
+        {
+            // The OS prompt can stay open indefinitely. Count the test
+            // from approval rather than expiring while the user reads it.
+            voiceTestMs_ = steadyMs();
+            microphoneTest_->SetLabel("Waiting for permission");
+            microphoneStatus_->SetLabel("Allow microphone access in the macOS prompt to begin the test");
+            return;
+        }
         // The meter: the loudest 10 ms since it last looked.
         double loudest = -120.0;
         bool done = steadyMs() - voiceTestMs_ >= MIC_TEST_MS;

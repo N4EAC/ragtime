@@ -3,8 +3,9 @@
 #include "ragtime/audio/VoiceAudio.h"
 #include "CoreAudioDevices.h"
 #include "VoiceBuffer.h"
+#include "MicrophonePermission.h"
 
-#import <AVFoundation/AVFoundation.h>
+#import <Foundation/Foundation.h>
 #include <AudioToolbox/AudioToolbox.h>
 
 #include <atomic>
@@ -164,7 +165,7 @@ std::string signature(const VoiceStatus& s)
     o << s.available << s.problem << s.chosenMicrophone << s.chosenSpeaker
       << static_cast<int>(s.microphone.why) << s.microphone.node.name
       << static_cast<int>(s.speaker.why) << s.speaker.node.name
-      << s.listening << s.recording << s.microphoneRate << s.microphoneProblem
+      << s.listening << s.recording << s.microphonePermissionPending << s.microphoneRate << s.microphoneProblem
       << s.playing << s.speakerProblem;
     for (const auto& n : s.devices.microphones) o << '\n' << n.name << n.description;
     for (const auto& n : s.devices.speakers) o << '\n' << n.name << n.description;
@@ -235,6 +236,7 @@ public:
         if (post([this, done] {
                 samples_ = nullptr;
                 capture_.reset();
+                state_.microphonePermissionPending = false;
                 state_.microphoneProblem.clear();
                 done->set_value();
             })) completed.wait();
@@ -333,23 +335,23 @@ private:
 
     bool authorized()
     {
-        const auto auth = [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio];
-        if (auth == AVAuthorizationStatusAuthorized) return true;
-        if (auth == AVAuthorizationStatusNotDetermined)
+        const auto auth = macos::microphonePermission();
+        if (auth == macos::MicrophonePermission::Authorized) return true;
+        if (auth == macos::MicrophonePermission::NotDetermined)
         {
             // Command-line probes have no usage description. Requesting
             // access from such a process would terminate it on macOS.
-            NSString* usage = [[NSBundle mainBundle] objectForInfoDictionaryKey:@"NSMicrophoneUsageDescription"];
-            if (![usage isKindOfClass:[NSString class]] || ![usage length])
+            auto permission = authorization_;
+            if (!permission->pending.exchange(true) &&
+                !macos::requestMicrophonePermission([permission] { permission->completed = true; }))
+            {
+                permission->pending = false;
                 state_.microphoneProblem = "Microphone permission must be requested from the Ragtime app bundle";
+            }
             else
             {
-                state_.microphoneProblem = "Waiting for microphone permission";
-                auto permission = authorization_;
-                if (!permission->pending.exchange(true))
-                    [AVCaptureDevice requestAccessForMediaType:AVMediaTypeAudio completionHandler:^(BOOL) {
-                        permission->completed = true;
-                    }];
+                state_.microphoneProblem.clear();
+                state_.microphonePermissionPending = true;
             }
         }
         else state_.microphoneProblem = "Microphone access is denied; enable Ragtime in System Settings > Privacy & Security > Microphone";
@@ -416,12 +418,13 @@ private:
 
     void pump()
     {
+        state_.microphonePermissionPending = false;
         if (authorization_->completed.exchange(false)) retryCapture_ = true;
         const auto* mic = macos::findDevice(snapshot_, state_.microphone.node.name, true);
         const bool useMic = samples_ && state_.available && state_.microphone.usable() && mic;
         if (capture_ && (!useMic || capture_->name != state_.microphone.node.name ||
                          std::fabs(mic->rate - capture_->rate) > 0.5 ||
-                         [AVCaptureDevice authorizationStatusForMediaType:AVMediaTypeAudio] != AVAuthorizationStatusAuthorized))
+                         macos::microphonePermission() != macos::MicrophonePermission::Authorized))
             capture_.reset();
         if (useMic && !capture_ && retryCapture_ && authorized()) openCapture(*mic);
         if (samples_ && !useMic) state_.microphoneProblem = state_.available
@@ -519,6 +522,7 @@ private:
         samples_ = nullptr;
         finish(false);
         state_.listening = state_.recording = state_.playing = false;
+        state_.microphonePermissionPending = false;
         state_.microphoneRate = 0;
         state_.available = false;
         publish();

@@ -3,11 +3,23 @@
 // or asking for microphone permission in the test suite.
 #include "Check.h"
 #include "CoreAudioDevices.h"
+#include "MicrophonePermission.h"
 #include "ragtime/audio/VoiceAudio.h"
 
 #include <atomic>
 #include <chrono>
 #include <thread>
+#include <mutex>
+
+namespace
+{
+std::atomic<bool> offerMicrophone{false}, allowRequest{true};
+std::atomic<ragtime::audio::macos::MicrophonePermission> permission{
+    ragtime::audio::macos::MicrophonePermission::NotDetermined};
+std::atomic<int> requests{0};
+std::mutex permissionMutex;
+std::function<void()> permissionCompleted;
+}
 
 namespace ragtime { namespace audio { namespace macos {
 
@@ -17,7 +29,24 @@ DeviceSnapshot readDevices()
     s.devices = {{10, "test-radio", "Test radio", 1, 2, 48000, {}}};
     s.processes = {{123, "data2g-host", {10}, {10}}};
     s.defaultInput = s.defaultOutput = 10;
+    if (offerMicrophone)
+    {
+        // A deliberately unreadable sample rate stops before queue creation,
+        // even in the grant test. No test may open the physical default mic.
+        s.devices.push_back({11, "test-microphone", "Test microphone", 1, 0, 0, {}});
+        s.defaultInput = 11;
+    }
     return s;
+}
+
+MicrophonePermission microphonePermission() { return permission; }
+bool requestMicrophonePermission(std::function<void()> completed)
+{
+    ++requests;
+    if (!allowRequest) return false;
+    std::lock_guard<std::mutex> lock(permissionMutex);
+    permissionCompleted = std::move(completed);
+    return true;
 }
 
 } } }
@@ -91,5 +120,47 @@ int main()
     CHECK(waitFor([&] { return a->status().available; }));
     a->stop();
     CHECK(!a->status().available);
+
+    offerMicrophone = true;
+    a->start([&] { ++changed; }, {});
+    a->listen([&](const float*, std::size_t, int) { ++received; });
+    CHECK(waitFor([&] { return a->status().microphonePermissionPending; }));
+    CHECK(a->status().microphoneProblem.empty());
+    CHECK(!a->status().listening);
+    CHECK_EQ(requests.load(), 1);
+    std::this_thread::sleep_for(std::chrono::milliseconds(60));
+    CHECK_EQ(requests.load(), 1); // one OS prompt, not one per pump
+    std::function<void()> lateCompletion;
+    {
+        std::lock_guard<std::mutex> lock(permissionMutex);
+        lateCompletion = permissionCompleted;
+    }
+    permission = audio::macos::MicrophonePermission::Denied;
+    lateCompletion();
+    CHECK(waitFor([&] { return a->status().microphoneProblem.find("denied") != std::string::npos; }));
+    CHECK(!a->status().microphonePermissionPending);
+    a->stopListening();
+    a->stop();
+    CHECK(!a->status().microphonePermissionPending);
+    const int stoppedChanges = changed;
+    lateCompletion(); // an OS response after stop cannot invoke the UI
+    CHECK_EQ(changed.load(), stoppedChanges);
+
+    permission = audio::macos::MicrophonePermission::Authorized;
+    a->start(nullptr, {});
+    a->listen([&](const float*, std::size_t, int) { ++received; });
+    CHECK(waitFor([&] { return a->status().microphoneProblem.find("sample rate") != std::string::npos; }));
+    CHECK(!a->status().microphonePermissionPending);
+    CHECK_EQ(received.load(), 0);
+    a->stop();
+
+    permission = audio::macos::MicrophonePermission::NotDetermined;
+    allowRequest = false;
+    a->start(nullptr, {});
+    a->listen([](const float*, std::size_t, int) {});
+    CHECK(waitFor([&] { return a->status().microphoneProblem.find("app bundle") != std::string::npos; }));
+    CHECK(!a->status().microphonePermissionPending);
+    a.reset();
+    lateCompletion(); // safe after destruction as well
     return ragtime_test::finish();
 }

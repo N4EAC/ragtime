@@ -47,6 +47,8 @@ struct VoiceStatus
     // it couldn't open.
     bool listening = false;
     bool recording = false;
+    // Waiting for the operator's OS permission, not a capture failure.
+    bool microphonePermissionPending = false;
     int microphoneRate = 0;
     std::string microphoneProblem;
     // The speaker: a clip playing, and why it couldn't play.
