@@ -57,7 +57,7 @@ the Ear waterfall following the built-in Data2G modem over TCI.
 
 ## Downloads
 
-Ragtime 0.3.1 beta 2 bundles Data2G v0.5.3 and the updated sotto v3.8
+Ragtime 0.3.1 beta 3 bundles Data2G v0.5.3 and the updated sotto v3.8
 voice library. It is available as a DMG or ZIP for Apple Silicon with macOS 27 or
 later. The app is ad hoc signed and has no Apple notarization.
 [Ragtime macOS releases](https://github.com/N4EAC/ragtime-data2g/releases)
@@ -142,7 +142,11 @@ external Data2G sound-card input.
 In source builds with the modem monitor, **View > Data2G modem monitor**
 opens a separate window with the built-in
 modem's receive constellation, channel state, session traffic, last-burst SNR,
-and audio and decoder counters. **Help > Open session logs folder** opens the
+and audio and decoder counters. Below them, a receive/decode history shows
+UTC time, mode/codewords, SNR and the result reported by Data2G: OK, Lost,
+Undecoded, or Incomplete data. Undecoded can also mean the burst was not
+addressed to this station. The list keeps the newest 500 bursts; **Clear**
+clears the display while reception continues. **Help > Open session logs folder** opens the
 per-callsign chat logs.
 
 **Settings > Rig** shows all Hamlib models and can filter by manufacturer.

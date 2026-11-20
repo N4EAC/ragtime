@@ -6,6 +6,7 @@
 
 #include <algorithm>
 #include <clocale>
+#include <chrono>
 #include <cmath>
 #include <exception>
 #include <stdexcept>
@@ -165,13 +166,19 @@ std::optional<ModemTelemetry> EmbeddedModem::telemetry() const
     return out;
 }
 
-std::optional<ModemBurst> EmbeddedModem::takeLatestBurst()
+std::vector<ModemBurst> EmbeddedModem::takeBursts()
 {
-    if (!station_) return std::nullopt;
+    if (!station_) return {};
     auto bursts = station_->take_bursts();
-    if (bursts.empty()) return std::nullopt;
-    auto& burst = bursts.back();
-    return ModemBurst{std::move(burst.mode), burst.lost, burst.snr_db};
+    std::vector<ModemBurst> out;
+    out.reserve(bursts.size());
+    for (auto& burst : bursts)
+    {
+        const auto when = std::chrono::duration_cast<std::chrono::milliseconds>(burst.when.time_since_epoch()).count();
+        out.push_back({std::move(burst.mode), burst.lost, burst.snr_db, when,
+                       burst.n_cw, burst.decoded, burst.failed});
+    }
+    return out;
 }
 
 std::vector<std::string> EmbeddedModem::devices(bool input)

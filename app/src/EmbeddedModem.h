@@ -42,6 +42,10 @@ struct ModemBurst
     std::string mode;
     bool lost;
     std::optional<double> snrDb;
+    std::int64_t whenMs = 0;
+    int codewords = 0;
+    int decoded = 0;
+    int failed = 0;
 };
 
 // The native Data2G station runs in Ragtime's process. It owns the modem
@@ -58,7 +62,7 @@ public:
     void readEarAudio(ragtime::audio::EarAudio& ear);
     std::optional<ModemConstellation> takeConstellation();
     std::optional<ModemTelemetry> telemetry() const;
-    std::optional<ModemBurst> takeLatestBurst();
+    std::vector<ModemBurst> takeBursts();
 
     static int runWithRuntime(int argc, char** argv, int (*run)(int, char**));
     static std::vector<std::string> devices(bool input);
