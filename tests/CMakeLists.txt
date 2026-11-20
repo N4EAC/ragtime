@@ -97,6 +97,15 @@ set_target_properties(ragtime_not_sotto PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON
 target_compile_definitions(ragtime_sotto_test PRIVATE RAGTIME_NOT_SOTTO="$<TARGET_FILE_NAME:ragtime_not_sotto>")
 add_dependencies(ragtime_sotto_test ragtime_not_sotto)
 set_tests_properties(ragtime_sotto_test PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:ragtime_not_sotto>")
+if(APPLE)
+    # Exercise dyld paths with a real executable inside a bundle, launched
+    # through a symlink from a different working directory.
+    add_test(NAME ragtime_sotto_bundle_test COMMAND ${CMAKE_COMMAND}
+        "-DPROGRAM=$<TARGET_FILE:ragtime_sotto_test>"
+        "-DWRONG_LIBRARY=$<TARGET_FILE:ragtime_not_sotto>"
+        "-DBUNDLE_DIR=${CMAKE_CURRENT_BINARY_DIR}/sotto-bundle-test/Codec.app"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/macos/SottoBundleTest.cmake")
+endif()
 set(RAGTIME_SOTTO_TEST_LIB "" CACHE FILEPATH "A libsotto for ragtime_sotto_test's round trip")
 if(RAGTIME_SOTTO_TEST_LIB)
     set_tests_properties(ragtime_sotto_test PROPERTIES ENVIRONMENT "RAGTIME_SOTTO=${RAGTIME_SOTTO_TEST_LIB}")
