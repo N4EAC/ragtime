@@ -141,9 +141,9 @@ void passbands()
     CHECK_EQ(data2gPassband(true).highHz, 1750.0);
 }
 
-// Hamlet's graph on 2026-10-26: data2g-gui's capture on node 55, its
+// A station PC's graph on 2026-10-26: data2g-gui's capture on node 55, its
 // playback on 54, Firefox playing, and a session manager.
-Graph hamlet()
+Graph stationGraph()
 {
     Graph g;
     g.clients = {{33, "WirePlumber", 2000}, {851, "data2g-gui", 205757}, {867, "Firefox", 3000}};
@@ -163,7 +163,7 @@ Graph hamlet()
 
 void findsData2GGui()
 {
-    Graph g = hamlet();
+    Graph g = stationGraph();
     HostSearch s = findHostCapture(g, std::nullopt);
     CHECK(s.found.has_value());
     CHECK_EQ(s.candidates, 1);
@@ -189,7 +189,7 @@ void findsData2GGui()
 void linkBeatsTarget()
 {
     // Moved in pavucontrol: the target still says 55, the link says 60.
-    Graph g = hamlet();
+    Graph g = stationGraph();
     g.links = {{60, 129}};
     HostSearch s = findHostCapture(g, std::nullopt);
     CHECK(s.found && s.found->source == 60u && s.found->linked);
@@ -213,7 +213,7 @@ void picksASource()
 {
     // data2g-gui records from the Burr-Brown codec: the Ear follows it,
     // passive, so it never holds the card on the host's account.
-    Graph g = hamlet();
+    Graph g = stationGraph();
     const std::string codec = "alsa_input.usb-Burr-Brown_USB_Audio_CODEC-00.analog-stereo-input";
     const std::string builtIn = "alsa_input.pci-0000_00_1f.3.analog-stereo";
     SourcePick p = pickSource(g, "", findHostCapture(g, std::nullopt), "", builtIn);
@@ -546,7 +546,7 @@ void twinPbtModel()
     CHECK_EQ(f.widthHz, 2000);
     CHECK(f.pbtIn && *f.pbtIn == 0.5);
 
-    // The model as Calibrate learns it on Jeff's IC-7100: a 3000 Hz filter
+    // The model as Calibrate learns it on an IC-7100: a 3000 Hz filter
     // that passes 3140 Hz, its low edge under a cut at 70 Hz.
     const KnobModel ic7100 = knobs(3000, 1499, 3140, 3000, 70);
     s = spanOf(usb(3000), ic7100);
@@ -562,7 +562,7 @@ void twinPbtModel()
     Span target = dragTarget(shown, Span{66, 2452}, usb(3000), ic7100);
     CHECK(std::fabs(target.lowHz + 71) < 1e-9 && std::fabs(target.highHz - 2469) < 1e-9);
     // The hidden low edge dragged by itself goes where it was dropped
-    // (Hamlet: dropped at 400, it landed at 280 when moved by the drag);
+    // (on an IC-7100: dropped at 400, it landed at 280 when moved by the drag);
     // in a shift it moves as far as the other.
     target = dragTarget(shown, Span{400, shown.highHz}, usb(3000), ic7100);
     CHECK(std::fabs(target.lowHz - 400) < 1e-9 && std::fabs(target.highHz - 3069) < 1e-9);

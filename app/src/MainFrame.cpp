@@ -273,7 +273,7 @@ MainFrame::MainFrame()
     watch_.setCalls(loadWatchList());
     acceptWanted_ = link_.settings().acceptSessions;
     SetIcons(appIcons());
-    // Every dialog and the main window must fit Jeff's 1366x768 screen.
+    // Every dialog and the main window must fit a 1366x768 screen.
     SetMinSize(wxSize(960, 600));
 
     globusOn_ = loadBool(keys::GLOBUS, true);

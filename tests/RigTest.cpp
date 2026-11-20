@@ -514,7 +514,7 @@ void autoAlc()
     CHECK(std::fabs(alc.offsetDb() + 2.0) < 0.01);
     // In the band: nothing.
     CHECK(!alc.burstEnded(burstStep(0.0)));
-    // Too cold: up, past the base (Jeff's IC-7100 sat at 40% at the level
+    // Too cold: up, past the base (an IC-7100 sat at 40% at the level
     // it found, 2026-10-26), to CLIMB_DB over it and no further.
     for (int i = 0; i < 20; i++) apply(alc, alc.burstEnded(burstStep(1.0)));
     CHECK(near(alc.level(), -3.0 + AutoAlc::CLIMB_DB));

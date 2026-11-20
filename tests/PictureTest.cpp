@@ -289,7 +289,7 @@ void testAirtime()
 
 void testNames()
 {
-    CHECK_EQ(picture::pictureName("/home/jeff/Pictures/IMG_2041.HEIC"), std::string("IMG_2041.j2k"));
+    CHECK_EQ(picture::pictureName("/home/op/Pictures/IMG_2041.HEIC"), std::string("IMG_2041.j2k"));
     CHECK_EQ(picture::pictureName("C:\\Users\\jeff\\my antenna (new).jpg"), std::string("my-antenna-new.j2k"));
     CHECK_EQ(picture::pictureName("\xc3\xa9t\xc3\xa9.png"), std::string("t.j2k"));
     CHECK_EQ(picture::pictureName(".png"), std::string("png.j2k"));

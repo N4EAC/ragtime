@@ -16,7 +16,7 @@
 // the other, and the middle both. Nobody publishes hzPerKnob (an Icom's
 // PBT reads as the knob's position, 0 to 1), so Calibrate measures it from
 // the noise (ear::Calibration), with the passband's real centre and width
-// (the rig's width is nominal: Jeff's IC-7100 passes about 3140 Hz at
+// (the rig's width is nominal: an IC-7100 passes about 3140 Hz at
 // -6 dB for its 3000 Hz filter, and a full turn of either knob moves an
 // edge 3000 Hz) and any cut in the audio that hides an edge (about 70 Hz
 // there): ear::KnobModel. Until then only the width can be set, and
@@ -33,7 +33,7 @@
 // MN and NOTCHF_RAW), its bar is dragged into the spectrum to turn it on
 // there, and back to its bay (NF OFF) to turn it off. NOTCHF_RAW is a
 // position, 0 to 1, not Hz: ear::NotchModel turns one into the other,
-// starting from Jeff's IC-7100 and learning from where the dip shows in
+// starting from an IC-7100 and learning from where the dip shows in
 // the noise (EdgeFinder::dip).
 //
 // The time is always passed in, so tests run it on a simulated clock.
@@ -142,7 +142,7 @@ double centreOf(const Span& measured, const RigFilter& f, double hzPerKnob);
 // puts it, so an edge measured a little off the model stays where it is
 // when only the other is dragged. An edge the model puts under a cut in
 // the audio shows at the cut, not where it is, so dragged by itself it
-// goes where it was dropped (Hamlet, 2026-10-26: the IC-7100's low edge at -72 Hz,
+// goes where it was dropped (2026-10-26: an IC-7100's low edge at -72 Hz,
 // shown at 70, dropped at 400 landed at 280 when moved by the drag).
 Span dragTarget(const Span& from, const Span& to, const RigFilter& now, const KnobModel& m);
 // Where a drag from `from` (the edges as shown) lands once `to` replaces
@@ -273,7 +273,7 @@ private:
 // (the low one up, or the high one down if the knobs run the other way),
 // and the move between the two of a pair gives Hz per knob: two turns from
 // one side and not one from the centre, since an edge at the centre can
-// sit hidden under a cut in the audio (Jeff's IC-7100: its filter's low
+// sit hidden under a cut in the audio (an IC-7100: its filter's low
 // edge is near -70 Hz, under a cut at 70 Hz, so a single turn up from the
 // centre showed two thirds of the move; measured 2026-10-26). The two
 // pairs must agree. From the same measures come the passband's real centre

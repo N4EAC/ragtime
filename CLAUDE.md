@@ -115,8 +115,7 @@ and the Part 97 check.
   it. 0.3.0-beta was never tagged; 0.3.1-beta ships it with the
   fixes after it: Cool-chic pictures, voice messages, Hands and roll
   calls, and the thresholds from `MODES`. It chats with 0.2 (new
-  records are skipped, pictures and voice arrive as plain files). Stage
-  1 is done once Jeff has run the two-host bench on Hamlet.
+  records are skipped, pictures and voice arrive as plain files).
 - The macOS port (2026-11-20) is Tim Vetter's (GitHub `finitor`), brought
   in with his commits as he wrote them: the Cocoa build (wxWidgets
   3.2.11 on the Mac, `-DRAGTIME_BUILD_WX=ON`), the app bundle
@@ -257,7 +256,7 @@ and the Part 97 check.
   dip, `EdgeFinder::dip`), Revert (the
   filter as the Ear found it), and Calibrate for the twin PBT (`ear::KnobModel`: Hz per knob,
   the real centre and width, and a cut in the audio that hides an edge;
-  two turns each side, as Jeff's IC-7100 hides its low edge under a cut
+  two turns each side, as an IC-7100 hides its low edge under a cut
   at 70 Hz). Quitting puts the filter back as found
   (`MainFrame::filterEdit_`). Span (Jeff, 2026-10-26): the picture goes
   to 4, 8 or 12 kHz, or Auto fits it past the filter's high edge
@@ -302,8 +301,7 @@ and the Part 97 check.
   2026-11-15). Kind `0x02`
   (`protocol::FILE_COOLCHIC`, told from JPEG 2000 by the bytes). What
   the port taught us and what could be better: `docs/COOLCHIC_NOTES.md`.
-- Voice messages (2026-10-31, Jeff's idea; plan in the thread "Plan
-  Ragtime voice messages with sotto"): clips coded with sotto, Jeff's
+- Voice messages (2026-10-31, Jeff's idea): clips coded with sotto, Jeff's
   2,400 bit/s vocoder, go as files of kind `0x03`
   (`protocol::FILE_VOICE`). `core/src/voice/` has the `.sot` file (a
   7-byte header, sotto's 6-byte frames, silence runs, the pause gate,
@@ -332,8 +330,8 @@ and the Part 97 check.
   live meters (`takeReadings`) and a per-clip Level check (P.56 active
   level, loudest 10 ms, noise), aimed at sotto.h's figures (-26 dBFS
   active, -7.3 dBFS ceiling). The noise reducer is RNNoise 0.1.1 in
-  `denoise/` (`ragtime_denoise`, fetched with git; 0.2's model download
-  from media.xiph.org is blocked in the cloud). `ragtime_voice_chain`
+  `denoise/` (`ragtime_denoise`, fetched with git; 0.2 would download
+  its model at build time). `ragtime_voice_chain`
   runs a WAV through it.
 - Voice audio (2026-10-31, voice PR 2 of the plan in
   `docs/STAGE1.md`, "Voice audio"): `audio::VoiceAudio`, the
@@ -383,15 +381,23 @@ and the Part 97 check.
   station heard in 15 minutes (`Stations::weakestPath`). Hosts from
   before it still work, without either (`docs/STAGE1.md`, "SNR from
   data2g-host").
-- The live design draft was the Claude Doc "Data2G client: plan"
-  (https://claude.ai/code/artifact/87db2cd2-f5bc-4030-ba8d-99bef19c027d,
-  private to Jeff). `docs/PLAN.md` is its 2026-10-22 snapshot and is now
-  the record; change it in the same PR as the code it describes.
-- Mock-ups: a private design canvas,
-  https://claude.ai/artifact/4zWdK2uc5du4u4ryRjERNS. `docs/MOCKUPS.md`
-  writes down everything a builder needs from it.
 
 ## Rules Jeff has set
+
+**The repository** (2026-11-20)
+
+- No localisms: no hostnames, absolute paths of anyone's machine, private
+  links (Claude Docs, artifacts) or notes about one build sandbox. Write
+  for someone who has only this repository. Paths in examples are
+  relative to the checkout, or plainly made up (`/home/op/...`).
+- No development-only documents: no handoffs, roadmaps, work logs or
+  dated test reports. Docs describe what Ragtime is and does, how to
+  build, test and release it, and what goes on the air.
+- No one-off test setups: tests and benches are ones anyone can run from
+  the checkout (ctest, `ragtime_fake_air`, the pretend radio). Setups tied
+  to particular hardware or machines stay out.
+- Every platform with a build has a release recipe in `packaging/` and a
+  job in the full CI run that builds, tests and keeps its files.
 
 **Data2G**
 
@@ -401,8 +407,7 @@ and the Part 97 check.
   command port + 1 (8301). `docs/DATA2G.md` sums up the host as Ragtime
   meets it, read from Data2G's source at a pinned commit.
 - Don't guess how Data2G behaves: read it (Andrew's advice, 2026-10-25).
-  `git clone https://github.com/arodland/Data2G` works in a cloud
-  session; start with its `docs/broadcast.md`, `docs/arq.md`,
+  Clone https://github.com/arodland/Data2G and start with its `docs/broadcast.md`, `docs/arq.md`,
   `data2g/host.py`'s docstring and `data2g/kisslink.py`. Reading is fine,
   copying code is not. When something you need isn't in
   `docs/DATA2G.md`, or Data2G has moved past its commit, read the source
@@ -455,8 +460,7 @@ and the Part 97 check.
   closes one, and a quiet link shows as quiet, not closed.
 - Three tabs in this order: Broadcast, Session (pops open when a session
   starts, greyed when none), Files.
-- The window works at 1280×720, and every dialog fits a 1366×768 screen
-  (Jeff's radio PC has a short screen).
+- The window works at 1280×720, and every dialog fits a 1366×768 screen.
 - Plain but fun: system theme and standard widgets, no Chaotica art. The
   globe ("Globus"), the gearshift and the 1950s radio vocabulary are
   welcome. "Curmudgeons" and "lids" are flavour words for the docs and UI
@@ -537,9 +541,9 @@ build and tests in the `gcc:16` image with `-Werror` at `-O2`
 unit tests run under Wine, the AppImage, and the macOS app on GitHub's
 Apple Silicon and Intel runners. The last three keep the zips and the
 AppImage as the run's artifacts. Start a full run on a PR that
-changes CMake, packaging or platform code, and always on a release PR. Before pushing C++, run `tools/gcc16/check.py` (needs docker;
-start `dockerd &` in a cloud session): it compiles every source in
-`gcc:16` at both levels without apt, which the cloud sandbox can't reach.
+changes CMake, packaging or platform code, and always on a release PR.
+Before pushing C++, run `tools/gcc16/check.py` (needs Docker): it
+compiles every source in `gcc:16` at both levels without apt.
 
 **The bench.** `build/tests/ragtime_fake_air` runs two fake data2g-hosts
 on one shared air (A: KISS 8100, commands 8300; B: 8110 and 8310) and a
@@ -583,15 +587,15 @@ as `fake rigctld set: ...`, and answers with them after). For Hamlib with no
 radio, pick maker Hamlib, model Dummy in Settings > Rig: a pretend rig
 at 145 MHz, which "Key the rig" keys at the fake hosts' PTT. Headless:
 `Xvfb :91 &`, `DISPLAY=:91 ragtime ...`, `xdotool` to click and type,
-`import -window root` for a screenshot. Never point the bench at Jeff's
-radio PC's real host ports while his data2g-host runs.
+`import -window root` for a screenshot. Never point the bench at the
+ports of a real data2g-host that is running.
 
 For the Ear, `tools/ear/pretend_radio.sh up` (needs PipeWire with
 `pipewire-pulse`, `pactl`, `pw-play`, `pw-cat` and python3-numpy) makes
 a pretend radio source with Data2G-like bursts and a stand-in
 `data2g-host` recording from it; `... down` removes them.
 `build/tests/ragtime_ear_probe --seconds N` prints what the Ear finds
-and hears, with no window (`--span HZ` up to 12000). In a headless cloud session, PipeWire needs
+and hears, with no window (`--span HZ` up to 12000). Headless, PipeWire needs
 an `XDG_RUNTIME_DIR` of its own, a session D-Bus there, then `pipewire`,
 `wireplumber` and `pipewire-pulse` started in the background; and
 `openbox` on the Xvfb display, or floating windows stack wrong. Never
@@ -615,16 +619,14 @@ The bench's fake hosts are POSIX, but `wine ragtime.exe` talks to a Linux
 2. After Jeff merges it, build from the merge commit:
    `packaging/linux/make-appimage.sh` and `packaging/windows/make-zip.sh`
    (and `packaging/macos/make-zip.sh`, which needs a Mac).
-   Or take the AppImage and zips from a full CI run on that commit (the
-   artifacts download from `*.blob.core.windows.net`); those jobs print
-   each file's sha256sum in the log and the run summary, so check the
+   Or take the AppImage and zips from a full CI run on that commit; those
+   jobs print each file's sha256sum in the log and the run summary, so check the
    download against it. Files are named
    `Ragtime-<version>-beta-<hash>-...` (`release-name.sh`).
 3. Write `SHA256SUMS-<version>-beta` beside them (`sha256sum`), and
    smoke-test headless: the AppImage under Xvfb and `ragtime.exe` under
-   Wine, each against `ragtime_fake_air` (the Mac zip is tested only by
-   its CI job's ctest, as the cloud has no Mac). Put the files in the project's
-   `ragtime-release/` folder.
+   Wine, each against `ragtime_fake_air` (the Mac zips are tested by
+   their CI jobs' ctest).
 4. Draft release notes: say whether it talks to the last release (a
    protocol change breaks that), that data2g-host is the operator's to run
    (never bundled or started), and how the gearshift finds Data2G's
@@ -673,25 +675,3 @@ The bench's fake hosts are POSIX, but `wine ragtime.exe` talks to a Linux
 - Don't comment on or push to other contributors' PRs unless Jeff asks.
   Andrew (arodland) is the Data2G author; his asks and answers go through
   Jeff.
-
-## Jeff's radio PC (Hamlet)
-
-Some work runs on Jeff's Linux machine, wired to his IC-7100 through
-Hamlib. Never launch a radio app with his configuration or click its GUI
-without his OK. The system `rigctld` (localhost:4532, shared with fldigi)
-is his: never kill or restart it, and send only read-only queries. Tests
-never use the radio's USB audio codec. Read `RADIO_SETUP.md` in his
-Glissando checkout first. The two-host bench (two `data2g-host`s on
-PulseAudio null sinks) is Jeff's to run there. Data2G no longer needs
-PyTorch: its releases are the native `data2g-host` and `data2g-gui`, and
-`--audio-io pipe:IN,OUT` joins two hosts with fifos, no sound card
-(`docs/DATA2G.md`).
-
-## Cloud sandbox quirks
-
-- Blocked hosts include `codeload.github.com` and GitHub archive and
-  release downloads; `git clone` works. Point CMake `ExternalProject`
-  URLs at local clones for a cloud-only build, and never commit that.
-- Tag pushes are refused and a session can't create releases; Jeff tags
-  and publishes in the GitHub UI.
-- WebFetch of outside pages needs Jeff's OK.

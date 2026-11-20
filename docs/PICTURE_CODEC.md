@@ -1,12 +1,10 @@
-# Cool-chic pictures (draft)
+# Cool-chic pictures
 
-**Status:** a draft for review. Nothing here goes on the air yet. Today
-Ragtime sends only JPEG 2000 pictures (docs/PROTOCOL.md, "Pictures"). This
-page specifies a second kind, built on Orange's Cool-chic 5.0.1, for the
-C++ decoder and encoder now being written. The plan is the Claude Doc
-"Cool-chic in Ragtime: plan"
-(https://claude.ai/artifact/BtTekxxQmqdf9S1iV1eCo5, private to Jeff), and
-`tools/codecs/README.md` holds the tests that led to it.
+Ragtime sends pictures of two kinds: JPEG 2000 (docs/PROTOCOL.md,
+"Pictures") and the Cool-chic streams this page specifies, built on
+Orange's Cool-chic 5.0.1 and decoded and encoded by Ragtime's own C++
+port (`image/src/coolchic/`). A Cool-chic picture goes as a file of kind
+`0x02`. `tools/codecs/README.md` holds the tests that led to it.
 
 ## Why
 

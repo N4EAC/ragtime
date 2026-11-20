@@ -74,8 +74,8 @@ EarFrame::EarFrame(wxWindow* parent, ear::FilterEdit& edit, EarFilterBar::Write 
                       "and data, 8 kHz for FM and AM.");
     format_ = new wxStaticText(panel, wxID_ANY, "");
     top->Add(new wxStaticText(panel, wxID_ANY, "Listen to"), 0, wxALIGN_CENTER_VERTICAL);
-    // It gives way to the rate and the QRN at the right (Hamlet, 2026-10-26:
-    // a long source name pushed them out of the window).
+    // It gives way to the rate and the QRN at the right (2026-10-26: a long
+    // source name pushed them out of the window).
     source_->SetMinSize(FromDIP(wxSize(150, -1)));
     source_->SetMaxSize(FromDIP(wxSize(380, -1)));
     top->Add(source_, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(8));
