@@ -121,6 +121,9 @@ thresholds...** in the gearshift. See [docs/GEARBOX.md](docs/GEARBOX.md).
 
 ## Building
 
+For the initial macOS Cocoa build and platform limits, see
+[docs/MACOS.md](docs/MACOS.md).
+
 On Ubuntu 24.04:
 
     sudo apt-get install build-essential cmake pkg-config libwxgtk3.2-dev libgtk-3-dev libhamlib-dev libpipewire-0.3-dev \
@@ -349,6 +352,7 @@ Messages are signed, never encrypted, as Part 97 requires.
 | --- | --- |
 | [docs/PLAN.md](docs/PLAN.md) | The full design: the net, ragchews, broadcast mode, files, signing, store and forward, frequencies, decisions and open questions |
 | [docs/STAGE1.md](docs/STAGE1.md) | Stage 1, parity with Glissando's Data2G mode, split into work packages |
+| [docs/MACOS.md](docs/MACOS.md) | macOS Cocoa development build, native adapters and remaining platform limits |
 | [docs/PORTING.md](docs/PORTING.md) | macOS and Android investigation: baseline experiments, platform gaps and work packages |
 | [docs/HOW_SEALS_WORK.md](docs/HOW_SEALS_WORK.md) | Seals in plain words, with pictures: what is inside one, how repairs work, and what a late joiner asks for |
 | [docs/GEARBOX.md](docs/GEARBOX.md) | The gearshift: how a Data2G mode is picked from the Submode Map |

@@ -1,5 +1,9 @@
 # macOS and Android port investigation
 
+The macOS implementation now has a development build route and native
+adapters. See [MACOS.md](MACOS.md) for current instructions and limits;
+the experiments below record the original, unchanged-source baseline.
+
 Started 2026-11-19 for the `finitor/ragtime` checkout, against
 `60225d4e7bc91c48d461d705ddcd5ab7c7990b39` (0.3.1-beta).
 Working branch: `codex/macos-android-investigation`.
@@ -211,7 +215,7 @@ No voice, Ear or local-radio control is required for that demo.
 - [x] Audit architecture, platform branches, build switches and release jobs.
 - [x] Identify the first warnings-as-errors blocker on both Clang toolchains.
 - [x] Record completed macOS baseline build/test results and Android core build results.
-- [ ] Resolve the two remaining macOS baseline test failures and Clang warnings.
+- [x] Resolve the two remaining macOS baseline test failures and Clang warnings.
 - [ ] M1: demonstrate the Cocoa app with the fake-host bench.
 - [ ] A1: load a JNI library and run core checks on an Android device/emulator.
 - [ ] A2: demonstrate phone-to-desktop chat and file transfer over LAN.
