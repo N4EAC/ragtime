@@ -4,11 +4,12 @@
 # time, never linked, so only its headers (libpipewire-0.3-dev) are needed
 # to build, and Ragtime runs where there is no PipeWire. With
 # -DRAGTIME_PIPEWIRE=OFF stand-ins say the Ear can't listen and voice
-# can't record or play. macOS uses Core Audio for voice. The Ear's spectrum,
+# can't record or play. macOS uses Core Audio. The Ear's spectrum,
 # the graph search and the voice devices' rules are core's, and tested there.
 
 if(APPLE)
-    add_library(ragtime_audio STATIC src/NoEar.cpp
+    add_library(ragtime_audio STATIC
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioEar.mm
         ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioVoice.mm
         ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioCapture.cpp
         ${PROJECT_SOURCE_DIR}/platform/macos/MicrophonePermission.mm

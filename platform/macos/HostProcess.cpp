@@ -7,8 +7,8 @@ namespace audio
 
 std::optional<int> processListeningOn(int)
 {
-    // No native host/audio-device discovery yet. A remote TCP connection
-    // does not identify a local radio device; never probe Linux's /proc.
+    // Command-port-to-PID lookup is not implemented. Audio process/device
+    // discovery is independent; never infer a device from a remote port.
     return std::nullopt;
 }
 

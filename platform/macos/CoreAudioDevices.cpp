@@ -94,13 +94,13 @@ DeviceSnapshot readDevices()
     const auto processList = address(kAudioHardwarePropertyProcessObjectList);
     if (!AudioObjectHasProperty(kAudioObjectSystemObject, &processList))
     {
-        s.problem = "Voice needs macOS 14.2 or later to identify the radio's audio devices";
+        s.problem = "Audio discovery needs macOS 14.2 or later to identify the radio's devices";
         return s;
     }
     if (!list(kAudioObjectSystemObject, address(kAudioHardwarePropertyDevices), ids) ||
         !list(kAudioObjectSystemObject, processList, processes))
     {
-        s.problem = "Core Audio device ownership could not be read; voice is paused";
+        s.problem = "Core Audio device ownership could not be read; audio is paused";
         return s;
     }
     value(kAudioObjectSystemObject, address(kAudioHardwarePropertyDefaultInputDevice), s.defaultInput);
@@ -114,7 +114,7 @@ DeviceSnapshot readDevices()
         if (d.uid.empty() || !channels(id, kAudioObjectPropertyScopeInput, d.inputs) ||
             !channels(id, kAudioObjectPropertyScopeOutput, d.outputs))
         {
-            s.problem = "Core Audio devices changed during discovery; voice is paused";
+            s.problem = "Core Audio devices changed during discovery; audio is paused";
             return s;
         }
         value(id, address(kAudioDevicePropertyNominalSampleRate), d.rate);
@@ -127,7 +127,7 @@ DeviceSnapshot readDevices()
             std::vector<AudioObjectID> related;
             if (!list(id, a, related))
             {
-                s.problem = "Core Audio device relationships could not be read; voice is paused";
+                s.problem = "Core Audio device relationships could not be read; audio is paused";
                 return s;
             }
             d.related.insert(d.related.end(), related.begin(), related.end());
@@ -141,14 +141,14 @@ DeviceSnapshot readDevices()
             !list(id, address(kAudioProcessPropertyDevices, kAudioObjectPropertyScopeInput), p.inputs) ||
             !list(id, address(kAudioProcessPropertyDevices, kAudioObjectPropertyScopeOutput), p.outputs))
         {
-            s.problem = "Core Audio processes changed during discovery; voice is paused";
+            s.problem = "Core Audio processes changed during discovery; audio is paused";
             return s;
         }
         if (p.inputs.empty() && p.outputs.empty()) continue;
         p.program = programName(p.pid, id);
         if (p.program.empty())
         {
-            s.problem = "An audio device's owning process could not be identified; voice is paused";
+            s.problem = "An audio device's owning process could not be identified; audio is paused";
             return s;
         }
         if (ear::isData2GProgram(p.program))
@@ -161,7 +161,7 @@ DeviceSnapshot readDevices()
                     });
                     if (device == s.devices.end())
                     {
-                        s.problem = "A radio audio device could not be resolved; voice is paused";
+                        s.problem = "A radio audio device could not be resolved; audio is paused";
                         return s;
                     }
                 }

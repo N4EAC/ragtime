@@ -114,6 +114,12 @@ if(APPLE)
     target_link_libraries(ragtime_core_audio_voice_test PRIVATE Threads::Threads
         "-framework CoreAudio" "-framework CoreFoundation" "-framework AudioToolbox"
         "-framework AVFoundation" "-framework Foundation")
+    ragtime_test(ragtime_core_audio_ear_test macos/CoreAudioEarTest.cpp
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioEar.mm
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioGraph.cpp)
+    target_include_directories(ragtime_core_audio_ear_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/platform/macos ${PROJECT_SOURCE_DIR}/audio/include)
+    target_link_libraries(ragtime_core_audio_ear_test PRIVATE Threads::Threads "-framework Foundation")
     # Exercise dyld paths with a real executable inside a bundle, launched
     # through a symlink from a different working directory.
     add_test(NAME ragtime_sotto_bundle_test COMMAND ${CMAKE_COMMAND}

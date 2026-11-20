@@ -1,5 +1,5 @@
-// Native voice only. The Ear remains a separate backend: it must never
-// share the operator microphone or follow the speaker's default route.
+// Voice owns its queues independently of the Ear; its device policy
+// excludes the radio's inputs and outputs.
 #include "ragtime/audio/VoiceAudio.h"
 #include "CoreAudioDevices.h"
 #include "CoreAudioCapture.h"
