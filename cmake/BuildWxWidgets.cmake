@@ -1,5 +1,5 @@
 # Fetches wxWidgets with git and builds it statically as part of Ragtime
-# (-DRAGTIME_BUILD_WX=ON), for the Windows build, where there is no system
+# (-DRAGTIME_BUILD_WX=ON), for macOS and Windows builds without a system
 # wxWidgets. Sets RAGTIME_WX_LIBS to the targets ragtime links.
 #
 # Point RAGTIME_WX_SOURCE at a wxWidgets checkout (with its submodules) to
@@ -15,6 +15,10 @@ set(wxBUILD_SAMPLES OFF CACHE STRING "" FORCE)
 set(wxBUILD_TESTS OFF CACHE STRING "" FORCE)
 set(wxBUILD_DEMOS OFF CACHE BOOL "" FORCE)
 set(wxBUILD_INSTALL OFF CACHE BOOL "" FORCE)
+
+if(APPLE)
+    set(wxBUILD_TOOLKIT osx_cocoa CACHE STRING "" FORCE)
+endif()
 
 # Everything third-party wx needs comes from its own tree.
 set(wxUSE_REGEX builtin CACHE STRING "" FORCE)

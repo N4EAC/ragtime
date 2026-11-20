@@ -74,6 +74,10 @@ add_executable(ragtime WIN32
 )
 target_include_directories(ragtime PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated ${RAGTIME_RESOURCE_DIR})
 
+if(APPLE)
+    include(${PROJECT_SOURCE_DIR}/packaging/macos/Bundle.cmake)
+endif()
+
 # The ham phrase highlight in the entry lines talks to GTK itself
 # (PhraseHighlight.cpp): a GtkEntry takes no wx text styles.
 if(UNIX AND NOT APPLE AND NOT RAGTIME_BUILD_WX)
