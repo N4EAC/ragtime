@@ -4,6 +4,58 @@ Ragtime uses wxWidgets with the native Cocoa frontend and Core Audio for
 voice messages and the Ear. Apple Silicon is the first release target.
 Native audio device discovery requires macOS 14.2 or newer.
 
+## Release packages
+
+The package recipe follows the Linux and Windows release naming and uses
+the shared dependency recipes. It builds a self-contained Apple Silicon app for
+macOS 14.2 or newer, with static wxWidgets, Hamlib, picture libraries and
+RNNoise, plus the sotto and Codec 2 dylibs and third-party licences.
+
+Install the Xcode command-line tools, CMake, Git, Python 3.9 or newer,
+autoconf, automake and GNU libtool. For example, with Homebrew:
+
+```sh
+brew install cmake python autoconf automake libtool
+packaging/macos/make-zip.sh
+```
+
+The script configures a Release build, keeps warnings as errors, runs
+CTest, installs and signs the app, checks its architecture, deployment
+target and dynamic dependencies, then writes
+`dist/Ragtime-<version>-beta-<commit>-macos-arm64.zip` and its `.sha256`.
+The ZIP contains `Ragtime.app`, `README.txt` and `LICENSE.txt`. Unzip it
+and copy the app to Applications. No package manager is needed to run it.
+
+`BUILD_DIR` selects the build directory (default `build-macos-release`),
+`JOBS` controls parallelism (default 4), and `RAGTIME_RELEASE_TAG` changes
+or clears the default `beta` suffix, as on the other platforms.
+`RAGTIME_WX_SOURCE` and `RAGTIME_HAMLIB_SOURCE` can select existing source
+checkouts. `RAGTIME_MACOS_SOTTO_DIR` can select prebuilt voice codecs;
+their `commit.txt` must match `packaging/sotto.sh`.
+
+### Signing and notarization
+
+Without a signing identity the recipe uses ad-hoc signing, suitable for
+local testing. Public distribution requires a Developer ID Application
+certificate and notarization. Store the notary credentials in a local
+Keychain profile with `xcrun notarytool store-credentials`, then run:
+
+```sh
+MACOS_SIGN_IDENTITY='Developer ID Application: Your Name (TEAMID)' \
+MACOS_NOTARY_PROFILE='ragtime-notary' \
+  packaging/macos/make-zip.sh
+```
+
+The script signs the dylibs before the app, enables the hardened runtime
+with audio-input permission, submits a ZIP with `notarytool --wait`,
+staples and validates the ticket, then creates the final archive and
+checksum. Credentials stay in the Keychain; they do not belong in source
+or CI configuration. See Apple's
+[notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow).
+
+Run the macOS release recipe locally.
+Intel and universal packages are not currently provided.
+
 ## Building
 
 Install the Xcode command-line tools, CMake 3.16 or newer, and Git.

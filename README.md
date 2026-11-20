@@ -121,7 +121,7 @@ thresholds...** in the gearshift. See [docs/GEARBOX.md](docs/GEARBOX.md).
 
 ## Building
 
-For macOS build, audio and test instructions, see
+For macOS packages, build, audio and test instructions, see
 [docs/MACOS.md](docs/MACOS.md).
 
 On Ubuntu 24.04:
@@ -172,7 +172,7 @@ At run time the app needs the same libraries without `-dev`
 carries it). The Ear loads
 `libpipewire-0.3.so.0` (`libpipewire-0.3-0t64`) only when it opens, and
 needs PipeWire to be the sound server. On Windows it listens through
-WASAPI, which needs nothing installed.
+WASAPI; macOS uses Core Audio. Neither needs an extra sound-server package.
 
 ### Voice messages: libsotto
 
@@ -219,6 +219,9 @@ libsotto finds its `libcodec2` in its `build-sotto` folder, so leave
 that folder where it is. The microphone deck shows which sotto loaded (hover
 over its codec line to see the path), or why none did.
 
+The macOS ZIP carries both dylibs in `Ragtime.app/Contents/Frameworks`;
+see [macOS voice codecs](docs/MACOS.md#voice-codecs) for building them.
+
 The AppImage carries libsotto and its Codec 2 (`make-appimage.sh` runs
 `build-sotto.sh`). The Windows zip carries `sotto.dll` and
 `libcodec2.dll` beside `ragtime.exe`: `make-zip.sh` cross-builds them
@@ -236,12 +239,18 @@ wants `librsvg2-bin` and `imagemagick`.
 
     packaging/linux/make-appimage.sh      # dist/Ragtime-<version>-...-x86_64.AppImage
     packaging/windows/make-zip.sh         # dist/Ragtime-<version>-...-windows-x86_64.zip
+    packaging/macos/make-zip.sh           # dist/Ragtime-<version>-...-macos-arm64.zip
 
 The Windows build cross-compiles on Ubuntu 24.04 with
 `g++-mingw-w64-x86-64-posix` and builds its own static wxWidgets and
 Hamlib (which needs `autoconf automake libtool`); with
 Wine installed, `ctest --test-dir build-win` runs the unit tests as
 Windows programs.
+
+The macOS recipe builds on Apple Silicon with static dependencies and
+bundled voice codecs, runs the tests, and creates a ZIP and SHA-256 file.
+See [macOS release packages](docs/MACOS.md#release-packages) for tools,
+options, signing and notarization.
 
 ### Trying it without Data2G
 
@@ -335,9 +344,8 @@ Sources: [ARRL band plan](https://www.arrl.org/band-plan),
 
 Ragtime is a front end for a separately running `data2g-host`, reached
 over TCP. It never starts the modem and never plays to the radio's
-sound card; its Ear only listens in, through PipeWire on Linux or
-WASAPI on Windows or Core Audio on macOS, to what data2g-host records,
-and voice uses your own
+sound card; its Ear listens alongside data2g-host through PipeWire on
+Linux, WASAPI on Windows or Core Audio on macOS. Voice uses your own
 microphone and speaker, never the radio's card (Settings > Voice).
 It reads the radio's dial from rigctld, or opens the rig itself with
 Hamlib (Settings > Rig), and can key it when data2g-host does, for rigs
@@ -353,7 +361,7 @@ Messages are signed, never encrypted, as Part 97 requires.
 | --- | --- |
 | [docs/PLAN.md](docs/PLAN.md) | The full design: the net, ragchews, broadcast mode, files, signing, store and forward, frequencies, decisions and open questions |
 | [docs/STAGE1.md](docs/STAGE1.md) | Stage 1, parity with Glissando's Data2G mode, split into work packages |
-| [docs/MACOS.md](docs/MACOS.md) | macOS build, audio and test instructions |
+| [docs/MACOS.md](docs/MACOS.md) | macOS packages, build, audio and test instructions |
 | [docs/HOW_SEALS_WORK.md](docs/HOW_SEALS_WORK.md) | Seals in plain words, with pictures: what is inside one, how repairs work, and what a late joiner asks for |
 | [docs/GEARBOX.md](docs/GEARBOX.md) | The gearshift: how a Data2G mode is picked from the Submode Map |
 | [docs/MOCKUPS.md](docs/MOCKUPS.md) | The screens, colours, Globus and seal icons |
