@@ -4,9 +4,9 @@
 #include <wx/control.h>
 
 // The Globus toggle: a small globe and the word "Globus", blue when the
-// globe is showing. It sits in the globe pane's header, and package E moves
-// it to the right end of the tab strip, unlit, when the globe is hidden
-// (docs/MOCKUPS.md). Clicked, or Space or Enter with the focus on it, it
+// globe is showing. It sits in the globe pane's header, and the window moves
+// it to the right end of the tab strip, unlit, when the globe is hidden.
+// Clicked, or Space or Enter with the focus on it, it
 // flips and sends wxEVT_TOGGLEBUTTON with IsChecked() saying which way.
 class GlobusToggle : public wxControl
 {

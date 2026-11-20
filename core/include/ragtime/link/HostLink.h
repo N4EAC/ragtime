@@ -24,8 +24,7 @@
 //   ACKMODE tag, after BCAST MODE when the burst wants another mode. A
 //   burst is Sent once the host has acknowledged every tag, and Not sent
 //   if it reports it dropped, the command port closes, or two minutes pass
-//   without it going while no session is up (a session holds the group;
-//   docs/PLAN.md, "Broadcast mode").
+//   without it going while no session is up (a session holds the group).
 // - Sessions: Call (CONNECT), Leave (DISCONNECT) and Leave now (ABORT).
 //   Nothing else opens or closes one. With DATA2G ON, CLEANTXBUFFER n
 //   drops what the host holds of our session bytes before offset n and
@@ -93,7 +92,7 @@ public:
     };
 
     // Ragtime's TIMEOUT: a ragchew ends on Leave, never for being quiet
-    // (docs/PLAN.md), so the host is told not to hang up for a day. The
+    //, so the host is told not to hang up for a day. The
     // link's keepalives still find a station that has gone (LINK_LOST, 90
     // s), and a far end on another client still hangs up after its own.
     static constexpr double RAGCHEW_IDLE_TIMEOUT_S = 24 * 3600.0;

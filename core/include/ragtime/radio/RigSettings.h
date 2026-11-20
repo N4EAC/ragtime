@@ -5,7 +5,8 @@
 //   - None: Ragtime doesn't know the band.
 //   - rigctld: Ragtime reads the dial from a rigctld already running
 //     (DialReader), asking "\chk_vfo", "f" and the meters ("+l SWR",
-//     "+l STRENGTH") and nothing else, since the operator's rigctld is often shared
+//     "+l STRENGTH") and nothing else, since the operator's rigctld is often
+// shared
 //     (fldigi). Never keys.
 //   - Hamlib: Ragtime opens the rig itself with Hamlib, as other ham
 //     programs do: any rig Hamlib knows, on a serial port or a network
@@ -105,7 +106,7 @@ struct RigSettings
     bool swrTrip = false;
 
     // The Ear may set the rig's receive filter (its width and twin PBT),
-    // through Hamlib or rigctld, off by default (docs/STAGE1.md, "The Ear").
+    // through Hamlib or rigctld, off by default.
     bool earFilters = false;
 };
 
@@ -148,8 +149,8 @@ enum class PortType
 // Hamlib's configuration for these settings, in the order to set it: the
 // port, the serial settings when the rig is on a serial port (a network
 // rig refuses them), the PTT type when keying (and the port, by DTR or
-// RTS), then the backend's own words. Empty, with a reason in problem, if backendConf
-// doesn't parse or a rig that needs a port has none.
+// RTS), then the backend's own words. Empty, with a reason in problem, if
+// backendConf doesn't parse or a rig that needs a port has none.
 std::vector<std::pair<std::string, std::string>> hamlibConf(const RigSettings& settings, PortType port,
                                                             std::string& problem);
 

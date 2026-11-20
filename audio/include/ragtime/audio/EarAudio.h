@@ -1,6 +1,6 @@
 // EarAudio: the Ear's ears. It listens to the sound card data2g-host
 // records from, alongside it, and hands the samples to the Ear's spectrum
-// (docs/STAGE1.md, "The Ear"; Jeff's call, 2026-10-26). PipeWire on Linux,
+// (Jeff's call, 2026-10-26). PipeWire on Linux,
 // WASAPI on Windows (2026-10-27), Core Audio on macOS.
 //
 // It follows data2g-host by default: it watches for the host's capture

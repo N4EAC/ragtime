@@ -17,7 +17,7 @@ class wxSimplebook;
 class NarrowStations;
 class StationTable;
 
-// The station list on the left (docs/MOCKUPS.md, "Station list"). Beside
+// The station list on the left. Beside
 // Globus it is narrow: each row the callsign and status with the last
 // heard time, and under it the locator and distance. With Globus off it is
 // a table whose columns come from the Columns menu, sorted by any column.
@@ -57,8 +57,7 @@ public:
     using BellFn = std::function<bool(const std::string& call)>;
     using BellTipFn = std::function<std::string(const std::string& call)>;
     void bells(BellFn belled, BellTipFn tip);
-    // Lights a row for a moment: its QRV has come (docs/PLAN.md, "The
-    // station list shows it").
+    // Lights a row for a moment: its QRV has come.
     void flash(const std::string& call, uint64_t nowMs);
 
     // The table's columns, and the Columns menu that picks them.

@@ -1,5 +1,5 @@
 // Devices: the microphones and speakers voice messages may use, with the
-// radio's sound card left out (docs/STAGE1.md, "Voice audio").
+// radio's sound card left out.
 //
 // Ragtime never plays to the radio, and a voice message recorded from the
 // radio's input would be the band, not the operator. So every sound card

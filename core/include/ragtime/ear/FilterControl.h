@@ -1,8 +1,7 @@
-// FilterControl: the Ear setting the rig's receive filter (docs/STAGE1.md,
-// "The Ear", step 3). Only with "Let the Ear change the rig's filters"
-// ticked (Settings > Rig, off by default), with the rig opened with Hamlib
-// or through rigctld (Jeff's OK, 2026-10-26: rigctld is shared, so the box
-// is the operator's say-so).
+// FilterControl: the Ear setting the rig's receive filter. Only with "Let the
+// Ear change the rig's filters" ticked (Settings > Rig, off by default), with
+// the rig opened with Hamlib or through rigctld (Jeff's OK, 2026-10-26:
+// rigctld is shared, so the box is the operator's say-so).
 //
 // The model. Twin passband tuning runs two filters of the rig's width in a
 // row, each shifted by its own knob, and only their overlap passes. With

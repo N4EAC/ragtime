@@ -15,12 +15,12 @@ class wxGraphicsContext;
 #include "ragtime/ear/FilterControl.h"
 #include "ragtime/ear/Spectrum.h"
 
-// The Ear's picture (docs/STAGE1.md, "The Ear"): the averaged spectrum on
+// The Ear's picture: the averaged spectrum on
 // top and the waterfall under it, newest row at the top, both from 0 to
-// the span across (setTopHz: 4 kHz, or as ear::AutoSpan picks). Data2G's passbands are shaded green (the
-// one in use darker), and the frequency under the mouse is marked. Rows
-// heard while the rig transmits are greyed: its receive audio is muted
-// then.
+// the span across (setTopHz: 4 kHz, or as ear::AutoSpan picks). Data2G's
+// passbands are shaded green (the one in use darker), and the frequency under
+// the mouse is marked. Rows heard while the rig transmits are greyed: its
+// receive audio is muted then.
 //
 // The filter's edges as the noise shows them (ear::EdgeFinder) are drawn
 // in orange, with the -6 dB line between them, and the width the rig says

@@ -24,7 +24,7 @@ constexpr double DEGREES = 180.0 / PI;
 // 2000-01-01 12:00 UTC, the epoch J2000 the sun's figures count from.
 constexpr std::int64_t J2000_UNIX = 946728000;
 
-// The light, as docs/MOCKUPS.md gives it.
+// The light.
 constexpr double DAWN_BELOW_DEGREES = -12.0;   // night ends
 constexpr double DAY_ABOVE_DEGREES = 3.0;      // full day begins
 constexpr double DAY_BASE = 0.93;

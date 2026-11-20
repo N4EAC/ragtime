@@ -338,8 +338,7 @@ How these were picked (2026-10-26):
   segment, or less than 3 kHz inside its edge, and says so in the
   connection bar.
 - Unattended stations (automatic control) must stay in the narrower
-  segments of 97.221(b); see "Frequencies and band plans" in
-  [docs/PLAN.md](docs/PLAN.md#frequencies-and-band-plans).
+  segments of 97.221(b).
 
 Sources: [ARRL band plan](https://www.arrl.org/band-plan),
 [IARU Region 2 band plan](https://www.iaru.org/wp-content/uploads/2020/10/IARU-Region-2-Band-plan.pdf),
@@ -366,17 +365,17 @@ on the waterfall, or the notch out of its bay, and the change goes back
 after 15 s unless you keep it (off by default).
 Messages are signed, never encrypted, as Part 97 requires.
 
-## Plan
+## Documents
 
 | Document | What |
 | --- | --- |
-| [docs/PLAN.md](docs/PLAN.md) | The full design: the net, ragchews, broadcast mode, files, signing, store and forward, frequencies, decisions and open questions |
-| [docs/STAGE1.md](docs/STAGE1.md) | Stage 1, parity with Glissando's Data2G mode, split into work packages |
+| [docs/PROTOCOL.md](docs/PROTOCOL.md) | What goes on the air: records, frames, sessions, seals and repair, roll calls, pictures and voice |
+| [docs/DATA2G.md](docs/DATA2G.md) | data2g-host at the edges Ragtime touches: KISS, commands, the session stream, Hands |
 | [docs/MACOS.md](docs/MACOS.md) | Ragtime on macOS: building, testing, the release zip, and what is different on the Mac |
 | [docs/HOW_SEALS_WORK.md](docs/HOW_SEALS_WORK.md) | Seals in plain words, with pictures: what is inside one, how repairs work, and what a late joiner asks for |
 | [docs/GEARBOX.md](docs/GEARBOX.md) | The gearshift: how a Data2G mode is picked from the Submode Map |
-| [docs/MOCKUPS.md](docs/MOCKUPS.md) | The screens, colours, Globus and seal icons |
-| [docs/PICTURES_AND_VOICE.md](docs/PICTURES_AND_VOICE.md) | Draft spec for analogue SSTVAE pictures in chat, with the US band segments and Part 97 notes (not built; waits on Data2G). Its RADE voice clips are retired in favour of sotto voice messages |
+| [docs/PICTURE_CODEC.md](docs/PICTURE_CODEC.md) | Cool-chic pictures: the bitstream and how it is decoded |
+| [docs/FLIGHT_RECORDER.md](docs/FLIGHT_RECORDER.md) | The flight recorder, Help > Save a report, and replaying a recording on the bench |
 | [CLAUDE.md](CLAUDE.md) | Working notes and ground rules for contributors |
 
 ## Licence

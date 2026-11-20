@@ -14,12 +14,11 @@
 
 class wxGraphicsContext;
 
-// The microphone deck's drawn parts (docs/STAGE1.md, "The microphone
-// deck"). Ragtime keeps the system theme and standard widgets; the deck is
-// one of the drawn exceptions, like the gearshift and the Globus: a rack
-// front panel in the theme's colours, light or dark, with standard
-// dropdowns, buttons and boxes for everything that is a choice rather than
-// an instrument. No Chaotica art.
+// The microphone deck's drawn parts. Ragtime keeps the system theme and
+// standard widgets; the deck is one of the drawn exceptions, like the
+// gearshift and the Globus: a rack front panel in the theme's colours, light
+// or dark, with standard dropdowns, buttons and boxes for everything that is
+// a choice rather than an instrument. No Chaotica art.
 
 namespace deckart
 {

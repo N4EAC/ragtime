@@ -1,14 +1,13 @@
 // The path log: one line for every burst heard from another station,
 // appended and never rewritten, so weeks of who-hears-whom build up for
-// the net's path table in Stage 2 (docs/PLAN.md, "Welcome to the D2G
-// net"). Each line has the UTC time, the station, the S/N data2g-host
-// measured, the burst's mode when the host named it, the band and dial
-// from rigctld when Ragtime reads it, and the gear we were sending in.
-// A contact adds a line too, marked worked: a session with the station,
-// or a message between it and us. Each line carries the station's
+// the net's path table in Stage 2. Each line has the UTC time, the station,
+// the S/N data2g-host measured, the burst's mode when the host named it, the
+// band and dial from rigctld when Ragtime reads it, and the gear we were
+// sending in. A contact adds a line too, marked worked: a session with the
+// station, or a message between it and us. Each line carries the station's
 // Maidenhead locator as last reported, and a locator that first comes or
-// changes (in a Hello) gets a line of its own, so where a station was
-// heard from is kept with when.
+// changes (in a Hello) gets a line of its own, so where a station was heard
+// from is kept with when.
 //
 // From the recent lines it draws each station's 24-hour strip by band
 // for the station details: "17 m: 2000-0000Z on 5 days, median -6 dB";

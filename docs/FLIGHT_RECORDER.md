@@ -7,10 +7,9 @@ a recollection, and a builder plays the host's side of it back to a
 Ragtime on the bench with `ragtime_fake_air --replay`, at the exact
 spacing the tester's Ragtime saw.
 
-It is idea 2 of the "Ideas before signatures" doc (2026-10-25). Glissando's
-best fixes came from logs with timestamps (PLAN.md, "What the air taught
-us"), and the bugs still to find in sessions and cuts (Data2G PR #118)
-are the ones only a real path shows.
+Glissando's best fixes came from logs with timestamps, and the bugs still
+to find in sessions and cuts (Data2G PR #118) are the ones only a real path
+shows.
 
 ## What is recorded
 
@@ -27,7 +26,7 @@ it:
 | `kiss>`, `kiss<` | a KISS frame each way, the bytes between FENDs in hex, exactly as on the wire (command byte and escapes included) |
 | `data-up`, `data-down` | the session data port (command port + 1) |
 | `data>`, `data<` | session bytes each way: **the count only** |
-| `note` | Ragtime opened or closed, Help > Save a report pressed, the head of each file, and each burst's transmit meters, read through Hamlib or rigctld (`note rig TX 12 s: ALC peak 61%, mean 44%, median 47%; SWR 1.3; 38 W`, with what Auto ALC did about it, or why it did nothing: too short a burst to raise the level, no ALC reading with the audio on), a change to data2g-host's TX level and why (`note TX level -2.0 dB: Auto ALC`, `set in Settings`, `Auto ALC off`, `Ragtime closed`), an SWR trip and its clearing (`note rig SWR trip: ...`), how rigctld is answering, when it changes: connected, the first dial reading, an error, or every address failed (`note rigctld 127.0.0.1:4532: no rigctld: 127.0.0.1:4532 refused, [::1]:4532 refused`), each voice clip played and how it ended (`note voice: plays b12 (0:06)`, `note voice: b12 heard to its end`, `ended by the clock`, `stopped: the speaker (...) took no sound for 6 s`), and a window that didn't run for more than 3 s (`note the window didn't run for 5.6 s (busy, or the computer asleep); voice b12 playing`), STAGE1.md "A clip's end by the clock" |
+| `note` | Ragtime opened or closed, Help > Save a report pressed, the head of each file, and each burst's transmit meters, read through Hamlib or rigctld (`note rig TX 12 s: ALC peak 61%, mean 44%, median 47%; SWR 1.3; 38 W`, with what Auto ALC did about it, or why it did nothing: too short a burst to raise the level, no ALC reading with the audio on), a change to data2g-host's TX level and why (`note TX level -2.0 dB: Auto ALC`, `set in Settings`, `Auto ALC off`, `Ragtime closed`), an SWR trip and its clearing (`note rig SWR trip: ...`), how rigctld is answering, when it changes: connected, the first dial reading, an error, or every address failed (`note rigctld 127.0.0.1:4532: no rigctld: 127.0.0.1:4532 refused, [::1]:4532 refused`), each voice clip played and how it ended (`note voice: plays b12 (0:06)`, `note voice: b12 heard to its end`, `ended by the clock`, `stopped: the speaker (...) took no sound for 6 s`), and a window that didn't run for more than 3 s (`note the window didn't run for 5.6 s (busy, or the computer asleep); voice b12 playing`) |
 
 ```
 2026-10-25T16:38:10.875Z up 127.0.0.1 KISS 8100 commands 8300
@@ -81,7 +80,7 @@ documents folder, with:
 - `flight/`: the recorder's files.
 
 **Never a private key.** Ragtime has no keys yet, but signatures are
-coming (PLAN.md). A setting whose name holds "private", "secret",
+coming. A setting whose name holds "private", "secret",
 "password", "passphrase", "token", "seed", "recovery" or "mnemonic" is
 written as `(left out)` (`link::reportableSetting`), and the report takes
 nothing from `appDataDir()` but the flight folder. Whoever adds keys:

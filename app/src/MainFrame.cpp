@@ -1644,7 +1644,7 @@ void MainFrame::callStation(const std::string& call, bool askFirst)
         if (!why.empty())
         {
             // A busy station can be waited for: Tell me when free rings at
-            // its QRV and offers the call then (docs/PLAN.md, "Busy stations").
+            // its QRV and offers the call then.
             bool busy = view.word != "No sessions";
             wxMessageDialog ask(this,
                                 utf8(why)
@@ -3371,9 +3371,9 @@ void MainFrame::updateVoices(uint64_t nowMs)
             }
         }
         if (!t.outgoing && t.state == SState::Saved) arrived.push_back(key);
-        // In a ragchew a clip can play while it comes (docs/STAGE1.md,
-        // "Voice while it arrives"): with the deck open it takes its turn
-        // as soon as its first frames are in, not once it is whole.
+        // In a ragchew a clip can play while it comes: with the deck open it
+        // takes its turn as soon as its first frames are in, not once it is
+        // whole.
         else if (!t.outgoing && t.state == SState::Receiving && autoPlayVoice())
             arrived.push_back(key);
     }
@@ -3601,7 +3601,7 @@ bool MainFrame::startArrivingVoice(const std::string& key, uint32_t fromFrame, s
 void MainFrame::voiceDone(const std::string& key, bool played)
 {
     // How it ended, for the flight recorder: the speaker's word, or the
-    // clock's (docs/STAGE1.md, "A clip's end by the clock").
+    // clock's.
     using Ending = VoicePlayer::Ending;
     const Ending how = voicePlayer_ ? voicePlayer_->ending() : Ending::Heard;
     switch (how)

@@ -1,6 +1,6 @@
 // Graph: finding the sound card data2g-host listens to, from what PipeWire
 // says about its graph, so the Ear can listen to the same one alongside it
-// (docs/STAGE1.md, "The Ear").
+//.
 //
 // PipeWire tells every program the graph's nodes (sound cards' sources and
 // sinks, and each program's streams), the clients that own them (with the

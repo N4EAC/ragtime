@@ -1,8 +1,7 @@
 # Picture codecs at 1.6 and 4 kB
 
 The scripts and results of a test run on 2026-10-29: could anything beat
-the JPEG 2000 that Ragtime sends its inline pictures in (docs/STAGE1.md,
-"Inline pictures") at the sizes a picture has on HF? Nothing here is built by CMake or run in CI. It is a record that
+the JPEG 2000 that Ragtime sends its inline pictures in at the sizes a picture has on HF? Nothing here is built by CMake or run in CI. It is a record that
 anyone can run again.
 
 ## The picture and the budgets

@@ -1,5 +1,5 @@
 // Edges: where the rig's filter really cuts, measured from the band's noise
-// in the Ear's rows (docs/STAGE1.md, "The Ear", step 2).
+// in the Ear's rows.
 //
 // Between signals, the receiver's audio is the band's noise through the
 // rig's filter: flat across the passband and falling away at its edges.
@@ -17,7 +17,7 @@
 // percentile, so a 500 Hz filter and a 3 kHz one are found alike. Short
 // dips (a gap between carriers) up to GAP_HZ don't end it, nor a dip of
 // any width inside the span setBridge names: where the rig's notch is
-// (a 340 Hz hole on an IC-7100, docs/STAGE1.md, "The notch"). Its
+//. Its
 // ends are interpolated between bins. An end within END_HZ of 0 Hz or of
 // the top of the picture is past what the Ear shows, and given as none.
 // When the stopband isn't at least STOP_DB under the passband there is no

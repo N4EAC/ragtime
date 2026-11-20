@@ -15,14 +15,12 @@ class wxStaticText;
 class wxToggleButton;
 class wxBitmapToggleButton;
 
-// The bar across the top of the window (docs/MOCKUPS.md, "Connection
-// bar"), left to right: my callsign, the group D2G, the radio's dial
-// (while Ragtime reads it from rigctld), the ear that opens the Ear, the
-// 500 Hz switch,
-// Accept sessions, Pause sending, Auto ALC with
-// its level meter (the rig's ALC, read through Hamlib while transmitting)
-// with the SWR bar under it, and the TX light. The window wires the controls; the
-// bar only lays them out and keeps their looks.
+// The bar across the top of the window, left to right: my callsign, the group
+// D2G, the radio's dial (while Ragtime reads it from rigctld), the ear that
+// opens the Ear, the 500 Hz switch, Accept sessions, Pause sending, Auto ALC
+// with its level meter (the rig's ALC, read through Hamlib while
+// transmitting) with the SWR bar under it, and the TX light. The window wires
+// the controls; the bar only lays them out and keeps their looks.
 class ConnectionBar : public wxPanel
 {
 public:

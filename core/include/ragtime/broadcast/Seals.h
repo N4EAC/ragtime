@@ -1,18 +1,18 @@
-// Seals and repair on the D2G group (docs/PLAN.md, "Seals, receipts and
-// repairs"; docs/PROTOCOL.md, "Seals and repair"), the way NACK-oriented
-// multicast (NORM) repairs: listeners say only what they lack, after a
-// random wait, and keep quiet when someone else has asked for it already.
+// Seals and repair on the D2G group (docs/PROTOCOL.md, "Seals and repair"),
+// the way NACK-oriented multicast (NORM) repairs: listeners say only what
+// they lack, after a random wait, and keep quiet when someone else has asked
+// for it already.
 //
 // Ours. Every file we broadcast (its FileAnnounce) is listed in a Seal once
 // its burst has gone, and so are our Texts when the operator asks for that
 // (setSealText, off by default: on a poor link a seal can take 30 to 60 s
-// of airtime, and plain chat must never pay for it unasked): the seal names our first item since
-// the last seal and gives each one's record digest, zeros for a number
-// whose burst never went. Each seal names the one before by its digest,
-// so a listener that missed one sees the gap. A seal goes once an over
-// has ended (QUIET_MS with nothing new of ours), as soon as a file's
-// pieces have all gone, and at the latest SEAL_EVERY_MS after the oldest
-// item it lists.
+// of airtime, and plain chat must never pay for it unasked): the seal names
+// our first item since the last seal and gives each one's record digest,
+// zeros for a number whose burst never went. Each seal names the one before
+// by its digest, so a listener that missed one sees the gap. A seal goes once
+// an over has ended (QUIET_MS with nothing new of ours), as soon as a file's
+// pieces have all gone, and at the latest SEAL_EVERY_MS after the oldest item
+// it lists.
 //
 // After a seal goes, a listening window (3 one-codeword bursts in its
 // mode, plus 4 s). The requests heard in it are joined and answered with

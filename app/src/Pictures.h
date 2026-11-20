@@ -27,7 +27,7 @@ class Decoder;
 } // namespace image
 } // namespace ragtime
 
-// Inline pictures in the window (docs/STAGE1.md, "Inline pictures"): a
+// Inline pictures in the window: a
 // picture read from disk in any format Ragtime knows, and the shelf of
 // pictures shown among the messages, each decoded from its bytes as they
 // stand and again only when more have come.

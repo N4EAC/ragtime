@@ -11,7 +11,7 @@
 namespace
 {
 
-// The mock-up tokens (docs/MOCKUPS.md): the accent blue of a toggle that is
+// The colours: the accent blue of a toggle that is
 // on, the border of one that is off, and the focus ring.
 const wxColour ACCENT(0x1f, 0x5f, 0xbf);
 const wxColour BORDER(0xb9, 0xbe, 0xc7);

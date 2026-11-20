@@ -1,6 +1,5 @@
-// The voice processing chain (docs/STAGE1.md, "Voice: the processing
-// chain"): what the microphone deck does to the voice before sotto codes
-// it. In order:
+// The voice processing chain: what the microphone deck does to the voice
+// before sotto codes it. In order:
 //
 //   input gain -> 48 kHz -> high-pass -> noise reduction -> leveller
 //              -> 16 kHz -> limiter -> sotto

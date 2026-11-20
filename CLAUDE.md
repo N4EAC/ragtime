@@ -1,7 +1,7 @@
 # Working on Ragtime
 
 Notes for a fresh Claude (or any newcomer) picking this project up. They
-sum up what the planning sessions learned and what the owner, Jeff (AG7EW,
+sum up what earlier work learned and what the owner, Jeff (AG7EW,
 GitHub `baitisj`), has decided. Where these notes and the code disagree,
 the code wins. Fix the note.
 
@@ -24,22 +24,18 @@ from "ragchew". Three ideas frame everything:
   stress in the docs). Recent work and the path strips are where it
   shows.
 
-Read `docs/PLAN.md` first: it is the full design, with Jeff's decisions
-and open questions. `docs/STAGE1.md` is the work now under way.
+Read `README.md` first: it is what Ragtime does, for its users.
 `docs/PROTOCOL.md` is what goes on the air (records, frames, sessions,
-text coding).
-`docs/GEARBOX.md` and `docs/MOCKUPS.md` cover the gearshift and the
-screens. `docs/DATA2G.md` is what data2g-host does at the edges Ragtime
+text coding, seals, roll calls, pictures and voice).
+`docs/GEARBOX.md` covers the gearshift. `docs/DATA2G.md` is what data2g-host does at the edges Ragtime
 touches. `docs/FLIGHT_RECORDER.md` is the host-link recorder, the report
 and `--replay`. `docs/HOW_SEALS_WORK.md` is the plain-words primer on seals and
 repair (its figures are SVGs in `docs/images/how-seals-work/`); change it
 with the code when the seal rules change.
-`docs/PICTURE_CODEC.md` is the draft spec for Cool-chic pictures, a
-second picture kind beside JPEG 2000 (not on the air; its reference code
-is `tools/codecs/rcc/`, its test vectors `tests/data/coolchic/`).
-`docs/PICTURES_AND_VOICE.md` is the draft spec for pictures and voice in
-chat (not built), with the US band segments, the wide-passband dials
-and the Part 97 check.
+`docs/PICTURE_CODEC.md` is the spec for Cool-chic pictures, the second
+picture kind beside JPEG 2000 (its reference code is `tools/codecs/rcc/`,
+its test vectors `tests/data/coolchic/`). `docs/MACOS.md` is the Mac
+port: building, testing, the release zip and what differs there.
 
 ## Status
 
@@ -156,7 +152,7 @@ and the Part 97 check.
   events (docs/DATA2G.md, "Hands"). The fake hosts do references and
   Hands (`--no-hands` for an older one), and collide two in one channel.
   Request roll call (Ctrl+I, named Check in until 2026-11-15) calls the roll with them (Jeff, 2026-11-12; PROTOCOL.md "Roll
-  calls", STAGE1.md "Check in by Hand"): the Hello goes with a RollCall
+  calls"): the Hello goes with a RollCall
   record (`0x03`) and a window, and every Ragtime that hears it answers
   by Hand (`protocol/Hands.h`: callsign, square, S/N, flags in 63 bits;
   `BroadcastChat::answerRollCall`), unless in a ragchew or turned off in
@@ -171,8 +167,7 @@ and the Part 97 check.
   `THRESHOLD name dB...` lines). `HostLink` collects them into `ModeInfo::thresholds`, they win over the
   files' in the gearshift (`HostMode::hasThresholds`), and the popup then
   names data2g-host as the source and hides Load thresholds.
-- The dial, the path log and the watch list (2026-10-25,
-  `docs/STAGE1.md`): `core/src/radio/` (`DialReader`, which only ever
+- The dial, the path log and the watch list (2026-10-25): `core/src/radio/` (`DialReader`, which only ever
   asks rigctld `\chk_vfo`, `f`, while transmitting the meters
   `+l ALC`, `+l SWR` and `+l RFPOWER_METER_WATTS`, and between bursts
   the S-meter `+l STRENGTH` for the band's noise (`radio::NoiseFloor`,
@@ -186,9 +181,8 @@ and the Part 97 check.
   burst heard, appended, and each station's 24-hour strip by band),
   `broadcast::WatchList` (bells, and Tell me when free), and in the app
   `RigConnection`, `PathStripView`, `PathsDialog` and `WatchDialog`.
-  Receive only outside the US data segments ticks PLAN.md's last parity
-  box.
-- Recent work (2026-10-25, `docs/STAGE1.md`): `radio::RecentWork` ranks
+  Outside the US data segments Ragtime only receives.
+- Recent work (2026-10-25): `radio::RecentWork` ranks
   the path log's stations, by default by (1 + days worked) × (1 + days
   heard at this hour on this band); contacts (a session, an `@` message
   either way) are `work` lines in the path log. The pane is
@@ -201,7 +195,7 @@ and the Part 97 check.
   globe fills the pane and comes in on a picked path with room round it,
   north up when it can (`globus::globusZoom`), and a second click on a
   picked row unpicks it (`app/src/UnpickClick`).
-- Rig control (2026-10-26, Andrew's suggestion, `docs/STAGE1.md`):
+- Rig control (2026-10-26, Andrew's suggestion):
   Settings > Rig picks no rig, the dial from rigctld (read only, but for
   the Ear's filter with its box ticked), or
   the rig opened with Hamlib (`radio::RigSettings`, `radio::hamlibConf`;
@@ -230,7 +224,7 @@ and the Part 97 check.
   private key out of wxConfig names that rule misses, and out of the
   flight folder. `ragtime_fake_air --replay` plays it back
   (`tests/ReplayHost`).
-- The Ear (2026-10-26, Jeff's idea, `docs/STAGE1.md`): the ear button
+- The Ear (2026-10-26, Jeff's idea): the ear button
   (or View > Ear) floats a waterfall and spectrum of what the radio
   hears (`app/src/EarFrame`, `EarScope`), with Data2G's passbands drawn
   on it. It records alongside data2g-host from the same PipeWire source
@@ -262,7 +256,7 @@ and the Part 97 check.
   to 4, 8 or 12 kHz, or Auto fits it past the filter's high edge
   (`ear::AutoSpan`; FM and AM start at 8 kHz, and on FM the Ear draws
   and sets no filter).
-- Reactions (2026-10-26, Jeff's idea, `docs/STAGE1.md`): the Reaction
+- Reactions (2026-10-26, Jeff's idea): the Reaction
   record (`0x14`) names one of 20 palette entries (12 emoji, 8 ham words,
   `protocol/Reactions.h`, frozen like text table 0). On D2G ours rides
   in our next burst within 30 s, else goes alone at most once a minute
@@ -270,14 +264,13 @@ and the Part 97 check.
   once (`SessionChat::react`). Chips under the line and a React submenu
   (`app/src/ReactionChips`); Hello takes bit 6, so `TAKES_ALL_V0` is
   `0x7F`.
-- Edits (2026-11-17, Jeff's ask, `docs/STAGE1.md` "Fix a line before
-  its seal", PROTOCOL.md "Edits"): a broadcast line of ours can be fixed
+- Edits (2026-11-17, Jeff's ask, PROTOCOL.md "Edits"): a broadcast line of ours can be fixed
   until its seal goes, or would go with chat seals off (60 s quiet, 10
   minutes at most; `Seals::draft`). The fix is the same Text record
   (number and time) with flag bit 6, so the seal lists it and repairs
   bring it to a station that missed it (`BroadcastChat::edit`, Edit...
   and Up in the entry line). Broadcast only.
-- Inline pictures (2026-10-27, Jeff's idea, `docs/STAGE1.md`): the
+- Inline pictures (2026-10-27, Jeff's idea): the
   picture button left of the floppy on both tabs opens `PictureDialog`
   (the most airtime, the longest side, 640 by default), which shrinks
   the picture with `picture::downscale` (DPID) and codes it as
@@ -299,8 +292,7 @@ and the Part 97 check.
   updating, Cancel asks first, then the arrival plays. The Reception
   Preview is a window of its own beside the main one, not modal (Jeff,
   2026-11-15). Kind `0x02`
-  (`protocol::FILE_COOLCHIC`, told from JPEG 2000 by the bytes). What
-  the port taught us and what could be better: `docs/COOLCHIC_NOTES.md`.
+  (`protocol::FILE_COOLCHIC`, told from JPEG 2000 by the bytes).
 - Voice messages (2026-10-31, Jeff's idea): clips coded with sotto, Jeff's
   2,400 bit/s vocoder, go as files of kind `0x03`
   (`protocol::FILE_VOICE`). `core/src/voice/` has the `.sot` file (a
@@ -316,15 +308,14 @@ and the Part 97 check.
   codec 1's pitch as loud hiss). libsotto (LGPL) is loaded at run time,
   never linked. Its test clip `tests/data/voice/` is LibriSpeech, CC BY
   4.0.
-- Voice rates (2026-11-07, Jeff, docs/STAGE1.md "Voice rates"): the
+- Voice rates (2026-11-07, Jeff): the
   deck's Rate picks 2400, 1200, 600 or 400 bit/s, codecs 2 to 5
   (`voice::Codec`, `voice::codecOf`; 40, 80 and 120 ms superframes).
   Since 2026-11-07 (Jeff) codecs 3 to 5 carry v3.8's 4-8 kHz hiss band,
   16 kHz both ways: the pin (sotto aa44cdb, with the low rates pitch fixes and the 600/400 hiss cap) has `sotto_lr_enc16` /
   `_dec16` and `sotto_vlr_enc16` / `_dec16`, which `voice::Sotto` binds
   (a fixed-point build's NULL stubs leave them off).
-- The voice chain (2026-10-31, voice PR 3 of the sotto plan,
-  `docs/STAGE1.md`): `voice::Chain` in `core/src/voice/` takes the
+- The voice chain (2026-10-31, voice PR 3): `voice::Chain` in `core/src/voice/` takes the
   microphone through Gain, 48 kHz, a high-pass, noise reduction, the
   leveller (with the Target knob's peak mode), 16 kHz and the limiter, with
   live meters (`takeReadings`) and a per-clip Level check (P.56 active
@@ -333,8 +324,7 @@ and the Part 97 check.
   `denoise/` (`ragtime_denoise`, fetched with git; 0.2 would download
   its model at build time). `ragtime_voice_chain`
   runs a WAV through it.
-- Voice audio (2026-10-31, voice PR 2 of the plan in
-  `docs/STAGE1.md`, "Voice audio"): `audio::VoiceAudio`, the
+- Voice audio (2026-10-31, voice PR 2): `audio::VoiceAudio`, the
   microphone and speaker on PipeWire and WASAPI (`PipeWireVoice.cpp`,
   `WasapiVoice.cpp`; `PipeWireApi.h` and `WasapiCommon.h` shared with
   the Ear), clips played whole or as they come; `voice::devices`
@@ -342,7 +332,7 @@ and the Part 97 check.
   uses, both halves, and the ones remembered (`/Voice/RadioCards`);
   `voice::checkMicrophone` for Settings > Voice's Test; the bench's
   `tools/voice/pretend_desk.sh` and `ragtime_voice_probe`.
-- The microphone deck (2026-10-31, voice PR 4, `docs/STAGE1.md`): the
+- The microphone deck (2026-10-31, voice PR 4): the
   microphone button on both tabs (or View > Microphone deck) floats
   `app/src/VoiceDeck`, a drawn rack panel (`app/src/DeckParts`) over
   the voice chain: meters, Glissando-feel knobs (`core/src/deck/`,
@@ -356,7 +346,7 @@ and the Part 97 check.
   them from `RAGTIME_SOTTO_DLL_DIR`; before issue #166's fix the zip had
   none). Play and Save as WAV say in a box when sotto won't load.
 - Voice cards (2026-10-31, voice PR 5 of the sotto plan,
-  `app/src/VoiceCards`, docs/STAGE1.md "Voice cards"): a
+  `app/src/VoiceCards`): a
   play button, the pitch strip and the length under the line on both
   tabs, Play on the Files tab, decoded with libsotto and played through
   the one `audio::VoiceAudio` `MainFrame` owns; `voice::PlayQueue`
@@ -366,10 +356,8 @@ and the Part 97 check.
   `voice::PlayWatch` (core) ends a clip by the clock when the speaker
   never says it has played it, and stops one it stopped taking, and
   `PipeWireVoice` runs the window's requests on its own thread, so the
-  window never waits for PipeWire (docs/STAGE1.md, "A clip's end by the
-  clock").
-- Voice while it arrives (2026-10-31, voice PR 6, docs/STAGE1.md "Voice
-  while it arrives"): in a ragchew a clip plays as it comes
+  window never waits for PipeWire.
+- Voice while it arrives (2026-10-31, voice PR 6): in a ragchew a clip plays as it comes
   (`voice::ArrivalPlayer`, core), starting once the bytes will keep
   ahead of the speech ("starts in 12 s" on the card) and covering a dry
   spell as sotto covers a lost frame; the stop sign on a session voice
@@ -379,8 +367,7 @@ and the Part 97 check.
   `MISSED`, and `SN` for the session partner. Ragtime shows them in the
   station list's SNR column and feeds the gearshift's Auto the weakest
   station heard in 15 minutes (`Stations::weakestPath`). Hosts from
-  before it still work, without either (`docs/STAGE1.md`, "SNR from
-  data2g-host").
+  before it still work, without either.
 
 ## Rules Jeff has set
 
@@ -415,11 +402,10 @@ and the Part 97 check.
 - Never start `data2g-host`; the operator runs it. Ragtime never plays
   to the radio's sound card or opens its ALSA devices. Voice records
   and plays only on the operator's own microphone and speaker, never a
-  card a data2g program uses (`voice::devices`, docs/STAGE1.md, "Voice
-  audio"). The Ear only records,
+  card a data2g program uses (`voice::devices`). The Ear only records,
   through PipeWire (WASAPI's shared mode on Windows), alongside
   data2g-host, passive on the host's card and with a long latency so
-  the host never notices (docs/STAGE1.md, "The Ear"). It keys the rig only with "Key the rig when
+  the host never notices. It keys the rig only with "Key the rig when
   data2g-host keys" ticked (Settings > Rig, Hamlib only, off by
   default), following the host's PTT ON/OFF and unkeying by itself on
   a dropped link, a rig failure, quitting and after 180 s (Andrew's
@@ -495,7 +481,7 @@ and the Part 97 check.
 | `tools/` | Reference scripts: `icon/` (`make_leaf_svg.py` draws the icon, the Maple Leaf Rag's leaf going digital, as `app/res/ragtime.svg`; `make_icons.sh` renders its PNG and ICO), `globe/` (sunlit globe renderer, and the generators of the map tables in `core/src/globus/`: coasts and borders from Natural Earth, the big lakes from `ne_110m_lakes.geojson`, state and province lines from Natural Earth's 1:10m admin-1 lines, fetched for the run, for the countries in `gen_admin1_lines.py`), `gearbox/` (ladders), `ear/` (`pretend_radio.sh`, a pretend radio and data2g-host recorder in PipeWire for the Ear, and `make_radio_noise.py`, its audio), `ham_table/` (text table 0 generator and corpus: `gen_table.py --check`), `gcc16/check.py` (GCC 16 check), `codecs/` (the 2026-10-29 test of Ragtime's JPEG 2000 against JPEG XL, CompressAI and Cool-chic at 1.6 and 4 kB: scripts, bitstreams and results, its README says how to run them; not built) |
 | `cmake/` | CMake helpers. `ragtime_warnings(<target>)` gives every target `-Wall -Wextra` and, with `RAGTIME_WERROR` (on by default), `-Werror`; `Toolchain-mingw64.cmake` (the Windows cross build), `BuildWxWidgets.cmake` (wxWidgets 3.2.9, 3.2.11 on the Mac, cloned and built statically with `-DRAGTIME_BUILD_WX=ON`), `BuildHamlib.cmake` (Hamlib 4.5.5 cloned and built statically with autotools, `-DRAGTIME_BUILD_HAMLIB=ON`), `BuildImageLibs.cmake` (OpenJPEG 2.5.3, libwebp 1.4.0, libde265 1.0.15 and libheif 1.18.2 cloned and built statically, `-DRAGTIME_BUILD_IMAGE_LIBS=ON`), `EmbedFile.cmake` (the window icon built in), `BuildSotto.cmake` (libsotto built when configuring, if missing) |
 | `packaging/` | Release recipes: `linux/make-appimage.sh` (with `ragtime.desktop`), `windows/make-zip.sh` (with the zip's `README.txt`), `macos/make-zip.sh` (on a Mac; the bundle's CMake, `Info.plist.in`, the icon and `build-sotto.sh` for the dylibs are beside it). All write to `dist/`, named by `release-name.sh`. `sotto.sh` pins sotto's commit and `build-sotto.sh` builds libsotto with its Codec 2 |
-| `docs/` | The plan and specs. Change them in the same PR as the code they describe. `docs/images/readme/` holds the README's screenshots, taken on the bench (`ragtime_fake_air`) at 1366×768 and squeezed with `pngquant`; retake one when its screen changes much |
+| `docs/` | The specs and how-tos: the protocol, Data2G, the gearshift, seals, Cool-chic, the flight recorder and the Mac. Change them in the same PR as the code they describe. `docs/images/readme/` holds the README's screenshots, taken on the bench (`ragtime_fake_air`) at 1366×768 and squeezed with `pngquant`; retake one when its screen changes much |
 
 The version is `project(ragtime VERSION ...)` in the top-level
 `CMakeLists.txt`; core gets it from the generated `ragtime/Version.h`.

@@ -1,5 +1,5 @@
 // The Broadcast tab's engine: messages on the D2G group, both ways
-// (docs/PLAN.md, "Broadcast mode"; docs/PROTOCOL.md, "Broadcast").
+// (docs/PROTOCOL.md, "Broadcast").
 //
 // Typed text becomes Text records, numbered by the station's broadcast
 // Numbering (kept across restarts by the app), packed into frames and
@@ -87,7 +87,8 @@ struct Message
         Rule,
         Ping,           // a ping of ours and its pong, or a station's ping to us and our pong
         RollCall,       // our check-in that called the roll, and the Hands that answered
-                        // it; or a station's roll call we heard, and our Hand for it
+                        // it; or a station's roll call we heard, and our Hand
+                        // for it
     };
 
     // A roll call row's course.
@@ -340,7 +341,7 @@ public:
     // go, and Pings with no Pong by their time show as unanswered.
     void tick(uint64_t nowMs);
 
-    // Our session state on the group (docs/PLAN.md, "Busy stations"): a
+    // Our session state on the group: a
     // QRL naming the partner on entering a session, a QRV on leaving it.
     // A QRV goes only after a QRL; a QRL still queued when the session ends
     // is taken back instead, and then no QRV is needed. False when nothing

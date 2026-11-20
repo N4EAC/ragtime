@@ -1,11 +1,10 @@
 // The station list: every station heard on the D2G group, what it last
-// said about itself, and how it shows in the list's columns
-// (docs/PLAN.md, "Sometimes we ragchew" and "Main window").
+// said about itself, and how it shows in the list's columns.
 //
 // It is fed the records heard on the group and the host's "BCAST HEARD"
-// calls and SNRs (and the session partner's, from SN); it never transmits. Status always pairs a word with a filled or
-// hollow dot, so it never relies on colour alone. No wx and no clock here:
-// the time is passed in.
+// calls and SNRs (and the session partner's, from SN); it never transmits.
+// Status always pairs a word with a filled or hollow dot, so it never relies
+// on colour alone. No wx and no clock here: the time is passed in.
 #ifndef RAGTIME_BROADCAST_STATIONS_H
 #define RAGTIME_BROADCAST_STATIONS_H
 
@@ -176,7 +175,8 @@ public:
     std::optional<double> bearingDegrees(const Station& station) const;
 
     // A cell's text: "W1AW", "● QRV", "3 min ago", "FN31", "3,951 km",
-    // "81°", "" for Key until Stage 2, "automatic" for Services, "+3.5 dB" for SNR.
+    // "81°", "" for Key until Stage 2, "automatic" for Services, "+3.5 dB"
+    // for SNR.
     std::string cell(const Station& station, Column column, uint64_t nowMs) const;
 
     // Under the last-heard time in the narrow list: "FN31 · 3,951 km", or

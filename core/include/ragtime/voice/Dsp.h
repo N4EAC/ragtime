@@ -1,7 +1,6 @@
-// The stages of the voice processing chain (docs/STAGE1.md, "Voice: the
-// processing chain"), each on its own so it can be tested alone: the
-// high-pass, the resampler, the leveller with its peak mode, and the
-// limiter. voice::Chain (Chain.h) strings them together.
+// The stages of the voice processing chain, each on its own so it can be
+// tested alone: the high-pass, the resampler, the leveller with its peak
+// mode, and the limiter. voice::Chain (Chain.h) strings them together.
 //
 // Samples are floats where 1.0 is full scale (Levels.h).
 #ifndef RAGTIME_VOICE_DSP_H
