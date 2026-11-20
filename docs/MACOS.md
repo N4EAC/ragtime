@@ -126,10 +126,10 @@ Ragtime identify the audio devices used by local `data2g-host` and
 system, an unresolved radio device or an unreadable ownership inventory
 leaves voice unavailable with a status message.
 
-The Ear remains unavailable. Host-to-command-port PID lookup still
-returns no PID on macOS; voice exclusion inspects all local audio clients
-independently of that lookup. Do not infer a remote radio's audio device
-from its host connection.
+The Ear and voice use native input queues independently. Host-to-command-port
+PID lookup still returns no PID on macOS; audio discovery inspects local
+audio clients independently of that lookup. Do not infer a remote radio's
+audio device from its host connection.
 
 ## Native voice audio
 
@@ -173,8 +173,8 @@ The initial audio validation used the built-in speakers on the development
 Mac: ordinary and streamed 8 kHz chimes completed, including a stream gap.
 A temporary process named `data2g-host` using that output with silence
 verified native ownership discovery and exclusion of its microphone twin.
-All 48 registered tests pass with bundled native voice codecs enabled.
-Automated audio tests use synthetic topology and a radio-only inventory, and
+All 49 registered tests pass with the native Ear and bundled voice codecs enabled.
+Automated audio tests use synthetic topology, permissions and capture, and
 never open hardware or prompt for permission. They cover aggregate and
 related-device exclusion, remembered names, missing/refused selections,
 stream gaps, attenuation/boost and completion/cancellation during shutdown.
@@ -198,6 +198,67 @@ it through sotto, and broadcast the 943-byte `.sot` to MACOS2. The receiver
 saved the complete file, byte-for-byte identical to the sender's, and
 played it through the built-in speakers to completion. Both instances used
 isolated settings and loopback hosts; no real radio was involved.
+
+## Native Ear
+
+View > Ear opens a separate input queue and shows its spectrum and
+waterfall. It never plays audio. The Listen to dropdown offers every local
+input, including the radio inputs excluded from voice. Selections use the
+same stable Core Audio UID names as voice, with independent preferences.
+
+With Same as data2g-host selected, one unambiguous local host capture is
+followed automatically. If that host stops recording, the open Ear stays
+on its last input; with no previous host input it uses the system default.
+Several possible host captures, including several inputs in one embedded
+`data2g-gui`, require an explicit selection. Command-port-to-PID lookup is
+not implemented on macOS, so the dropdown is how to resolve multiple local
+hosts. A missing explicit source remains missing and reopens when its UID
+returns. Only local audio is available, even when Ragtime connects to a
+remote host.
+
+Capture uses mono floats at the input's nominal rate and three 100 ms
+queue buffers. It checks for exclusive ownership and a shareable PCM
+format before opening. Ragtime does not set hardware rate, hardware buffer
+size, system defaults or exclusive ownership. The queue keeps its input
+active while the Ear is open, including after the host stops. Closing the
+Ear synchronously stops and disposes that queue; the voice queue has its
+own lifetime.
+
+macOS microphone permission also applies to radio audio inputs. The Ear
+requests it only when it has an input to open, reports pending/denied
+access in its status line, and resumes after approval. Discovery failures
+pause capture; selection, device and rate changes are checked every
+750 ms, with capture failures and permission revocation checked between
+scans. The command-line probe cannot request permission without a bundle
+usage description; use the app to grant access first.
+
+To exercise a known input without the window (this records audio):
+
+```sh
+build-macos/tests/ragtime_ear_probe \
+  --source 'coreaudio:input:BuiltInMicrophoneDevice' --seconds 3
+```
+
+The native probe produced live 48 kHz spectrum rows from the development
+Mac's built-in microphone. A temporary `data2g-host` process capturing that
+same input verified automatic host discovery and simultaneous capture;
+the host continued receiving samples after the Ear stopped. The input's
+48 kHz rate, 512-frame hardware buffer and unowned exclusive-access state
+remained unchanged throughout the check. This uses no actual radio and
+does not replace modem/hardware acceptance.
+
+In the Cocoa app, a saved missing source stayed unavailable; selecting the
+built-in microphone started the 48 kHz spectrum and waterfall. Settings >
+Voice successfully recorded and played back while the Ear stayed open,
+and its waterfall continued after the voice test ended. Cmd+Q with Ear
+capture active exited normally. Both checks used isolated settings and
+the built-in devices only.
+
+The fake-capture tests cover following a moving host, remembering its
+input, defaults, explicit missing/reappearing UIDs, rate changes, ambiguous
+hosts, discovery/open/capture failure, permission waiting/denial/revocation,
+recovery and synchronized shutdown. Native radio-device hotplug,
+exclusive-device refusal and modem coexistence still need hardware checks.
 
 ## Fake-host bench
 
