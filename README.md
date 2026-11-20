@@ -57,7 +57,7 @@ the Ear waterfall following the built-in Data2G modem over TCI.
 
 ## Downloads
 
-Ragtime 0.3.1 beta 3 bundles Data2G v0.5.3 and the updated sotto v3.8
+Ragtime 0.3.1 beta 4 bundles Data2G v0.5.3 and the updated sotto v3.8
 voice library. It is available as a DMG or ZIP for Apple Silicon with macOS 27 or
 later. The app is ad hoc signed and has no Apple notarization.
 [Ragtime macOS releases](https://github.com/N4EAC/ragtime-data2g/releases)
@@ -159,8 +159,12 @@ includes both Hamlib tools. To list supported rigs or start a local daemon:
 The second command uses your Hamlib model number and serial port. Select
 **Read the dial from rigctld** in Ragtime to use that daemon.
 
-The macOS connection bar includes a frequency dropdown. Selecting a value
-tunes the radio through the rig connection configured in **Settings > Rig**.
+The macOS connection bar includes an editable frequency field with presets.
+Enter **7100** (kHz) and press **Enter** to tune to **7.100 MHz** through the
+rig connection configured in **Settings > Rig**. Explicit units also work:
+**7100000 Hz** or **7.100 MHz**. Selecting a preset tunes immediately.
+CAT readings update the field while idle; an entry you are editing stays
+intact until Enter sends it or Escape restores the radio reading.
 The initial selection is **7.066 MHz**. The list starts with **3.566,
 7.066, 7.110, 14.066, and 28.066 MHz**. Ragtime remembers the selection
 after the radio confirms the change and restores it when reopened.
@@ -396,8 +400,10 @@ MIT. See [LICENSE](LICENSE).
 ## Credits
 
 The packaged sotto library is pinned to commit
-`6686fe4f783d7bdf9d96cd1177aa59155e18b833`. It retains the v3.8 frame
-formats and improves pitch estimation and shape selection.
+`598f1bce87c22ebada2b9d0d1fcfd89107b33a09`. It retains the v3.8 frame
+formats and pitch/shape improvements. The upstream revision adds a slim
+1200 encoder and table hooks for embedded hardware. Ragtime continues
+using the existing desktop encoders and decoders.
 
 Voice messages are coded with [sotto](https://github.com/baitisj/sotto),
 by Jeff Baitis (AG7EW). Ragtime loads it at run time as a shared library

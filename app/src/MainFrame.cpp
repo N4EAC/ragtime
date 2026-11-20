@@ -4471,7 +4471,11 @@ void MainFrame::showDial()
     if (hz)
     {
         std::string band = radio::bandOf(*hz);
+#ifdef __WXOSX__
+        text = band.empty() ? std::string("outside the bands") : band;
+#else
         text = radio::formatMHz(*hz) + DOT + (band.empty() ? std::string("outside the bands") : band);
+#endif
     }
     else
     {
@@ -4483,7 +4487,11 @@ void MainFrame::showDial()
         tip += "\n\nReceive only: " + heldWhy_;
     else if (prefs_.usSegmentsOnly && !radio::usDataPlace(hz.value_or(0)).empty())
         tip += "\n\n" + radio::usDataPlace(hz.value_or(0));
+#ifdef __WXOSX__
+    tip += "\n\nEnter a frequency in the frequency field and press Enter to tune the radio.";
+#else
     tip += "\n\nRagtime only reads the dial; it never tunes the radio.";
+#endif
     bar_->setDial(utf8(text), utf8(tip), held_);
 }
 

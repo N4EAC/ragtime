@@ -19,31 +19,51 @@ constexpr const char* DEFAULT_LIST =
     "# Radio dial frequencies in MHz, one per line. Save this file to refresh the list.\n"
     "3.566\n7.066\n7.110\n14.066\n28.066\n";
 
-std::optional<uint64_t> parseMHz(std::string value)
+std::optional<uint64_t> parseNumber(std::string value, unsigned places)
 {
-    value = value.substr(0, value.find('#'));
     const auto first = value.find_first_not_of(" \t\r");
     if (first == std::string::npos) return std::nullopt;
-    const auto last = value.find_last_not_of(" \t\r");
-    value = value.substr(first, last - first + 1);
-    if (value.find_first_not_of("0123456789.") != std::string::npos) return std::nullopt;
+    value = value.substr(first, value.find_last_not_of(" \t\r") - first + 1);
+    if (value.size() > 18 || value.find_first_not_of("0123456789.") != std::string::npos)
+        return std::nullopt;
     const auto dot = value.find('.');
-    if (value.size() > 13 || (dot == std::string::npos && value.size() > 6) || dot == 0 ||
-        (dot != std::string::npos && dot > 6) || (dot != std::string::npos &&
-        (value.find('.', dot + 1) != std::string::npos || value.size() - dot - 1 > 6))) return std::nullopt;
-    std::string digits = value;
-    int decimals = 0;
+    if (dot == 0 || (dot != std::string::npos &&
+        (value.find('.', dot + 1) != std::string::npos || value.size() - dot - 1 > places)))
+        return std::nullopt;
+    unsigned decimals = 0;
     if (dot != std::string::npos)
     {
-        decimals = int(value.size() - dot - 1);
-        digits.erase(dot, 1);
+        decimals = unsigned(value.size() - dot - 1);
+        value.erase(dot, 1);
     }
-    if (digits.empty()) return std::nullopt;
     uint64_t hz = 0;
-    for (const char digit : digits) hz = hz * 10 + uint64_t(digit - '0');
-    for (int i = decimals; i < 6; ++i) hz *= 10;
-    if (hz < 1000 || hz >= 1000000000000ULL) return std::nullopt;
-    return hz;
+    for (const char digit : value)
+    {
+        hz = hz * 10 + uint64_t(digit - '0');
+        if (hz >= 1000000000000ULL) return std::nullopt;
+    }
+    for (unsigned i = decimals; i < places; ++i)
+    {
+        hz *= 10;
+        if (hz >= 1000000000000ULL) return std::nullopt;
+    }
+    return hz >= 1000 ? std::optional<uint64_t>(hz) : std::nullopt;
+}
+
+std::optional<uint64_t> parseMHz(std::string value)
+{
+    return parseNumber(value.substr(0, value.find('#')), 6);
+}
+
+std::optional<uint64_t> parseEntry(wxString text)
+{
+    text.Trim().Trim(false);
+    unsigned places = 3; // An unlabelled number is kHz: 7100 = 7.100 MHz.
+    const auto lower = text.Lower();
+    if (lower.EndsWith("mhz")) { places = 6; text.RemoveLast(3); }
+    else if (lower.EndsWith("khz")) { text.RemoveLast(3); }
+    else if (lower.EndsWith("hz")) { places = 0; text.RemoveLast(2); }
+    return parseNumber(std::string(text.utf8_str()), places);
 }
 
 wxString mhz(uint64_t hz)
@@ -56,7 +76,8 @@ wxString mhz(uint64_t hz)
 } // namespace
 
 FrequencySelector::FrequencySelector(wxWindow* parent)
-    : wxChoice(parent, wxID_ANY)
+    : wxComboBox(parent, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0, nullptr,
+                 wxCB_DROPDOWN | wxTE_PROCESS_ENTER)
     , timer_(this)
 {
     SetName("Radio frequency");
@@ -71,19 +92,29 @@ FrequencySelector::FrequencySelector(wxWindow* parent)
     }
     reload();
     Disable();
-    Bind(wxEVT_CHOICE, [this](wxCommandEvent&) {
+    Bind(wxEVT_TEXT, [this](wxCommandEvent&) { if (!updating_) dirty_ = true; });
+    Bind(wxEVT_COMBOBOX, [this](wxCommandEvent&) {
         const int index = GetSelection();
-        if (index == wxNOT_FOUND || size_t(index) >= frequencies_.size()) return;
-        if (!hooks_.available || !hooks_.available() || !hooks_.tune(frequencies_[size_t(index)]))
+        if (index != wxNOT_FOUND && size_t(index) < frequencies_.size()) submit(frequencies_[size_t(index)]);
+    });
+    Bind(wxEVT_TEXT_ENTER, [this](wxCommandEvent&) {
+        const auto hz = parseEntry(GetValue());
+        if (!hz)
         {
-            selectRemembered();
-            wxMessageBox("The radio must be connected and receiving before changing frequency.",
+            wxMessageBox("Enter a frequency in kHz, such as 7100 for 7.100 MHz. "
+                         "Explicit units also work: 7.100 MHz or 7100000 Hz.",
                          "Radio frequency", wxOK | wxICON_INFORMATION, this);
             return;
         }
-        pending_ = frequencies_[size_t(index)];
-        startedMs_ = HostConnection::nowMs();
-        tick();
+        submit(*hz);
+    });
+    Bind(wxEVT_CHAR_HOOK, [this](wxKeyEvent& e) {
+        if (e.GetKeyCode() == WXK_ESCAPE)
+        {
+            dirty_ = false;
+            selectRemembered();
+        }
+        else e.Skip();
     });
     Bind(wxEVT_TIMER, [this](wxTimerEvent&) { tick(); }, timer_.GetId());
 }
@@ -110,13 +141,36 @@ void FrequencySelector::reset()
 {
     if (pending_ && hooks_.cancel) hooks_.cancel();
     pending_ = 0;
+    dirty_ = false;
     selectRemembered();
+}
+
+bool FrequencySelector::editing() const
+{
+    auto* focus = wxWindow::FindFocus();
+    return dirty_ || HasFocus() || (focus && IsDescendant(focus));
+}
+
+void FrequencySelector::submit(uint64_t hz)
+{
+    if (pending_) return;
+    if (!hooks_.available || !hooks_.available() || !hooks_.tune || !hooks_.tune(hz))
+    {
+        wxMessageBox("The radio must be connected and receiving before changing frequency.",
+                     "Radio frequency", wxOK | wxICON_INFORMATION, this);
+        return;
+    }
+    dirty_ = false;
+    pending_ = hz;
+    ChangeValue(mhz(hz) + " MHz");
+    startedMs_ = HostConnection::nowMs();
+    tick();
 }
 
 void FrequencySelector::selectRemembered()
 {
-    const auto selected = std::find(frequencies_.begin(), frequencies_.end(), remembered_);
-    SetSelection(selected == frequencies_.end() ? wxNOT_FOUND : int(selected - frequencies_.begin()));
+    const auto actual = hooks_.read ? hooks_.read() : std::nullopt;
+    ChangeValue(mhz(actual.value_or(remembered_)) + " MHz");
 }
 
 void FrequencySelector::reload()
@@ -163,15 +217,21 @@ void FrequencySelector::reload()
     frequencies_ = std::move(frequencies);
     fileText_ = bytes;
     fileProblem_.clear();
+    const bool keepEntry = editing();
+    const auto entry = GetValue();
+    updating_ = true;
     Clear();
     for (const auto hz : frequencies_) Append(mhz(hz) + " MHz");
-    selectRemembered();
+    if (keepEntry) ChangeValue(entry);
+    else selectRemembered();
+    updating_ = false;
 }
 
 void FrequencySelector::finish(const wxString& problem)
 {
     if (hooks_.cancel) hooks_.cancel();
     pending_ = 0;
+    dirty_ = false;
     selectRemembered();
     if (!problem.empty()) wxMessageBox(problem, "Radio frequency", wxOK | wxICON_ERROR, this);
 }
@@ -196,9 +256,11 @@ void FrequencySelector::tick()
             finish("The radio did not confirm the selected frequency within 10 seconds.");
     }
     reload();
-    Enable(available && !pending_ && !frequencies_.empty());
+    if (!pending_ && !editing()) selectRemembered();
+    Enable(available && !pending_);
     wxString tip = pending_ ? "Waiting for the radio to confirm the selected frequency." :
-                              "Select a frequency to tune the connected radio. Values are in MHz.";
+                              "Type kHz (7100 = 7.100 MHz), or an explicit MHz/Hz value, and press Enter to tune.\n"
+                              "Choose a preset to tune immediately. Escape restores the radio reading.";
     if (!available) tip += "\nConnect the radio under Settings > Rig and stop transmitting to tune.";
     if (!fileProblem_.empty()) tip += "\n" + fileProblem_;
     tip += "\nEdit the list under File > Edit frequency list. Changes load automatically.";

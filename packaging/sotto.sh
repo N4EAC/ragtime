@@ -13,5 +13,5 @@
 # links it (LGPL through Codec 2); the packages carry it beside ragtime with
 # its licences. Sourced by build-sotto.sh.
 SOTTO_REPO=${SOTTO_REPO:-https://github.com/baitisj/sotto.git}
-SOTTO_COMMIT=6686fe4f783d7bdf9d96cd1177aa59155e18b833
+SOTTO_COMMIT=598f1bce87c22ebada2b9d0d1fcfd89107b33a09
 SOTTO_VARIANT=v3.8
