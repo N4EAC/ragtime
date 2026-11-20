@@ -26,7 +26,10 @@ set(common
     -DCMAKE_PREFIX_PATH=${prefix}
     -DBUILD_SHARED_LIBS=OFF
     -DBUILD_TESTING=OFF
-    -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
+    # libde265 1.0.15 asks for CMake 2.8, which CMake 4 (Homebrew's, on
+    # the Mac runner) refuses without this; older CMakes ignore it.
+    -DCMAKE_POLICY_VERSION_MINIMUM=3.5)
 if(CMAKE_TOOLCHAIN_FILE)
     list(APPEND common -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
         "-DCMAKE_FIND_ROOT_PATH=${CMAKE_FIND_ROOT_PATH}|${prefix}")

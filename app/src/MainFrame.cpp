@@ -361,6 +361,11 @@ MainFrame::MainFrame()
         // What is under way ends here; a part received is kept, and the
         // log keeps it for next time.
         sessionFiles_.stopAll("Ragtime was closed");
+        // Closing the client sockets does not end the modem's ARQ link.
+        // Leave it explicitly while the command port is still open, so
+        // the next Ragtime can call again and resume the kept file.
+        session_.leaveNow(HostConnection::nowMs());
+        host_->flush();
         // The deck lets go of the microphone before the audio stops.
         if (voiceDeck_) voiceDeck_->Close(true);
         // The gearshift stops asking the rig for the band's noise.
@@ -543,7 +548,7 @@ void MainFrame::buildMenus()
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { leaveSessionNow(); }, ID_LEAVE_NOW);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { sendFilePrompt(""); }, ID_SEND_FILE);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { sendFilePrompt(""); }, ID_STATION_SEND_FILE);
-    Bind(wxEVT_MENU, [this](wxCommandEvent&) {
+    Bind(wxEVT_MENU, [](wxCommandEvent&) {
         wxFileName::Mkdir(wxString::FromUTF8(receivedFolder()), wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
         openWithDesktop(receivedFolder());
     }, ID_OPEN_RECEIVED);
@@ -583,7 +588,7 @@ void MainFrame::buildMenus()
         facts.lastError = host_->lastError();
         saveReport(this, host_->recorder(), facts);
     }, ID_SAVE_REPORT);
-    Bind(wxEVT_MENU, [this](wxCommandEvent&) {
+    Bind(wxEVT_MENU, [](wxCommandEvent&) {
         wxFileName::Mkdir(wxString::FromUTF8(flightRecorderDir()), wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
         openWithDesktop(flightRecorderDir());
     }, ID_OPEN_FLIGHT);
@@ -598,6 +603,8 @@ void MainFrame::buildMenus()
                                                            : wxString()));
         info.SetLicence("MIT");
         info.SetWebSite("https://github.com/baitisj/ragtime");
+        info.AddDeveloper("Jeff Baitis, AG7EW");
+        info.AddDeveloper("Tim Vetter: the macOS port");
         wxAboutBox(info, this);
     }, wxID_ABOUT);
 }
@@ -668,7 +675,7 @@ void MainFrame::buildLayout()
         themeButton_ = new wxBitmapButton(GetStatusBar(), wxID_ANY, wxBitmapBundle(), wxDefaultPosition,
                                           wxDefaultSize, wxBU_EXACTFIT | wxBORDER_NONE);
         showThemeButton();
-        themeButton_->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+        themeButton_->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
             ThemeChoice choice = themeIsDark() ? ThemeChoice::Light : ThemeChoice::Dark;
             saveInt(keys::THEME, (int)choice);
             applyTheme(choice);
@@ -865,7 +872,7 @@ void MainFrame::buildLayout()
             voiceAction(key, voiceQueue_.playing() == key ? "voice:stop:0" : "voice:play:0");
         },
         [this](const std::string& path) { return voiceQueue_.playing() == "p" + path; });
-    filesPage_->onOpenFolder([this]() {
+    filesPage_->onOpenFolder([]() {
         wxFileName::Mkdir(wxString::FromUTF8(receivedFolder()), wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
         openWithDesktop(receivedFolder());
     });

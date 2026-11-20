@@ -106,7 +106,10 @@ can't show.
 ## Downloads
 
 Releases carry a Linux AppImage (x86_64, glibc 2.39 or newer, as on
-Ubuntu 24.04) and a portable Windows zip (64-bit). Ragtime needs a
+Ubuntu 24.04) and a portable Windows zip (64-bit); releases after
+0.3.1-beta add a macOS zip for Apple Silicon (macOS 14.2 or newer,
+signed ad hoc: its `README.txt` says how to open it the first time).
+Ragtime needs a
 [data2g-host](https://github.com/arodland/Data2G) running on your
 computer or your network; it never bundles or starts one. Give its
 address and ports in Settings > Station.
@@ -120,6 +123,9 @@ folder in your home folder or its `src`, `git`, `code`, `projects`,
 thresholds...** in the gearshift. See [docs/GEARBOX.md](docs/GEARBOX.md).
 
 ## Building
+
+For the macOS build (Cocoa, on a Mac) and its limits, see
+[docs/MACOS.md](docs/MACOS.md).
 
 On Ubuntu 24.04:
 
@@ -221,7 +227,10 @@ The AppImage carries libsotto and its Codec 2 (`make-appimage.sh` runs
 `libcodec2.dll` beside `ragtime.exe`: `make-zip.sh` cross-builds them
 with `packaging/windows/build-sotto.sh` at the same pinned commit, or
 takes them from `RAGTIME_SOTTO_DLL_DIR`. (Zips up to 0.3.1-beta had none, so
-they couldn't record or play voice: issue #166.)
+they couldn't record or play voice: issue #166.) The macOS zip carries `libsotto.0.dylib` and
+its Codec 2 in `Ragtime.app/Contents/Frameworks`, built by
+`packaging/macos/build-sotto.sh`; the app looks there after
+`$RAGTIME_SOTTO` ([docs/MACOS.md](docs/MACOS.md)).
 
 The helper scripts need a few more tools: `tools/ear/pretend_radio.sh`
 wants `pipewire-pulse`, `pulseaudio-utils` (`pactl`),
@@ -233,6 +242,7 @@ wants `librsvg2-bin` and `imagemagick`.
 
     packaging/linux/make-appimage.sh      # dist/Ragtime-<version>-...-x86_64.AppImage
     packaging/windows/make-zip.sh         # dist/Ragtime-<version>-...-windows-x86_64.zip
+    packaging/macos/make-zip.sh           # dist/Ragtime-<version>-...-macos-arm64.zip (on a Mac)
 
 The Windows build cross-compiles on Ubuntu 24.04 with
 `g++-mingw-w64-x86-64-posix` and builds its own static wxWidgets and
@@ -349,6 +359,8 @@ Messages are signed, never encrypted, as Part 97 requires.
 | --- | --- |
 | [docs/PLAN.md](docs/PLAN.md) | The full design: the net, ragchews, broadcast mode, files, signing, store and forward, frequencies, decisions and open questions |
 | [docs/STAGE1.md](docs/STAGE1.md) | Stage 1, parity with Glissando's Data2G mode, split into work packages |
+| [docs/MACOS.md](docs/MACOS.md) | macOS Cocoa development build, native adapters and remaining platform limits |
+| [docs/PORTING.md](docs/PORTING.md) | macOS port investigation: baseline experiments, platform gaps and work packages |
 | [docs/HOW_SEALS_WORK.md](docs/HOW_SEALS_WORK.md) | Seals in plain words, with pictures: what is inside one, how repairs work, and what a late joiner asks for |
 | [docs/GEARBOX.md](docs/GEARBOX.md) | The gearshift: how a Data2G mode is picked from the Submode Map |
 | [docs/MOCKUPS.md](docs/MOCKUPS.md) | The screens, colours, Globus and seal icons |
@@ -361,9 +373,21 @@ MIT. See [LICENSE](LICENSE).
 
 ## Credits
 
+### Contributors
+
+- Jeff Baitis (AG7EW, [@baitisj](https://github.com/baitisj)): Ragtime's
+  author.
+- Tim Vetter ([@finitor](https://github.com/finitor)): the macOS port,
+  with its Cocoa build, Core Audio voice and Ear, and the app bundle
+  ([docs/MACOS.md](docs/MACOS.md)).
+- Andrew Rodland (KC2G, [@arodland](https://github.com/arodland)): Data2G,
+  the modem Ragtime talks to, and much advice on using it well.
+
+### Voice
+
 Voice messages are coded with [sotto](https://github.com/baitisj/sotto),
 by Jeff Baitis (AG7EW). Ragtime loads it at run time as a shared library
-(`libsotto.so`, `sotto.dll`), because sotto's analysis and synthesis come
+(`libsotto.so`, `sotto.dll`, `libsotto.0.dylib`), because sotto's analysis and synthesis come
 from David Rowe's [Codec 2](https://github.com/drowe67/codec2), which is
 LGPL-2.1; the rest of sotto is MIT. sotto's codebook was trained on
 Codec 2's own test recordings and on these datasets, both under

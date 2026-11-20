@@ -53,6 +53,8 @@ public:
         : wxHtmlListBox(owner->book_, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE)
         , owner_(owner)
     {
+        // Focus may arrive before the first size event on Cocoa.
+        SetItemCount(0);
         SetMargins(FromDIP(4), FromDIP(3));
     }
 

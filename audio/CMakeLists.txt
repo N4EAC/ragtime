@@ -3,11 +3,25 @@
 # PipeWire on Linux, WASAPI on Windows. libpipewire is loaded at run
 # time, never linked, so only its headers (libpipewire-0.3-dev) are needed
 # to build, and Ragtime runs where there is no PipeWire. With
-# -DRAGTIME_PIPEWIRE=OFF (and on the Mac) stand-ins say the Ear can't
-# listen and voice can't record or play. The Ear's spectrum, the graph
-# search and the voice devices' rules are core's, and tested there.
+# -DRAGTIME_PIPEWIRE=OFF stand-ins say the Ear can't listen and voice
+# can't record or play. macOS uses Core Audio. The Ear's spectrum,
+# the graph search and the voice devices' rules are core's, and tested there.
 
-if(WIN32)
+if(APPLE)
+    add_library(ragtime_audio STATIC
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioEar.mm
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioVoice.mm
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioCapture.cpp
+        ${PROJECT_SOURCE_DIR}/platform/macos/MicrophonePermission.mm
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioDevices.cpp
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioGraph.cpp
+        ${PROJECT_SOURCE_DIR}/platform/macos/HostProcess.cpp
+        ${PROJECT_SOURCE_DIR}/platform/macos/SottoPaths.cpp)
+    target_include_directories(ragtime_audio PRIVATE ${PROJECT_SOURCE_DIR}/platform/macos)
+    set_target_properties(ragtime_audio PROPERTIES OBJCXX_STANDARD 17 OBJCXX_STANDARD_REQUIRED YES)
+    target_link_libraries(ragtime_audio PRIVATE "-framework CoreAudio" "-framework CoreFoundation"
+        "-framework AudioToolbox" "-framework AVFoundation" "-framework Foundation")
+elseif(WIN32)
     add_library(ragtime_audio STATIC src/WasapiEar.cpp src/WasapiVoice.cpp src/HostProcess.cpp)
     # COM and property variants (ole32), the TCP table (iphlpapi).
     target_link_libraries(ragtime_audio PRIVATE ole32 iphlpapi)

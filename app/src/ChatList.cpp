@@ -12,6 +12,9 @@
 ChatList::ChatList(wxWindow* parent)
     : wxHtmlListBox(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_THEME)
 {
+    // Cocoa can focus an empty list before its first size event. Give wx
+    // a valid visible-row range before focus tries to refresh selection.
+    SetItemCount(0);
     SetMargins(FromDIP(4), FromDIP(1));
     // The window has its new size, but the top row hasn't moved: scroll so
     // the newest row ends at the bottom again. wx's own handler runs after

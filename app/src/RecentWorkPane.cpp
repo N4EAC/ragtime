@@ -51,6 +51,10 @@ public:
         : wxHtmlListBox(parent, wxID_ANY, wxDefaultPosition, wxDefaultSize, wxBORDER_NONE)
         , owner_(owner)
     {
+        // Cocoa can focus this page as soon as it is added to the book,
+        // before any size event. Initialize wx's visible-row range even
+        // though the list is empty, before focus asks it to repaint.
+        SetItemCount(0);
         SetMargins(FromDIP(4), FromDIP(3));
     }
 

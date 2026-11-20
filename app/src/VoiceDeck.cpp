@@ -781,6 +781,7 @@ void VoiceDeck::showDevices()
     wxString why;
     if (!st.available) why = utf8(st.problem.empty() ? "No sound system to record from" : st.problem);
     else if (!st.microphone.usable()) why = utf8(voice::describe(st.microphone, true));
+    else if (st.microphonePermissionPending) why = "Waiting for microphone permission";
     else if (!st.microphoneProblem.empty()) why = utf8(st.microphoneProblem);
     else if (!sotto_.available()) why = "Voice can't be coded: " + utf8(sotto_.info().why);
     bool canTalk = why.empty();

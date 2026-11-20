@@ -28,6 +28,16 @@ set(configure <SOURCE_DIR>/configure ${host} --prefix=${prefix} --disable-shared
     --without-libsndfile --disable-html-matrix --disable-winradio
     CC=${CMAKE_C_COMPILER} "CFLAGS=-O2")
 
+# Ragtime links only the library. On the Mac the utilities in tests/ fail
+# to build (Hamlib 4.5.5's getopt.h against the macOS SDK's), so tests/
+# and doc/ get a Makefile that does nothing.
+set(skip_tools)
+if(APPLE)
+    set(skip_tools
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/HamlibNoTools.mk tests/Makefile
+        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/HamlibNoTools.mk doc/Makefile)
+endif()
+
 if(RAGTIME_HAMLIB_SOURCE)
     set(source URL ${RAGTIME_HAMLIB_SOURCE})
 else()
@@ -39,7 +49,7 @@ ExternalProject_Add(hamlib_build
     PREFIX ${CMAKE_BINARY_DIR}/_deps/hamlib
     UPDATE_DISCONNECTED TRUE
     BUILD_IN_SOURCE TRUE
-    CONFIGURE_COMMAND ./bootstrap COMMAND ${configure}
+    CONFIGURE_COMMAND ./bootstrap COMMAND ${configure} ${skip_tools}
     BUILD_COMMAND make -j4
     INSTALL_COMMAND make install
     BUILD_BYPRODUCTS ${prefix}/lib/libhamlib.a

@@ -275,6 +275,30 @@ bool isType(const protocol::Record& r, protocol::RecordType type)
     return r.type() == (uint8_t)type;
 }
 
+// These scenarios require a particular request order. mt19937's sequence
+// is portable, but uniform_int_distribution's mapping is not (libc++ and
+// libstdc++ differ). Pick seeds for well-separated waits on this library
+// rather than baking in the ordering of two arbitrary seeds.
+void orderRequests(Station& first, Station& last)
+{
+    const auto mode = broadcast::findMode(first.link.modes(), "qpsk-r1/3");
+    const uint64_t window = broadcast::listeningWindowMs(mode);
+    const uint64_t own = (uint64_t)(broadcast::oneCodewordSeconds(mode) * 1000.0) + 2000;
+    const uint64_t spread = window > own + 1000 ? window - own : 1000;
+    uint64_t earliest = spread, latest = 0;
+    uint32_t earlySeed = 0, lateSeed = 0;
+    for (uint32_t seed = 1; seed <= 100; seed++)
+    {
+        std::mt19937 random(seed);
+        const uint64_t wait = std::uniform_int_distribution<uint64_t>(0, spread)(random);
+        if (wait < earliest) { earliest = wait; earlySeed = seed; }
+        if (wait > latest) { latest = wait; lateSeed = seed; }
+    }
+    CHECK(latest > earliest + 1000);
+    first.seals.setRandomSeed(earlySeed);
+    last.seals.setRandomSeed(lateSeed);
+}
+
 // A file of n bytes of a pattern, in a scratch folder.
 std::filesystem::path scratch()
 {
@@ -1084,6 +1108,7 @@ void testSealMarks()
         return false;
     };
     air.run(2000);
+    orderRequests(b, c);
     a.chat.send("one", "", now);
     a.chat.send("two", "", now);
     a.chat.send("three", "", now);
@@ -1678,18 +1703,20 @@ void testRepairGear()
 // A request heard speaks for us only if its asker's gear is no faster
 // than ours: the weak station asks too when the strong one asked first,
 // and the line goes again once, in the weak one's gear.
-void testSuppressionByGear(uint32_t weakSeed, uint32_t strongSeed, const std::string& firstAsker)
+void testSuppressionByGear(const std::string& firstAsker)
 {
     Air air;
     Station& a = air.add("AG7EW", 1);
-    Station& b = air.add("KC2G", weakSeed);
-    Station& c = air.add("W1AW", strongSeed);
+    Station& b = air.add("KC2G", 2);
+    Station& c = air.add("W1AW", 3);
     for (auto& st : air.stations) st->seals.setLadder(ladder());
     b.hearsAt["AG7EW"] = -5.0;
     c.hearsAt["AG7EW"] = 20.0;
     b.lose = loseOnce("two");
     c.lose = loseOnce("two");
     air.run(2000);
+    if (firstAsker == "KC2G") orderRequests(b, c);
+    else orderRequests(c, b);
     a.chat.send("one", "", now);
     a.chat.send("two", "", now);
     air.run(Seals::QUIET_MS + 120000);
@@ -2548,8 +2575,8 @@ int main()
     testPartsAcrossRestart();
     testPartsExpire();
     testRepairGear();
-    testSuppressionByGear(2, 3, "KC2G");
-    testSuppressionByGear(3, 2, "W1AW");
+    testSuppressionByGear("KC2G");
+    testSuppressionByGear("W1AW");
     testSlowCap(60 * 60, true);
     testSlowCap(20, false);
     testRefusedCancelled();

@@ -194,7 +194,7 @@ constexpr const char* PICTURE_SIDE = "/Pictures/LargestSide";        // pixels o
 constexpr const char* PICTURE_FOLDER = "/Pictures/LastFolder";        // where the last picture was picked
 constexpr const char* PICTURE_CODEC = "/Pictures/Codec";              // 0 JPEG 2000, 1 Cool-chic
 constexpr const char* PICTURES_AS_THEY_COME = "/Pictures/ShowAsTheyCome";   // up to 64 KB, from anyone
-constexpr const char* EAR_SOURCE = "/Ear/Source";                    // a PipeWire source's node.name; empty follows data2g-host
+constexpr const char* EAR_SOURCE = "/Ear/Source";                    // native source name; empty follows data2g-host
 constexpr const char* EAR_SPEED = "/Ear/RowsPerSecond";               // the waterfall's rows a second
 constexpr const char* EAR_SPAN = "/Ear/SpanHz";                       // how high the picture goes; 0 is Auto
 // Voice messages (audio::VoiceAudio): the devices by node name (PipeWire)

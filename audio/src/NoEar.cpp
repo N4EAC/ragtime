@@ -1,5 +1,5 @@
 // EarAudio's stand-in where it has nothing to listen through: builds with
-// -DRAGTIME_PIPEWIRE=OFF, and the Mac.
+// -DRAGTIME_PIPEWIRE=OFF on platforms without a native backend.
 #include "ragtime/audio/EarAudio.h"
 
 namespace ragtime

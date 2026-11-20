@@ -23,6 +23,10 @@
 #include <unistd.h>
 #endif
 
+#ifdef __APPLE__
+#include "SottoPaths.h"
+#endif
+
 namespace ragtime
 {
 namespace voice
@@ -125,6 +129,7 @@ void closeLibrary(void* lib)
     FreeLibrary((HMODULE)lib);
 }
 #else
+#ifndef __APPLE__
 constexpr const char* LIBRARY_NAME = "libsotto.so.0";
 
 std::string programFolder()
@@ -138,6 +143,7 @@ std::string programFolder()
     if (slash != std::string::npos) s.resize(slash + 1);
     return s;
 }
+#endif
 
 void* openLibrary(const std::string& file, std::string& error)
 {
@@ -202,6 +208,10 @@ std::vector<std::string> sottoCandidates()
     {
         if (*env) out.push_back(env);
     }
+#ifdef __APPLE__
+    const auto native = macosSottoCandidates();
+    out.insert(out.end(), native.begin(), native.end());
+#else
     std::string here = programFolder();
     if (!here.empty())
     {
@@ -224,6 +234,7 @@ std::vector<std::string> sottoCandidates()
 #endif
     }
     out.push_back(LIBRARY_NAME);    // the system's search path
+#endif
     return out;
 }
 
@@ -260,6 +271,9 @@ Sotto::Sotto(const std::string& path)
     else
 #ifdef _WIN32
         info_.why = "sotto.dll isn't installed: put it beside ragtime.exe, or set RAGTIME_SOTTO to its path";
+#elif defined(__APPLE__)
+        info_.why = "libsotto isn't installed: put libsotto.0.dylib in Ragtime.app/Contents/Frameworks, "
+                    "or set RAGTIME_SOTTO to its path";
 #else
         info_.why = "libsotto isn't installed: build it with packaging/build-sotto.sh in Ragtime's checkout, "
                     "or set RAGTIME_SOTTO to libsotto.so.0's path";

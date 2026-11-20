@@ -1,6 +1,6 @@
 // VoiceAudio: the microphone and speaker for voice messages, Ragtime's
 // first (docs/STAGE1.md, "Voice audio"). PipeWire on Linux, WASAPI in
-// shared mode on Windows, on the same foundations as the Ear (EarAudio.h).
+// shared mode on Windows, Core Audio on macOS.
 //
 // It never touches the radio's sound card: the devices it offers leave out
 // every card data2g-host records from or plays to, both halves of it, and
@@ -11,11 +11,10 @@
 //
 // The microphone is open only between listen() and stopListening(), at
 // the device's own rate, mono. play() plays one clip of mono floats at any
-// rate (PipeWire or the Windows audio engine converts it to the device's)
+// rate (the platform audio engine converts it to the device's)
 // and replaces anything playing.
 //
-// Callbacks come on the audio thread (PipeWire's, or VoiceAudio's own on
-// Windows): hand the samples on, don't block.
+// Callbacks come on audio/worker threads: hand the samples on, don't block.
 #ifndef RAGTIME_AUDIO_VOICE_AUDIO_H
 #define RAGTIME_AUDIO_VOICE_AUDIO_H
 
@@ -34,7 +33,7 @@ namespace audio
 
 struct VoiceStatus
 {
-    // Connected to PipeWire (or WASAPI); when not, problem says why.
+    // Native audio discovery available; when not, problem says why.
     bool available = false;
     std::string problem;
     // What the dropdowns offer, and the radio's cards left out of them.
@@ -48,6 +47,8 @@ struct VoiceStatus
     // it couldn't open.
     bool listening = false;
     bool recording = false;
+    // Waiting for the operator's OS permission, not a capture failure.
+    bool microphonePermissionPending = false;
     int microphoneRate = 0;
     std::string microphoneProblem;
     // The speaker: a clip playing, and why it couldn't play.
@@ -64,7 +65,7 @@ public:
 
     virtual ~VoiceAudio() = default;
 
-    // Connects to PipeWire (or WASAPI) and watches the devices; changed
+    // Connects to the native audio service and watches the devices; changed
     // is called when status() may have changed. remembered: the radio
     // cards' names from before (voice::rememberRadio).
     virtual void start(Changed changed, const std::vector<std::string>& remembered) = 0;
@@ -106,8 +107,8 @@ public:
     virtual VoiceStatus status() const = 0;
 };
 
-// PipeWire on Linux, WASAPI on Windows; a stand-in that says why not
-// elsewhere.
+// PipeWire on Linux, WASAPI on Windows, Core Audio on macOS; a stand-in
+// that says why not elsewhere.
 std::unique_ptr<VoiceAudio> makeVoiceAudio();
 
 } // namespace audio

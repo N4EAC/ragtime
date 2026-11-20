@@ -1,5 +1,5 @@
 // VoiceAudio's stand-in where it has nothing to record or play through:
-// builds with -DRAGTIME_PIPEWIRE=OFF, and the Mac.
+// builds with -DRAGTIME_PIPEWIRE=OFF on platforms without a native backend.
 #include "ragtime/audio/VoiceAudio.h"
 
 namespace ragtime
