@@ -68,7 +68,7 @@ wxIMPLEMENT_APP_NO_MAIN(TestApp);
 int main(int argc, char** argv)
 {
     wxApp::SetInstance(new TestApp);
-    if (!wxEntryStart(argc, argv) || !wxTheApp->CallOnInit())
+    if (!wxEntryStart(argc, argv) || !wxGetApp().CallOnInit())
     {
         std::printf("No display: skipped\n");
         return 77;

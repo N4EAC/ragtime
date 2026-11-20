@@ -543,7 +543,7 @@ void MainFrame::buildMenus()
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { leaveSessionNow(); }, ID_LEAVE_NOW);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { sendFilePrompt(""); }, ID_SEND_FILE);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { sendFilePrompt(""); }, ID_STATION_SEND_FILE);
-    Bind(wxEVT_MENU, [this](wxCommandEvent&) {
+    Bind(wxEVT_MENU, [](wxCommandEvent&) {
         wxFileName::Mkdir(wxString::FromUTF8(receivedFolder()), wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
         openWithDesktop(receivedFolder());
     }, ID_OPEN_RECEIVED);
@@ -583,7 +583,7 @@ void MainFrame::buildMenus()
         facts.lastError = host_->lastError();
         saveReport(this, host_->recorder(), facts);
     }, ID_SAVE_REPORT);
-    Bind(wxEVT_MENU, [this](wxCommandEvent&) {
+    Bind(wxEVT_MENU, [](wxCommandEvent&) {
         wxFileName::Mkdir(wxString::FromUTF8(flightRecorderDir()), wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
         openWithDesktop(flightRecorderDir());
     }, ID_OPEN_FLIGHT);
@@ -668,7 +668,7 @@ void MainFrame::buildLayout()
         themeButton_ = new wxBitmapButton(GetStatusBar(), wxID_ANY, wxBitmapBundle(), wxDefaultPosition,
                                           wxDefaultSize, wxBU_EXACTFIT | wxBORDER_NONE);
         showThemeButton();
-        themeButton_->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+        themeButton_->Bind(wxEVT_BUTTON, [](wxCommandEvent&) {
             ThemeChoice choice = themeIsDark() ? ThemeChoice::Light : ThemeChoice::Dark;
             saveInt(keys::THEME, (int)choice);
             applyTheme(choice);
@@ -865,7 +865,7 @@ void MainFrame::buildLayout()
             voiceAction(key, voiceQueue_.playing() == key ? "voice:stop:0" : "voice:play:0");
         },
         [this](const std::string& path) { return voiceQueue_.playing() == "p" + path; });
-    filesPage_->onOpenFolder([this]() {
+    filesPage_->onOpenFolder([]() {
         wxFileName::Mkdir(wxString::FromUTF8(receivedFolder()), wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
         openWithDesktop(receivedFolder());
     });
