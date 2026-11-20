@@ -1581,7 +1581,8 @@ someone has looked on the air.
 
 "Listen to", Speed and Span are kept (`/Ear/Source`,
 `/Ear/RowsPerSecond`, `/Ear/SpanHz`, 0 for Auto).
-A build with `-DRAGTIME_PIPEWIRE=OFF` (or the Mac) has a stand-in that
+On macOS it listens through Core Audio (`platform/macos/CoreAudioEar.mm`,
+docs/MACOS.md). A build with `-DRAGTIME_PIPEWIRE=OFF` has a stand-in that
 says the Ear can't listen there.
 
 **On the bench.** `tools/ear/pretend_radio.sh up` makes a pretend radio
@@ -1828,8 +1829,9 @@ their own PRs and use it.
 **`audio::VoiceAudio`** (`audio/include/ragtime/audio/VoiceAudio.h`), on
 the Ear's foundations: PipeWire loaded with `dlopen` on Linux
 (`PipeWireVoice.cpp`, sharing `PipeWireApi.h` with the Ear), WASAPI in
-shared mode on Windows (`WasapiVoice.cpp`, sharing `WasapiCommon.h`), and
-a stand-in that says why not with `-DRAGTIME_PIPEWIRE=OFF` or on the Mac.
+shared mode on Windows (`WasapiVoice.cpp`, sharing `WasapiCommon.h`), Core
+Audio on macOS (`platform/macos/CoreAudioVoice.mm`, docs/MACOS.md), and a
+stand-in that says why not with `-DRAGTIME_PIPEWIRE=OFF`.
 
 - The microphone is open only between `listen()` and `stopListening()`,
   mono floats at the device's own rate (48 kHz typically).

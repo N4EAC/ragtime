@@ -804,7 +804,7 @@ Each has my recommendation. Type your answer in the last column, or comment on t
 | 8 | Name of the client's broadcast group? | Decided: D2G |  |
 | 9 | Licence? | MIT: the chat frame code with FreeDV contributors' work isn't needed any more; it takes your relicensing of the Data2G code and Andrew's OK for his commit | Decided: MIT (the repository's LICENSE) |
 | 10 | Name? | Something plain. Using "Data2G" in the name needs Andrew's OK. Working name in this doc: "the client" | Decided: Ragtime (2026-10-22). A sibling of Glissando's music, and from "ragchew" |
-| 11 | Platforms for version 1? | Linux AppImage and Windows zip, as Glissando. Mac when there is a build route |  |
+| 11 | Platforms for version 1? | Linux AppImage and Windows zip, as Glissando. Mac when there is a build route | A Mac zip too since 2026-11-20 (Tim Vetter's port, docs/MACOS.md) |
 | 12 | Sign broadcast messages one by one, or with a periodic seal? | Seals in both modes, at most every 10 minutes with the CW ID; receipts in sessions, repair requests in broadcast mode |  |
 | 13 | How are keys trusted? | Trust on first use plus a Checked mark after comparing fingerprints; look into Logbook of the World vouching later |  |
 | 14 | Pages and boards: which first? | Signed messages first, then pages (small, read only), then boards with forwarding |  |

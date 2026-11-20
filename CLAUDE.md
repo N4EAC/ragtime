@@ -123,11 +123,10 @@ and the Part 97 check.
   (`packaging/macos/`), Core Audio voice and Ear (`platform/macos/`,
   macOS 14.2 or later), `/dev/cu.*` serial ports, sotto as dylibs in
   `Contents/Frameworks`, and the Mac tests (`tests/macos/`).
-  `docs/MACOS.md` is the record; `docs/PORTING.md` the original
-  investigation. `packaging/macos/make-zip.sh` makes the release zip
-  (Apple Silicon, signed ad hoc, Hamlib and the picture libraries built
-  statically) and the full CI run's `macos` job builds, tests and keeps
-  it. He is credited in the README's Contributors and the About box.
+  `docs/MACOS.md` is the record. `packaging/macos/make-zip.sh` makes the
+  release zip for the Mac it runs on (signed ad hoc, Hamlib and the
+  picture libraries built statically), and the full CI run's `macos`
+  jobs build, test and keep it for Apple Silicon and Intel. He is credited in the README's Contributors and the About box.
 - Data2G PR #118 (CLEANTXBUFFER, DATA2G ON) gives cuts, for 0.2.0:
   `HostLink` asks for DATA2G ON (WRONG from an older host is fine),
   `SessionChat` cuts and mends the stream from `session::StreamLog`,
@@ -536,8 +535,8 @@ the GitHub `actions_run_trigger` tool on the branch): Ubuntu, the same
 build and tests in the `gcc:16` image with `-Werror` at `-O2`
 (RelWithDebInfo) and `-O3` (Release), the Windows cross build with the
 unit tests run under Wine, the AppImage, and the macOS app on GitHub's
-Apple Silicon runner. The last three keep the zips and the AppImage as
-the run's artifacts. Start a full run on a PR that
+Apple Silicon and Intel runners. The last three keep the zips and the
+AppImage as the run's artifacts. Start a full run on a PR that
 changes CMake, packaging or platform code, and always on a release PR. Before pushing C++, run `tools/gcc16/check.py` (needs docker;
 start `dockerd &` in a cloud session): it compiles every source in
 `gcc:16` at both levels without apt, which the cloud sandbox can't reach.
@@ -639,8 +638,8 @@ The bench's fake hosts are POSIX, but `wine ragtime.exe` talks to a Linux
 - C++17, wxWidgets, CMake, the same toolchain as Glissando. The AppImage
   and the Windows zip follow Glissando's recipes (its `docs/APP.md`),
   simpler for having no audio or codec2. The Mac build (Apple Silicon
-  only, so far) is in `docs/MACOS.md`; there is no Linux ARM or Intel
-  Mac build yet.
+  and Intel, a zip each) is in `docs/MACOS.md`; there is no Linux ARM
+  build yet.
 - Engines worth porting from Glissando (logic and tests, adapted to the
   new records): `Data2GLink` (KISS, command lines, `MODES`, session
   stream), `Data2GFileTransfer`, `Data2GBroadcast`, `Sha256`, `HamText`
