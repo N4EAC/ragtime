@@ -2,6 +2,7 @@
 
 #include <algorithm>
 #include <map>
+#include <set>
 
 namespace ragtime
 {
@@ -85,7 +86,7 @@ ear::Graph deviceGraph(const DeviceSnapshot& s)
             {
                 const auto& nodes = input ? inputs : outputs;
                 const auto found = nodes.find(id);
-                if (found == nodes.end()) continue;
+                if (found == nodes.end()) return {}; // Unresolved host device: offer nothing.
                 ear::GraphNode n;
                 n.id = next++;
                 n.clientId = client;
@@ -98,6 +99,19 @@ ear::Graph deviceGraph(const DeviceSnapshot& s)
         }
     }
     return graph;
+}
+
+std::vector<std::string> rememberRelated(const ear::Graph& graph, const std::vector<std::string>& remembered)
+{
+    std::set<std::string> cards;
+    for (const auto& n : graph.nodes)
+        if (!n.device.empty() && std::find(remembered.begin(), remembered.end(), n.name) != remembered.end())
+            cards.insert(n.device);
+    auto out = remembered;
+    for (const auto& n : graph.nodes)
+        if (!n.device.empty() && cards.count(n.device) && std::find(out.begin(), out.end(), n.name) == out.end())
+            out.push_back(n.name);
+    return out;
 }
 
 } // namespace macos

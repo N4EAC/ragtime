@@ -151,6 +151,21 @@ DeviceSnapshot readDevices()
             s.problem = "An audio device's owning process could not be identified; voice is paused";
             return s;
         }
+        if (ear::isData2GProgram(p.program))
+        {
+            for (bool input : {true, false})
+                for (auto used : input ? p.inputs : p.outputs)
+                {
+                    const auto device = std::find_if(s.devices.begin(), s.devices.end(), [used, input](const Device& d) {
+                        return d.id == used && (input ? d.inputs : d.outputs);
+                    });
+                    if (device == s.devices.end())
+                    {
+                        s.problem = "A radio audio device could not be resolved; voice is paused";
+                        return s;
+                    }
+                }
+        }
         s.processes.push_back(std::move(p));
     }
     return s;

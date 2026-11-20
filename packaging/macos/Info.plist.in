@@ -20,5 +20,7 @@
     <string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
     <key>NSHighResolutionCapable</key>
     <true/>
+    <key>NSMicrophoneUsageDescription</key>
+    <string>Ragtime uses the microphone to record voice messages and test your voice settings.</string>
 </dict>
 </plist>

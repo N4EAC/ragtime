@@ -49,6 +49,9 @@ struct DeviceSnapshot
 // Voice stays unavailable if process/device ownership cannot be verified.
 DeviceSnapshot readDevices();
 ear::Graph deviceGraph(const DeviceSnapshot& snapshot);
+// An aggregate created after the host stopped must not make a remembered
+// radio available again through a new UID.
+std::vector<std::string> rememberRelated(const ear::Graph& graph, const std::vector<std::string>& remembered);
 std::string deviceName(const std::string& uid, bool input);
 std::string defaultName(const DeviceSnapshot& snapshot, bool input);
 const Device* findDevice(const DeviceSnapshot& snapshot, const std::string& name, bool input);

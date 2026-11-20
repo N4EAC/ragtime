@@ -47,6 +47,11 @@ void isolation()
     CHECK_EQ(d.radio.size(), 6u);
     CHECK(d.radioNow.empty());
     CHECK_EQ(voice::devices(mac::deviceGraph(s), {}).radio.size(), 0u);
+    // A new aggregate involving a remembered radio remains excluded even
+    // though the aggregate's own UID was never seen while the host ran.
+    const auto graph = mac::deviceGraph(s);
+    d = voice::devices(graph, mac::rememberRelated(graph, {mac::deviceName("radio-in", true)}));
+    CHECK_EQ(d.radio.size(), 6u);
 
     // Embedded host GUI, and multiple hosts using different cards.
     s.processes = {{1, "data2g-gui", {}, {21}}, {2, "data2g-host", {10}, {}}};
@@ -71,6 +76,9 @@ void namesAndFailures()
     s.defaultInput = 9999;
     CHECK(mac::defaultName(s, true).empty());
     s.problem = "ownership unavailable";
+    CHECK(mac::deviceGraph(s).nodes.empty());
+    s = station();
+    s.processes[0].inputs = {99999};
     CHECK(mac::deviceGraph(s).nodes.empty());
 }
 
