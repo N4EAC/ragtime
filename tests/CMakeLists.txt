@@ -98,6 +98,9 @@ target_compile_definitions(ragtime_sotto_test PRIVATE RAGTIME_NOT_SOTTO="$<TARGE
 add_dependencies(ragtime_sotto_test ragtime_not_sotto)
 set_tests_properties(ragtime_sotto_test PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:ragtime_not_sotto>")
 if(APPLE)
+    ragtime_test(ragtime_core_audio_devices_test macos/CoreAudioDevicesTest.cpp)
+    target_include_directories(ragtime_core_audio_devices_test PRIVATE ${PROJECT_SOURCE_DIR}/platform/macos)
+    target_link_libraries(ragtime_core_audio_devices_test PRIVATE ragtime_audio)
     # Exercise dyld paths with a real executable inside a bundle, launched
     # through a symlink from a different working directory.
     add_test(NAME ragtime_sotto_bundle_test COMMAND ${CMAKE_COMMAND}
