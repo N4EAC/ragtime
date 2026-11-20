@@ -258,7 +258,8 @@ wxWindow* SettingsDialog::stationPage(wxNotebook* book, const StationPrefs& pref
     // Cancel, never kept here.
     hostTxLevel_ = sentTxLevel_ = txLevel;
     txLevel_ = new wxSpinCtrlDouble(box, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS,
-                                    link::HostLink::TX_POWER_MIN_DB, link::HostLink::TX_POWER_MAX_DB,
+                                    link::HostLink::TX_POWER_MIN_DB,
+                                    prefs.usesBuiltInModem() ? 0.0 : link::HostLink::TX_POWER_MAX_DB,
                                     txLevel ? *txLevel : 0.0, 0.5);
     txLevel_->SetDigits(1);
     txLevel_->Enable(txLevel.has_value());
@@ -270,6 +271,8 @@ wxWindow* SettingsDialog::stationPage(wxNotebook* book, const StationPrefs& pref
                                    "over it, up to 20 dB under."
                                  : "data2g-host's transmit audio level (TXPOWER). It needs data2g-host connected, "
                                    "and one from Data2G PR #122 on; until then set its --output-volume.");
+    if (prefs.usesBuiltInModem())
+        txLevel_->SetToolTip(txLevel_->GetToolTipText() + "\nThe built-in modem's maximum is 0 dB.");
     // Sent a few times a second at most while it turns, and the last turn
     // always.
     txLevel_->Bind(wxEVT_SPINCTRLDOUBLE, [this](wxSpinDoubleEvent&) {

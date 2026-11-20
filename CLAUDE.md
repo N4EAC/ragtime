@@ -155,7 +155,7 @@ and the Part 97 check.
   clock check and no `in` list since 2026-11-15, only one roll call of
   ours at a time. A window the host gives up on (30 s
   armed with the burst not gone) is armed again while the burst waits,
-  else the row says no window (`HostLink`'s `HandLost`, `Roll::Lost`). Net control's traffic round is
+  else the row says no window (`HostLink`'s `HandLost`, `Roll::Lost`). Since 2026-11-16 a seal goes with a SealRound (`0x45`) and a Hand window, and a station missing something under it asks by Hand (PROTOCOL.md "Repairs by Hand", an early version). Net control's traffic round is
   Stage 2, still to build.
 - Data2G PR #186 (merged at d23a62b on 2026-11-14, in v0.5.1) puts
   mode_thresholds.json in the `MODES` answer (`CHANNELS`, then
@@ -261,6 +261,13 @@ and the Part 97 check.
   once (`SessionChat::react`). Chips under the line and a React submenu
   (`app/src/ReactionChips`); Hello takes bit 6, so `TAKES_ALL_V0` is
   `0x7F`.
+- Edits (2026-11-17, Jeff's ask, `docs/STAGE1.md` "Fix a line before
+  its seal", PROTOCOL.md "Edits"): a broadcast line of ours can be fixed
+  until its seal goes, or would go with chat seals off (60 s quiet, 10
+  minutes at most; `Seals::draft`). The fix is the same Text record
+  (number and time) with flag bit 6, so the seal lists it and repairs
+  bring it to a station that missed it (`BroadcastChat::edit`, Edit...
+  and Up in the entry line). Broadcast only.
 - Inline pictures (2026-10-27, Jeff's idea, `docs/STAGE1.md`): the
   picture button left of the floppy on both tabs opens `PictureDialog`
   (the most airtime, the longest side, 640 by default), which shrinks
@@ -335,8 +342,11 @@ and the Part 97 check.
   (or the space bar) and Monitor. libsotto is loaded at run time, never
   linked (`voice::Sotto` in `audio/`, `$RAGTIME_SOTTO` to point at
   one); its commit is pinned in `packaging/sotto.sh` and
-  `packaging/build-sotto.sh` builds it for the AppImage. There is no
-  Windows `sotto.dll` yet (`RAGTIME_SOTTO_DLL_DIR` for make-zip.sh).
+  `packaging/build-sotto.sh` builds it for the AppImage;
+  `packaging/windows/build-sotto.sh` cross-builds `sotto.dll` and
+  `libcodec2.dll` for the Windows zip (make-zip.sh runs it, or takes
+  them from `RAGTIME_SOTTO_DLL_DIR`; before issue #166's fix the zip had
+  none). Play and Save as WAV say in a box when sotto won't load.
 - Voice cards (2026-10-31, voice PR 5 of the sotto plan,
   `app/src/VoiceCards`, docs/STAGE1.md "Voice cards"): a
   play button, the pitch strip and the length under the line on both
@@ -443,10 +453,13 @@ and the Part 97 check.
   welcome. "Curmudgeons" and "lids" are flavour words for the docs and UI
   copy, never defined terms in the spec.
 - The radio is the source of truth for frequency: retune only when the
-  operator asks. Ragtime reads the dial and the transmit meters from
+  operator asks. This macOS fork has a frequency selector backed by
+  `frequencies.txt`. It tunes through rigctld or Hamlib on selection,
+  confirms the dial, and remembers the selection without retuning on launch.
+  Ragtime reads the dial and the transmit meters from
   rigctld (`\chk_vfo`, `f`, `+m`, `+l` levels and `+u MN` only: the operator's
   rigctld is shared), or from the rig it
-  opens with Hamlib, where PTT is the only thing it sets, the SWR
+  opens with Hamlib. The frequency selector and PTT set those values, the SWR
   trip (off by default) the only thing that sets the power, to 0. The
   Ear, with its own box ticked (off by default), is the only thing that
   sets the receive filter's width, PBT and manual notch, never while
@@ -545,7 +558,9 @@ of their bulletin, so it plays while it arrives (slowly with `--rate
 from host A or B is answered on its second try, and each host says
 `BUSY ON` and `BUSY OFF` around the others' group bursts. The hosts report SNRs,
 each bot at its own strength; `--no-snr` plays a host from before Data2G
-PR #98. `--rig PORT` plays a rigctld for the dial (14.105 MHz, or
+PR #98; `--lose-headers PCT` loses that share of the burst headers
+hosts A and B hear, so the HEARD line names no call and the SNR comes
+on the frames' Hand reference. `--rig PORT` plays a rigctld for the dial (14.105 MHz, or
 `--dial HZ`; `--dial-hop` moves it outside the data segments one minute
 in three; `--rig-vfo` plays a rigctld started with `--vfo`; it answers
 the meters too, its SWR 1.3 or `--rig-swr X`, an ALC that follows host

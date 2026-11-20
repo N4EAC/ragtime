@@ -62,6 +62,7 @@ public:
 
     static int runWithRuntime(int argc, char** argv, int (*run)(int, char**));
     static std::vector<std::string> devices(bool input);
+    static std::string version();
 
 private:
     std::unique_ptr<data2g::app::Station> station_;

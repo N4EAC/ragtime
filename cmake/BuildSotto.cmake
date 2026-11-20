@@ -45,8 +45,12 @@ if(_have)
 else()
     message(STATUS "libsotto for voice: building sotto ${RAGTIME_SOTTO_COMMIT} into ${RAGTIME_SOTTO_OUT} (-DRAGTIME_BUILD_SOTTO=OFF to skip)")
     file(REMOVE ${RAGTIME_SOTTO_STAMP})
+    set(_sotto_env SOTTO_WORK=${RAGTIME_SOTTO_WORK} GIT_TERMINAL_PROMPT=0)
+    if(APPLE AND CMAKE_OSX_DEPLOYMENT_TARGET)
+        list(APPEND _sotto_env MACOSX_DEPLOYMENT_TARGET=${CMAKE_OSX_DEPLOYMENT_TARGET})
+    endif()
     execute_process(
-        COMMAND ${CMAKE_COMMAND} -E env SOTTO_WORK=${RAGTIME_SOTTO_WORK} GIT_TERMINAL_PROMPT=0
+        COMMAND ${CMAKE_COMMAND} -E env ${_sotto_env}
                 bash -e ${CMAKE_SOURCE_DIR}/packaging/build-sotto.sh ${RAGTIME_SOTTO_OUT}
         RESULT_VARIABLE _result
         OUTPUT_VARIABLE _output

@@ -123,6 +123,29 @@ std::optional<uint64_t> RigControl::dialHz() const
     return std::nullopt;
 }
 
+bool RigControl::setFrequency(uint64_t hz)
+{
+    if (hostPtt_ || !dialHz()) return false;
+    if (dialHz() == hz) return true;
+    switch (settings_.source)
+    {
+        case radio::RigSource::Rigctld: return rigctld_->setFrequency(hz);
+        case radio::RigSource::Hamlib: return hamlib_.setFrequency(hz);
+        default: return false;
+    }
+}
+
+void RigControl::cancelFrequency()
+{
+    rigctld_->cancelFrequency();
+    hamlib_.cancelFrequency();
+}
+
+std::string RigControl::frequencyProblem() const
+{
+    return settings_.source == radio::RigSource::Rigctld ? rigctld_->frequencyProblem() : hamlib_.status().frequencyProblem;
+}
+
 const char* RigControl::meterPath() const
 {
     return settings_.source == radio::RigSource::Rigctld ? "rigctld" : "Hamlib";

@@ -497,6 +497,14 @@ std::string sessionLogDir()
     return std::string(dir.GetPath().utf8_str());
 }
 
+#ifdef __WXOSX__
+std::string frequencyListPath()
+{
+    if (!configPath.empty()) return configPath + ".frequencies.txt";
+    return std::string(wxFileName(wxString::FromUTF8(appDataDir()), "frequencies.txt").GetFullPath().utf8_str());
+}
+#endif
+
 std::string broadcastLogPath()
 {
     if (!configPath.empty()) return configPath + ".broadcast.log";

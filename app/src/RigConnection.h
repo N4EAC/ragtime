@@ -16,10 +16,9 @@
 #include "ragtime/radio/DialReader.h"
 
 // The socket to rigctld, carrying bytes to and from the socket-free
-// DialReader, which only ever asks the radio's frequency (and whether
-// rigctld wants VFOs named); tried again 2, 4, 8, 15 and then every 30 s
-// while rigctld isn't there. Ragtime never starts rigctld, and never sets
-// the radio: the operator's rigctld is often shared with other programs.
+// DialReader polls the frequency and meters and serializes filter and
+// operator-requested frequency changes. Reconnects after 2, 4, 8, 15 and
+// then every 30 s. The macOS frequency selector requests tuning explicitly.
 //
 // rigctld may listen on IPv4 or IPv6 alone (rigctld -T ::1, or a
 // "localhost" that means ::1), so each try goes through every address the
@@ -42,6 +41,9 @@ public:
     void setKeyed(bool keyed);
 
     std::optional<uint64_t> dialHz() const;
+    bool setFrequency(uint64_t hz);
+    void cancelFrequency() { reader_.cancelFrequency(); }
+    const std::string& frequencyProblem() const { return reader_.frequencyProblem(); }
     // "rigctld localhost:4532: connected", "... reconnecting in 8 s", and
     // why the last try failed or the reading is missing, for a tooltip.
     std::string describe() const;

@@ -3,9 +3,10 @@
 // radio's dial frequency once a second, and while data2g-host transmits
 // the rig's transmit meters, and that is all it ever asks: the radio is
 // the source of truth, and the operator's rigctld is often shared with
-// other programs (fldigi), so Ragtime never sets anything.
+// other programs (fldigi). The macOS frequency selector may explicitly
+// request a dial change, serialized with the other commands.
 //
-// Every line it writes is a question, one at a time. On connecting it asks
+// Commands are sent one at a time. On connecting it asks
 // "\chk_vfo", as Hamlib's own rigctl -m 2 does: a rigctld started with
 // --vfo answers 1 and wants a VFO named after every command, any other 0
 // (a VFO name sent to a rigctld without --vfo would be read as more
@@ -31,7 +32,7 @@
 // width), then "+l PBT_IN" and "+l PBT_OUT" (radio::RigFilter). Jeff
 // agreed to these reads on his shared rigctld (2026-10-26).
 //
-// The one thing it ever sets: the receive filter, when the Ear asks
+// It sets the receive filter when the Ear asks
 // (setFilter) with "Let the Ear change the rig's filters" ticked (Jeff,
 // 2026-10-26, for his rig held by a shared rigctld). Never while keyed:
 // "M USB 2400" when the mode or width differs from the last reading, then
@@ -133,6 +134,10 @@ public:
     void flushFilter();
     uint64_t filterWrites() const { return filterWrites_; }
 
+    bool setFrequency(uint64_t hz, uint64_t nowMs);
+    void cancelFrequency() { frequencyWrite_.reset(); }
+    const std::string& frequencyProblem() const { return frequencyProblem_; }
+
     // The dial in Hz; none until rigctld has answered, or once a reading
     // has gone stale.
     std::optional<uint64_t> dialHz(uint64_t nowMs) const;
@@ -170,6 +175,8 @@ private:
         Meter,
         Mode,
         Set,        // a filter setting, answered by an RPRT
+        SetFrequency,
+        TunePtt,
     };
     enum class State
     {
@@ -210,6 +217,10 @@ private:
     uint64_t unkeyedMs_ = 0;
     uint64_t readMs_ = 0;           // the last answer (or the end of keying)
     std::optional<uint64_t> hz_;
+    std::optional<uint64_t> frequencyWrite_;
+    bool tunePttChecked_ = false;
+    bool tunePttOn_ = false;
+    std::string frequencyProblem_;
     bool inFrequency_ = false;
     std::optional<uint64_t> frequencyReply_;
     State state_[METERS] = {};

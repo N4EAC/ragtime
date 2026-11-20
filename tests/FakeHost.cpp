@@ -669,7 +669,9 @@ void FakeHost::finishBurst()
         }
         double dB = heardAtDb();
         h->heardRef(dB, offsetHz_);
-        h->reply("BCAST " + std::to_string(h->groupPort_) + " HEARD " + from_
+        bool headerLost = h->headerLoss_ > 0.0
+                          && std::uniform_real_distribution<double>(0.0, 1.0)(h->lossRandom_) < h->headerLoss_;
+        h->reply("BCAST " + std::to_string(h->groupPort_) + " HEARD" + (headerLost ? std::string() : " " + from_)
                  + (h->reportsSnr_ ? h->snrSuffix(dB) : std::string()));
         for (const Tagged* t : heard) h->writeTo(h->kiss_, kissEncode(h->groupPort_, t->frame));
     }

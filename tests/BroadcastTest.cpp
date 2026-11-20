@@ -646,6 +646,19 @@ void testStations()
     CHECK(!list.pathFrom("W1AW", t + 3 * 60000, 2 * 60000));
     CHECK(!list.pathFrom("JA1XYZ", t, 5 * 60000)); // heard with no SNR
     CHECK(!list.pathFrom("G4XYZ", t, 5 * 60000));  // never heard
+
+    // One burst told twice, by its HEARD line and by the Hand reference on
+    // its frames, in either order, counts once; the next burst counts.
+    t += 60000;
+    CHECK(list.heard("W1AW", t, 3.5));
+    CHECK(!list.heard("W1AW", t + 200, 3.5));
+    CHECK(list.heard("W1AW", t + 300, 3.4));        // another burst, another figure
+    CHECK(list.heard("W1AW", t + broadcast::SAME_BURST_MS + 400, 3.4)); // the same figure, later
+    path = list.pathFrom("W1AW", t + broadcast::SAME_BURST_MS + 400, 60000);
+    CHECK(path && path->bursts == 3);
+    CHECK(list.heard("JA1XYZ", t));                 // no SNR: heard, nothing to tell apart
+    CHECK(list.heard("JA1XYZ", t));
+    CHECK(!list.heard("", t, 1.0));
 }
 
 void testReconnect()
@@ -1057,6 +1070,104 @@ void testReactions()
     std::filesystem::remove_all(dir, ec);
 }
 
+// Edits (docs/PROTOCOL.md, "Edits"): a line of ours fixed before its seal.
+// Here there are no seals, so nothing closes the window but the check.
+void testEdits()
+{
+    End a("TEST1", "CN87"), b("TEST2", "FN31");
+    a.link.commandUp(now);
+    b.link.commandUp(now);
+    settle(a, b);
+
+    std::vector<uint64_t> ids = a.chat.send("helo world", "", now);
+    settle(a, b);
+    const Message* mine = a.chat.find(ids[0]);
+    CHECK(mine->state == State::Sent && mine->aired);
+    size_t listed = b.chat.messages().size();
+    const Message* heard = last(b);
+    CHECK(heard != nullptr && heard->text == "helo world" && !heard->edited);
+    protocol::Record first = heard != nullptr ? b.heard.back() : protocol::Record();
+
+    // On the air: the same item goes again, fixed and marked so.
+    CHECK(a.chat.canEdit(*mine));
+    CHECK(a.chat.edit(ids[0], "hello world", "", now) == BroadcastChat::EditResult::Edited);
+    CHECK(mine->state == State::Queued && mine->edited);
+    CHECK_EQ(mine->text, std::string("hello world"));
+    CHECK_EQ(mine->firstText, std::string("helo world"));
+    CHECK(a.chat.edit(ids[0], "hello world", "", now) == BroadcastChat::EditResult::Unchanged);
+    settle(a, b);
+    CHECK(mine->state == State::Sent);
+    CHECK_EQ(a.chat.newestItem(), (uint32_t)1);     // no new number
+    CHECK_EQ(b.chat.messages().size(), listed);
+    heard = last(b);
+    CHECK(heard != nullptr && heard->text == "hello world" && heard->edited && heard->firstText == "helo world");
+    CHECK(a.chat.edit(ids[0], "hello world", "", now) == BroadcastChat::EditResult::Unchanged);
+    CHECK(a.chat.edit(ids[0], "   ", "", now) == BroadcastChat::EditResult::Unchanged);
+
+    // A late copy of the first text changes nothing, and neither does the
+    // fix heard again.
+    b.chat.onRebuilt(first, now);
+    CHECK(last(b)->text == "hello world");
+    CHECK(a.chat.resend(ids[0], "", now));
+    settle(a, b);
+    CHECK_EQ(b.chat.messages().size(), listed);
+    CHECK(last(b)->text == "hello world" && last(b)->firstText == "helo world");
+
+    // Fixed twice: the latest wins, the first text stays the first.
+    CHECK(a.chat.edit(ids[0], "hello, world", "", now) == BroadcastChat::EditResult::Edited);
+    settle(a, b);
+    CHECK(last(b)->text == "hello, world" && last(b)->firstText == "helo world");
+    CHECK_EQ(mine->firstText, std::string("helo world"));
+
+    // Still Queued: the text is swapped before it goes, and nobody sees an
+    // edit, as nobody saw the typo.
+    a.link.setPaused(true, now);
+    ids = a.chat.send("qeued up", "", now);
+    settle(a, b);
+    const Message* queued = a.chat.find(ids[0]);
+    CHECK(queued->state == State::Queued && !queued->aired);
+    CHECK(a.chat.edit(ids[0], "queued up", "", now) == BroadcastChat::EditResult::Edited);
+    CHECK(!queued->edited && queued->state == State::Queued);
+    a.link.setPaused(false, now);
+    settle(a, b);
+    CHECK(queued->state == State::Sent);
+    CHECK_EQ(b.chat.messages().size(), listed + 1);
+    CHECK(last(b)->text == "queued up" && !last(b)->edited);
+
+    // The callsign is the worst typo: fixed, the right station acks it.
+    ids = a.chat.send("@TEST3 you there?", "", now);
+    settle(a, b);
+    const Message* addressed = a.chat.find(ids[0]);
+    CHECK(addressed->state == State::Sent);
+    CHECK(a.chat.edit(ids[0], "@test2 you there?", "", now) == BroadcastChat::EditResult::Edited);
+    CHECK_EQ(BroadcastChat::typedForm(*addressed), std::string("@TEST2 you there?"));
+    settle(a, b);
+    CHECK(addressed->state == State::Acknowledged);
+    CHECK(last(b)->to == "TEST2" && last(b)->firstText == "@TEST3 you there?");
+
+    // Too long for the line's one frame.
+    CHECK(a.chat.edit(ids[0], std::string(400, 'x'), "", now) == BroadcastChat::EditResult::TooLong);
+    CHECK_EQ(addressed->text, std::string("you there?"));
+
+    // Once final (its seal gone, here the check says so), no more: but a
+    // line never on the air is still the operator's to change.
+    a.chat.setDraftCheck([](uint32_t, uint32_t) { return false; });
+    CHECK(!a.chat.canEdit(*mine));
+    CHECK(a.chat.edit(mine->id, "hi world", "", now) == BroadcastChat::EditResult::Final);
+    a.link.setPaused(true, now);
+    ids = a.chat.send("not yet gone", "", now);
+    CHECK(a.chat.canEdit(*a.chat.find(ids[0])));
+
+    // With the host: wait until it has gone.
+    a.link.setPaused(false, now);
+    a.hold = true;
+    settle(a, b);
+    const Message* held = a.chat.find(ids[0]);
+    CHECK(held->state == State::Sending);
+    CHECK(!a.chat.canEdit(*held) && a.chat.editWaits(*held));
+    CHECK(a.chat.edit(ids[0], "now gone", "", now) == BroadcastChat::EditResult::Busy);
+}
+
 int main()
 {
     testAddressee();
@@ -1075,5 +1186,6 @@ int main()
     testStations();
     testReconnect();
     testReactions();
+    testEdits();
     return ragtime_test::finish();
 }

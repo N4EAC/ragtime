@@ -48,7 +48,7 @@ std::optional<double> AutoAlc::newest() const
 std::optional<double> AutoAlc::top() const
 {
     if (!base_) return std::nullopt;
-    return std::min(LEVEL_MAX_DB, *base_ + CLIMB_DB);
+    return std::min(maximumDb_, *base_ + CLIMB_DB);
 }
 
 std::optional<double> AutoAlc::floor() const

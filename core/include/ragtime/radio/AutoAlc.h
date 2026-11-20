@@ -45,6 +45,7 @@ public:
     // TXPOWER's own range (link::HostLink::TX_POWER_MIN_DB, _MAX_DB).
     static constexpr double LEVEL_MIN_DB = -60.0;
     static constexpr double LEVEL_MAX_DB = 20.0;
+    void setMaximumDb(double dB) { maximumDb_ = dB; }
 
     // Auto ALC ticked or not. Turned off, the level to send to put back
     // the base, if it moved off it.
@@ -89,6 +90,7 @@ private:
     std::optional<double> newest() const;
 
     bool enabled_ = false;
+    double maximumDb_ = LEVEL_MAX_DB;
     bool held_ = false;
     bool wantsMore_ = false;
     std::optional<double> level_;

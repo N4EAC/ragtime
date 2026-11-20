@@ -1,5 +1,10 @@
 # Data2G as Ragtime meets it
 
+The macOS bundle uses Data2G v0.5.3 (`ede34e7`). It includes Hand
+overhearing and the transmit timing fix. Its `TXPOWER` range is -60 to
+0 dB, so the built-in modem's manual control and Auto ALC use that ceiling.
+External hosts retain the legacy range described in the historical table below.
+
 What `data2g-host` does at the edges Ragtime touches, read from
 Data2G's own docs and code at
 [arodland/Data2G@13807c6](https://github.com/arodland/Data2G/tree/13807c6c4e51f57a29f034fd5bd38c8cccbfcb51)

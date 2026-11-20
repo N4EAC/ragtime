@@ -1131,8 +1131,53 @@ void file()
 
 } // namespace
 
+void frequencySelection()
+{
+    for (const bool vfo : {false, true})
+    {
+        DialReader dial;
+        uint64_t t = T0;
+        CHECK(!dial.setFrequency(7066000, t));
+        dial.connected(t);
+        dial.takeOutput();
+        CHECK(!dial.setFrequency(7066000, t)); // VFO handshake still outstanding
+        say(dial, vfo ? "1\n" : "0\n", t);
+        CHECK_EQ(probe(dial, t), vfo ? std::string("f currVFO\n") : std::string("f\n"));
+        say(dial, "7110000\n", t);
+        dial.takeOutput();
+        CHECK(dial.setFrequency(7066000, ++t));
+        CHECK_EQ(dial.takeOutput(), vfo ? std::string("+t currVFO\n") : std::string("+t\n"));
+        say(dial, "get_ptt:\nPTT: 0\nRPRT 0\n", t);
+        CHECK_EQ(dial.takeOutput(), vfo ? std::string("F currVFO 7066000\n") : std::string("F 7066000\n"));
+        say(dial, "RPRT 0\n", t);
+        CHECK_EQ(dial.takeOutput(), vfo ? std::string("f currVFO\n") : std::string("f\n"));
+        say(dial, "7066000\n", t);
+        CHECK(dial.dialHz(t) == std::optional<uint64_t>(7066000));
+        CHECK(dial.frequencyProblem().empty());
+        CHECK(dial.setFrequency(14066000, ++t));
+        dial.takeOutput();
+        say(dial, "get_ptt:\nPTT: 1\nRPRT 0\n", t);
+        CHECK(dial.takeOutput().find("F ") == std::string::npos);
+        CHECK(!dial.frequencyProblem().empty());
+        CHECK(dial.setFrequency(14066000, ++t));
+        dial.takeOutput();
+        say(dial, "get_ptt:\nPTT: 0\nRPRT 0\n", t);
+        dial.takeOutput();
+        say(dial, "RPRT -11\n", t);
+        CHECK(dial.frequencyProblem().find("RPRT -11") != std::string::npos);
+        dial.takeOutput();
+        say(dial, "7066000\n", t);
+        dial.setKeyed(true, ++t);
+        CHECK(!dial.setFrequency(14066000, t));
+        dial.setKeyed(false, ++t);
+        dial.disconnected();
+        CHECK(!dial.setFrequency(14066000, t));
+    }
+}
+
 int main()
 {
+    frequencySelection();
     bands();
     dialReader();
     extendedFrequencyReply();

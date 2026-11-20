@@ -42,6 +42,9 @@
 #include "AppIcon.h"
 #include "BroadcastPage.h"
 #include "ConnectionBar.h"
+#ifdef __WXOSX__
+#include "FrequencySelector.h"
+#endif
 #include "SwrBar.h"
 #include "DrawnIcon.h"
 #include "EarFrame.h"
@@ -156,6 +159,9 @@ enum
     ID_SAVE_REPORT,
     ID_OPEN_FLIGHT,
     ID_OPEN_SESSION_LOGS,
+#ifdef __WXOSX__
+    ID_EDIT_FREQUENCIES,
+#endif
 };
 
 
@@ -319,10 +325,24 @@ MainFrame::MainFrame()
     rig_ = std::make_unique<RigControl>([this]() { onDial(); }, [this]() { onMeters(); },
                                         [this](const std::string& what) { onSwrTrip(what); });
     rig_->setNote([this](const std::string& line) { host_->recorder().note(line, HostConnection::nowMs()); });
+#ifdef __WXOSX__
+    bar_->frequency->setHooks({
+        [this] { return rig_->dialHz().has_value() && !bar_->tx->isOn(); },
+        [this](uint64_t hz) {
+            host_->recorder().note("Frequency selected: " + std::to_string(hz) + " Hz", HostConnection::nowMs());
+            return rig_->setFrequency(hz);
+        },
+        [this] { return rig_->dialHz(); },
+        [this] { return rig_->frequencyProblem(); },
+        [this] { rig_->cancelFrequency(); }
+    });
+#endif
 
     // Every broadcast item of ours is sealed once it has gone.
     chat_.onItems([this](const std::vector<protocol::Record>& items, uint64_t burst, const std::string& mode,
                          uint64_t now) { seals_.going(items, burst, mode, now); });
+    // A line of ours can be fixed in place until its seal goes (or would).
+    chat_.setDraftCheck([this](uint32_t seq, uint32_t time) { return seals_.draft(seq, time); });
     setAutoReceive(loadBool(keys::AUTO_RECEIVE_BROADCAST, false));
 
     loadGearshift();
@@ -420,6 +440,9 @@ MainFrame::MainFrame()
 
 MainFrame::~MainFrame()
 {
+#ifdef __WXOSX__
+    bar_->frequency->cancel();
+#endif
     clock_.Stop();
     voiceTimer_.Stop();
     // No callback from the audio thread after this.
@@ -456,6 +479,10 @@ void MainFrame::buildMenus()
     file->Append(ID_SEND_PICTURE, "Send a &picture...",
                  "Sends a picture to the station you're in a session with, shown as it comes");
     file->Append(ID_OPEN_RECEIVED, "Open &received folder", "Where files you receive go");
+#ifdef __WXOSX__
+    file->Append(ID_EDIT_FREQUENCIES, "Edit frequency list…",
+                 "Edit radio dial frequencies in MHz. Saved changes appear automatically.");
+#endif
     file->AppendSeparator();
     file->Append(ID_BROADCAST_FILE, "&Broadcast a file...\tCtrl+Shift+B",
                  "Sends a file to everyone on D2G, with repairs for stations that miss pieces");
@@ -581,6 +608,11 @@ void MainFrame::buildMenus()
         wxFileName::Mkdir(wxString::FromUTF8(receivedFolder()), wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
         openWithDesktop(receivedFolder());
     }, ID_OPEN_RECEIVED);
+#ifdef __WXOSX__
+    Bind(wxEVT_MENU, [](wxCommandEvent&) {
+        openWithDesktop(frequencyListPath());
+    }, ID_EDIT_FREQUENCIES);
+#endif
     Bind(wxEVT_UPDATE_UI, [this](wxUpdateUIEvent& e) {
         e.Enable(session_.phase() == session::SessionChat::Phase::Connected || canCall());
     }, ID_SEND_FILE, ID_STATION_SEND_FILE);
@@ -632,15 +664,20 @@ void MainFrame::buildMenus()
         wxAboutDialogInfo info;
         info.SetName("Ragtime");
         info.SetVersion(versionString());
-        info.SetDescription("A plain chat and file-transfer client for Data2G.\n"
-                            "Welcome to the D2G net. Sometimes we ragchew.\n\n"
+        wxString description = "A plain chat and file-transfer client for Data2G.\n\n";
+        description += "Ragtime " + utf8(versionString());
 #ifdef RAGTIME_EMBED_DATA2G
-                            "Use the built-in Data2G modem or connect to an external data2g-host."
+        description += "\nBuilt-in Data2G " + utf8(EmbeddedModem::version());
 #else
-                            "Ragtime connects to an external data2g-host."
+        description += "\nExternal data2g-host";
 #endif
-                            + (ragtime::image::available() ? "\n\nPictures: " + utf8(ragtime::image::versions())
-                                                           : wxString()));
+        const auto& sotto = voice::Sotto::library().info();
+        description += "\n" + (sotto.available ? utf8(sotto.format) : wxString("Sotto unavailable"));
+#ifdef RAGTIME_SOTTO_REVISION
+        description += "\nBundled sotto revision " + wxString(RAGTIME_SOTTO_REVISION).Left(7);
+#endif
+        if (ragtime::image::available()) description += "\n\nPictures: " + utf8(ragtime::image::versions());
+        info.SetDescription(description);
         info.SetLicence("MIT");
         info.SetWebSite("https://github.com/baitisj/ragtime");
         wxAboutBox(info, this);
@@ -822,6 +859,14 @@ void MainFrame::buildLayout()
         host_->flush();
         refreshMessages();
     });
+    broadcast_->onEdit(
+        [this](uint64_t id, const std::string& typed) {
+            broadcast::BroadcastChat::EditResult r = chat_.edit(id, typed, broadcastMode(), HostConnection::nowMs());
+            host_->flush();
+            refreshMessages();
+            return r;
+        },
+        [this](uint64_t id) { return editInfo(id); });
     broadcast_->onReact([this](uint64_t id, uint8_t code) {
         uint64_t now = HostConnection::nowMs();
         if (code == 0) chat_.unreact(id);
@@ -932,6 +977,7 @@ void MainFrame::buildLayout()
 
 void MainFrame::applyPrefs(bool reconnect)
 {
+    autoAlc_.setMaximumDb(prefs_.usesBuiltInModem() ? 0.0 : radio::AutoAlc::LEVEL_MAX_DB);
     link_.setCallsign(prefs_.callsign);
     applyVoicePrefs();
     broadcast::BroadcastChat::Settings s;
@@ -1059,10 +1105,7 @@ void MainFrame::onHostEvents(const std::vector<Event>& events)
                 if (!link::isAckMode(e.text)) modeUsed_ = e.text;
                 break;
             case Event::Type::HeardFrom:
-                stations_.heard(e.text, now, e.snr);
-                watch_.heard(e.text, now, e.snr);
-                logPath(e.text, e.snr, false, now);
-                updatePathSnr(now);
+                heardBurst(e.text, e.snr, now);
                 break;
             case Event::Type::SessionSnr:
                 stations_.heard(e.peer, now, e.snr);
@@ -1119,6 +1162,10 @@ void MainFrame::onHostEvents(const std::vector<Event>& events)
         broadcastFiles_.onEvent(e, now);
         for (const protocol::Record& r : chat_.onEvent(e, now))
         {
+            // A burst whose header was lost (its frames found under D2G's
+            // key) has a HEARD line with no call; its SNR comes on the Hand
+            // reference its frames carry instead.
+            if (e.type == Event::Type::Heard && e.handRef) heardBurst(r.header.callsign, e.handRef->snr, now);
             stations_.onRecord(r, now);
             logLocator(r, now);
             watch_.onRecord(r, now);
@@ -1353,7 +1400,34 @@ void MainFrame::refreshMessages()
         if (!(tabs_->GetSelection() == TAB_BROADCAST && IsActive())) reactionsUnread_++;
     }
     broadcast_->refresh();
+    broadcast_->refreshEdit();
     updateTabLabels();
+}
+
+std::string MainFrame::editInfo(uint64_t id) const
+{
+    // What the fix costs, never discounted: a burst of its own in the
+    // gear, unless the line is still queued (its text swapped for free).
+    const broadcast::Message* m = chat_.find(id);
+    if (m == nullptr) return std::string();
+    if (m->state == broadcast::Message::State::Queued && !m->aired) return "it hasn't gone yet, so the fix is free";
+    std::string mode = broadcastMode();
+    if (mode.empty()) mode = modeUsed_;
+    link::ModeInfo info = broadcast::findMode(link_.modes(), mode, link_.groupMode());
+    double seconds = info.valid() ? broadcast::oneCodewordSeconds(info) : broadcast::UNKNOWN_BURST_SECONDS;
+    std::string name = info.valid() ? (gearshift_.shortName(info.name)) : std::string();
+    std::string out = "one more burst, about " + std::to_string((int)std::lround(seconds)) + " s";
+    if (!name.empty()) out += " in " + name;
+    std::optional<uint64_t> until = seals_.draftUntilMs(m->seq, m->time);
+    uint64_t now = HostConnection::nowMs();
+    if (until && *until > now)
+    {
+        uint64_t left = (*until - now + 999) / 1000;
+        char buf[32];
+        std::snprintf(buf, sizeof buf, "; open %u:%02u more", (unsigned)(left / 60), (unsigned)(left % 60));
+        out += buf;
+    }
+    return out;
 }
 
 void MainFrame::refreshStations()
@@ -3486,6 +3560,7 @@ void MainFrame::voiceAction(const std::string& key, const std::string& href)
         return;
     }
     if (action != "play" && action != "seek") return;
+    if (!voiceCodecReady("Play the voice message")) return;
     if (key[0] == 'p') voices_.shelveFile(key.substr(1));
     startVoice(voiceQueue_.play(key, (uint32_t)frame));
     redrawVoices();
@@ -3526,22 +3601,27 @@ void MainFrame::startVoice(const std::optional<voice::PlayQueue::Start>& start)
     }
 }
 
+bool MainFrame::voiceCodecReady(const wxString& title)
+{
+    std::string why;
+    if (VoicePlayer::canDecode(why)) return true;
+    note_ = "Voice messages can't play: " + why;
+    showStatus();
+    wxMessageBox("Voice messages need sotto, the voice codec, and Ragtime couldn't load it:\n\n" + utf8(why), title,
+                 wxOK | wxICON_WARNING, this);
+    return false;
+}
+
 void MainFrame::saveVoiceAsWav(const std::string& key)
 {
+    if (!voiceCodecReady("Save as WAV")) return;
     // The clip as it stands: whole, or what came of it, lost frames
     // covered as sotto covers them.
     if (key.size() > 1 && key[0] == 'p') voices_.shelveFile(key.substr(1));
     const VoiceShelf::Shelved* s = voices_.find(key);
-    std::string why;
     if (s == nullptr || !s->playable())
     {
         note_ = "Save as WAV: nothing of that voice message can play yet.";
-        showStatus();
-        return;
-    }
-    if (!VoicePlayer::canDecode(why))
-    {
-        note_ = "Save as WAV: " + why;
         showStatus();
         return;
     }
@@ -4073,6 +4153,9 @@ void MainFrame::placeTabToggle()
 
 void MainFrame::applyRadioPrefs()
 {
+#ifdef __WXOSX__
+    bar_->frequency->reset();
+#endif
     rig_->apply(prefs_.rig);
     applySendGuard();
     showDial();
@@ -4137,8 +4220,7 @@ void MainFrame::onMeters()
         else if (burst.alcStepDb != 0 && !autoAlc_.enabled())
             line += "; Auto ALC would turn the TX level " + move(burst.alcStepDb);
         else if (burst.alcStepDb > 0 && autoAlc_.atTop())
-            line += "; Auto ALC is at its most, " + std::to_string((int)radio::AutoAlc::CLIMB_DB)
-                    + " dB over the TX level set";
+            line += "; Auto ALC is at its allowed maximum TX level";
         else if (burst.alcReadings > 0 && burst.alcCounted == 0)
             line += "; no ALC reading with the audio on, so no step";
         else if (burst.tooShortToRaise)
@@ -4160,6 +4242,7 @@ void MainFrame::setAutoAlc(bool on)
 
 void MainFrame::sendTxLevel(double dB, const std::string& why)
 {
+    if (prefs_.usesBuiltInModem()) dB = std::min(0.0, dB);
     uint64_t now = HostConnection::nowMs();
     if (!link_.setTxPower(dB, now)) return;
     autoAlc_.sent(dB);
@@ -4202,6 +4285,7 @@ void MainFrame::showAutoAlc()
             tip += " The ALC still wants more: raise the TX level in Settings, or check the rig's drive "
                    "and ALC.";
     }
+    if (prefs_.usesBuiltInModem()) tip += "\n\nThe built-in modem's maximum audio level is 0 dB.";
     bar_->autoAlc->Enable(host && alc);
     if (bar_->autoAlc->GetToolTipText() != utf8(tip)) bar_->autoAlc->SetToolTip(utf8(tip));
 }
@@ -4423,6 +4507,15 @@ void MainFrame::applySendGuard()
         showStatus();
     }
     showDial();
+}
+
+void MainFrame::heardBurst(const std::string& call, std::optional<double> snr, uint64_t nowMs)
+{
+    // Told once by its HEARD line and again by its frames: counted once.
+    if (!stations_.heard(call, nowMs, snr)) return;
+    watch_.heard(call, nowMs, snr);
+    logPath(call, snr, false, nowMs);
+    updatePathSnr(nowMs);
 }
 
 void MainFrame::logPath(const std::string& call, std::optional<double> snr, bool session, uint64_t nowMs)

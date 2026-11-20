@@ -20,8 +20,9 @@
 // tried again 2, 4, 8, 15 and then every 30 s (link::Reconnect). Stopping
 // unkeys the rig, if keyed, before closing it.
 //
-// It never tunes the rig: the radio is the source of truth for frequency.
-// PTT is the only thing it sets when told to (PttFollower, with "Key the
+// The macOS frequency selector can request a dial change while receiving.
+// The frequency is then read back from the rig.
+// PTT changes follow PttFollower (with "Key the
 // rig when data2g-host keys" ticked), the SWR trip the only thing that sets
 // the power, and the Ear the only thing that sets the receive filter
 // (setFilter: the mode's passband width and the twin PBT, with "Let the
@@ -127,6 +128,7 @@ public:
         // Goes up with each filter written, and why the last failed.
         uint64_t filterWrites = 0;
         std::string filterProblem;
+        std::string frequencyProblem;
 
         // The SWR trip, from the trip until clearSwrTrip().
         bool swrTripped = false;
@@ -153,6 +155,8 @@ public:
     void stop();
     // Reads the dial this often, from now.
     void setPollSeconds(int seconds);
+    bool setFrequency(uint64_t hz);
+    void cancelFrequency();
 
     // Keys or unkeys the rig, as soon as the thread gets to it.
     void setPtt(bool on);

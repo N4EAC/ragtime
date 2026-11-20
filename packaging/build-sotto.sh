@@ -7,6 +7,8 @@
 # Needs cmake, make, a C compiler and git. Set SOTTO_SOURCE to a
 # checkout to build that instead of cloning.
 
+set -eo pipefail
+
 cd "$(dirname "$(realpath "$0")")/.."
 ROOT=$PWD
 . packaging/sotto.sh
@@ -25,12 +27,16 @@ fi
 # Codec 2's library only, from sotto's own fork.
 C2="$WORK/codec2"
 platform=$(uname -s)
+codec2_options=()
 if [ "$platform" = Darwin ]; then
     jobs=$(sysctl -n hw.logicalcpu 2>/dev/null || echo 4)
+    if [ -n "${MACOSX_DEPLOYMENT_TARGET:-}" ]; then
+        codec2_options+=("-DCMAKE_OSX_DEPLOYMENT_TARGET=$MACOSX_DEPLOYMENT_TARGET")
+    fi
 else
     jobs=$(nproc)
 fi
-cmake -S "$SRC/codec/codec2" -B "$C2" -DCMAKE_BUILD_TYPE=Release -DUNITTEST=OFF > /dev/null
+cmake -S "$SRC/codec/codec2" -B "$C2" -DCMAKE_BUILD_TYPE=Release -DUNITTEST=OFF "${codec2_options[@]}" > /dev/null
 cmake --build "$C2" --target codec2 -j"$jobs" > /dev/null
 
 make -C "$SRC/c" --no-print-directory clean VARIANT="$SOTTO_VARIANT" > /dev/null

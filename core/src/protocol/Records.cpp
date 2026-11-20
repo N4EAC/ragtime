@@ -22,6 +22,7 @@ constexpr uint8_t HELLO_AUTOMATIC = 0x02;
 constexpr uint8_t TEXT_CODING_MASK = 0x0F;
 constexpr uint8_t TEXT_ADDRESSED = 0x10;
 constexpr uint8_t TEXT_ACK_WANTED = 0x20;
+constexpr uint8_t TEXT_EDITED = 0x40;
 
 constexpr uint8_t REPAIR_WANT_SEAL = 0x01;
 constexpr int REPAIR_SNR_SHIFT = 1;
@@ -75,6 +76,15 @@ bool encodeBody(const Body& body, std::vector<uint8_t>& out, bool canonical)
                 for (uint16_t hash : b.in) putNumber(out, hash, 2);
                 return true;
             }
+            else if constexpr (std::is_same_v<T, SealRound>)
+            {
+                if (b.seal == 0 || b.delayTenths == 0 || b.channels == 0) return false;
+                putNumber(out, b.seal, 2);
+                out.push_back(b.delayTenths);
+                out.push_back(b.channels);
+                out.push_back(b.flags);
+                return true;
+            }
             else if constexpr (std::is_same_v<T, Status>)
             {
                 out.push_back((uint8_t)b.state);
@@ -92,7 +102,8 @@ bool encodeBody(const Body& body, std::vector<uint8_t>& out, bool canonical)
                 }
                 bool addressed = !b.to.empty();
                 out.push_back((uint8_t)(coding | (addressed ? TEXT_ADDRESSED : 0) |
-                                        (addressed && b.ackWanted ? TEXT_ACK_WANTED : 0)));
+                                        (addressed && b.ackWanted ? TEXT_ACK_WANTED : 0) |
+                                        (b.edited ? TEXT_EDITED : 0)));
                 if (addressed && !putCallsign(out, b.to)) return false;
                 if (coding == CODING_RAW) out.insert(out.end(), b.text.begin(), b.text.end());
                 else out.insert(out.end(), coded.begin(), coded.end());
@@ -295,6 +306,14 @@ DecodeResult decodeBody(uint8_t type, Reader& in, Record& out)
             // Anything after is a later version's, left alone.
             return decoded(out, std::move(b));
         }
+        case RecordType::SealRound:
+        {
+            SealRound b;
+            if (!in.u16(b.seal) || !in.u8(b.delayTenths) || !in.u8(b.channels) || !in.u8(b.flags))
+                return DecodeResult::Malformed;
+            if (b.seal == 0 || b.delayTenths == 0 || b.channels == 0) return DecodeResult::Malformed;
+            return decoded(out, std::move(b));
+        }
         case RecordType::Text:
         {
             Text b;
@@ -302,6 +321,7 @@ DecodeResult decodeBody(uint8_t type, Reader& in, Record& out)
             if (!in.u8(flags)) return DecodeResult::Malformed;
             if ((flags & TEXT_ADDRESSED) != 0 && !in.callsign(b.to)) return DecodeResult::Malformed;
             b.ackWanted = (flags & TEXT_ACK_WANTED) != 0 && !b.to.empty();
+            b.edited = (flags & TEXT_EDITED) != 0;
             b.coding = flags & TEXT_CODING_MASK;
             std::vector<uint8_t> rest = in.rest();
             if (b.coding == CODING_RAW) b.text.assign(rest.begin(), rest.end());
@@ -493,6 +513,7 @@ uint8_t Record::type() const
             else if constexpr (std::is_same_v<T, Hello>) return (uint8_t)RecordType::Hello;
             else if constexpr (std::is_same_v<T, Status>) return (uint8_t)RecordType::Status;
             else if constexpr (std::is_same_v<T, RollCall>) return (uint8_t)RecordType::RollCall;
+            else if constexpr (std::is_same_v<T, SealRound>) return (uint8_t)RecordType::SealRound;
             else if constexpr (std::is_same_v<T, Text>) return (uint8_t)RecordType::Text;
             else if constexpr (std::is_same_v<T, Ack>) return (uint8_t)RecordType::Ack;
             else if constexpr (std::is_same_v<T, Ping>) return (uint8_t)RecordType::Ping;

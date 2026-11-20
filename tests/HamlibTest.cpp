@@ -82,6 +82,9 @@ void dummyRig()
     CHECK_EQ(s.rig, std::string("Hamlib Dummy"));
     // The dummy rig starts at 145 MHz.
     CHECK(s.hz && *s.hz == 145000000);
+    CHECK(r.setFrequency(7066000));
+    CHECK(waitFor(r, [](const HamlibRig::Status& st) { return st.hz == std::optional<uint64_t>(7066000); }));
+    CHECK(r.status().frequencyProblem.empty());
     // Its S-meter, between bursts, for the band's noise.
     CHECK(s.readsStrength);
     CHECK(waitFor(r, [](const HamlibRig::Status& st) { return st.strengthReadings > 0 && st.strength; }));
@@ -90,6 +93,7 @@ void dummyRig()
 
     r.setPtt(true);
     CHECK(waitFor(r, [](const HamlibRig::Status& st) { return st.keyed; }));
+    CHECK(!r.setFrequency(14066000));
     r.setPtt(false);
     CHECK(waitFor(r, [](const HamlibRig::Status& st) { return !st.keyed; }));
     CHECK_EQ(r.status().pttFailures, (uint64_t)0);

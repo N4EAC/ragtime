@@ -99,6 +99,7 @@ length.
 | `0x42` | RepairRefused | seal, reason, count, files | no |
 | `0x43` | RepairRequest | to, seal, seal digest, flags, items, items wanted, files | no |
 | `0x44` | ItemParity | seal, count, items, index, bytes | no |
+| `0x45` | SealRound | seal, delay, channels, flags | no |
 
 `0x41` was Ragtime 0.1's RepairRequest, which listed the pieces missing.
 It is retired: a newer station skips it as a type it doesn't know, and
@@ -145,7 +146,7 @@ when QRL.
 
 | Field | Bytes | Meaning |
 | --- | --- | --- |
-| flags | 1 | Bits 0 to 3: the coding (0: text table 0; 15: raw UTF-8; 1 to 14 for later tables). Bit 4: addressed. Bit 5: ack wanted (only when addressed) |
+| flags | 1 | Bits 0 to 3: the coding (0: text table 0; 15: raw UTF-8; 1 to 14 for later tables). Bit 4: addressed. Bit 5: ack wanted (only when addressed). Bit 6: edited, a fix of a line sent before (Edits, below). Bit 7: 0 |
 | to | 2 to 8, when addressed | The station it is for |
 | text | the rest | Coded as the flags say |
 
@@ -293,6 +294,16 @@ lists (Parity, below).
 | items | count / 8, rounded up | One bit per item, as in RepairRequest: 1 = covered |
 | index | 2 | Which parity symbol: it is named 256 + index |
 | bytes | the rest | The symbol, an even number of bytes |
+
+**SealRound** (`0x45`): rides with a Seal in one burst, which opens a
+Hand window for repair requests (Repairs by Hand, below).
+
+| Field | Bytes | Meaning |
+| --- | --- | --- |
+| seal | 2 | The seal it rides with |
+| delay | 1 | Tenths of a second from the burst's end to the window |
+| channels | 1 | Hand channels in the window |
+| flags | 1 | 0; others ignore any bit they don't know |
 
 ### Fields
 
@@ -700,6 +711,44 @@ station doesn't know is kept and shown as `?`.
   lists them, they are never repaired, and when signing comes they stay
   unsigned. A station before 0.2.0 skips them as a type it doesn't know.
 
+### Edits
+
+A broadcast line is a draft until its seal goes (Jeff, 2026-11-17:
+"allow edit of typos before a seal window closes"). Until then its
+sender may fix it: the line's Text goes again under the **same number
+and time**, with the new text (and addressee, if that was the typo) and
+flag bit 6 set. There is no record of its own and no diff: the whole
+line stands alone, so a station that missed the first copy can read the
+fix.
+
+- **When.** Still with the sender (not yet the host's), the text is
+  swapped before it goes, and nothing is marked, as nobody saw it. With
+  the host, it waits until the burst has gone. On the air, it may be
+  fixed while no seal lists it. With chat seals off (the default), by
+  the same clock: until a seal would have gone, 60 s with nothing new of
+  ours on the way, and at most 10 minutes after the line went. A fix
+  starts that quiet afresh, as any item of ours does. After that the
+  line is final.
+- **Airtime.** A fix is a burst of its own: a one-codeword burst, about
+  16 s in fsk16r25-r1/3. Ragtime says so before it goes.
+- **The seal.** The bit is in the flags byte, so in the record digest:
+  the seal lists the line as it was last sent, and a station holding the
+  first copy finds it "heard differently" and asks for it (a line it
+  heard in the same over, 15 minutes or less before the seal, counts as
+  being there for that over). The repair brings the fix. With chat seals
+  off nothing repairs a line, and a station that missed the fix keeps
+  the first copy.
+- **A receiver** that holds the line (sender, number and time) and hears
+  it with bit 6 replaces its text, addressee and ack flag, keeps its
+  reactions, and shows it edited, with what it first said. A copy
+  without bit 6, or the fix it already holds, changes nothing; a later
+  fix replaces an earlier one. A line first heard with bit 6 shows
+  edited too. An addressed fix asks for an Ack as any line does.
+- Each fix is one item, and must fit one frame. A long message split
+  into several Texts is fixed a part at a time.
+- Ragtime 0.3.1 and earlier hold the first copy: the fix is a duplicate
+  to them.
+
 ### Seals and repair
 
 `docs/PLAN.md` ("Seals, receipts and repairs") has the reasoning, and
@@ -915,6 +964,47 @@ most: Ragtime 0.1 sent again the union of every piece anyone lacked,
 round after round, and its losers were still missing pieces hours
 later. With parity, a file usually reaches every station in a round or
 two.
+
+### Repairs by Hand
+
+An early version (Jeff, 2026-11-16; the plan is the doc "Repairs by
+Hand"): a station missing something under a seal asks for it with a
+Hand, 10.56 s at -19 dB, in place of a RepairRequest burst.
+
+- **The sender** sends a seal alone in its burst with a SealRound and a
+  Hand window over all its channels, 3 s after the burst. A seal that
+  won't fit one burst with the round, or a host with no Hands (no REF
+  yet), goes as before. The tag is byte 4 of SHA-256 over the sender's
+  call, a `0x01` byte and the seal number, big-endian, so a roll call's
+  Hand (seed `0x00`) never decodes as a repair Hand, nor the reverse.
+- **The listener** that heard the seal, lacks items or pieces of one
+  file under it, and isn't in a ragchew or waiting on a Hand of its own
+  answers with `HAND SEND` on the burst's reference, in the channel
+  given by the first 4 bytes of SHA-256(call, `0x01`, seal) modulo the
+  window's channels. That Hand is its request: no RepairRequest goes
+  for that lack unless the Hand doesn't go (refused or dropped), when
+  it asks by burst as before. A lack wider than one Hand holds (the
+  seal itself, two files, over the caps below) asks by burst.
+- **The sender** takes each Hand that unpacks and sits in its call's
+  channel as a RepairRequest for every item of the seal, with the
+  number of symbols wanted, and repairs as for any request. The repair
+  round keeps its normal window.
+
+**What a repair Hand says.** 63 bits, most significant first:
+
+| Field | Bits | Meaning |
+| --- | --- | --- |
+| version | 3 | 1 (a roll call's Hand is 0) |
+| call | 28 | As in a roll call's Hand |
+| S/N | 6 | As in a roll call's Hand |
+| items wanted | 7 | Parity symbols wanted over the seal's items, up to 127 |
+| pieces wanted | 9 | Parity symbols wanted over one file's pieces, up to 511 |
+| file | 8 | The file's place in the seal (its seq less the seal's first item), `0xFF` for none |
+| spare | 2 | 0 |
+
+A Hand that wants nothing, or pieces with no file, is dropped. Not yet
+built: holders answering, a shorter window, a confirmed-by list, and
+asking by Hand over a seal sent again.
 
 ### Broadcast files
 

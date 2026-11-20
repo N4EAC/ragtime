@@ -9,7 +9,7 @@
 //
 //   ragtime_fake_air [--bots N] [--airtime MS] [--call CALL] [--fade] [--rate BPS]
 //                    [--loss PCT] [--files] [--voice] [--voice-file FILE.sot] [--no-snr] [--no-cut]
-//                    [--no-reasons] [--no-hands]
+//                    [--no-reasons] [--no-hands] [--lose-headers PCT]
 //                    [--rig PORT [--dial HZ] [--dial-hop] [--rig-vfo] [--rig-swr X] [--rig-noise DB]]
 //   ragtime_fake_air --replay FILE|FOLDER... [--from TIME] [--speed X]
 //
@@ -29,7 +29,9 @@
 // The bots seal what they broadcast and answer repair requests, and take
 // broadcast files without asking. --loss PCT has hosts A and B lose that
 // share of the group frames they hear, so a Ragtime on them asks for
-// repairs; --files has the first bot broadcast a short bulletin file a
+// repairs; --lose-headers PCT has them lose that share of the headers of
+// the group bursts they hear, so the HEARD line names no call and the
+// station's SNR comes from its frames' Hand reference; --files has the first bot broadcast a short bulletin file a
 // minute in and every six minutes after. --voice has the last bot
 // broadcast a short voice message (a made-up clip, no speech) 40 s in and
 // every four minutes, and every bot answer a voice message sent to it in
@@ -834,6 +836,7 @@ int main(int argc, char** argv)
     std::string callWho;
     bool fades = false;
     int lossPct = 0;
+    int headerLossPct = 0;
     bool share = false;
     bool voiceToo = false;
     int rate = 400;
@@ -863,6 +866,8 @@ int main(int argc, char** argv)
             rate = std::atoi(argv[++i]);
         else if (std::strcmp(argv[i], "--loss") == 0 && i + 1 < argc)
             lossPct = std::atoi(argv[++i]);
+        else if (std::strcmp(argv[i], "--lose-headers") == 0 && i + 1 < argc)
+            headerLossPct = std::atoi(argv[++i]);
         else if (std::strcmp(argv[i], "--voice-file") == 0 && i + 1 < argc)
             voiceClip = argv[++i];
         else if (std::strcmp(argv[i], "--files") == 0)
@@ -902,7 +907,7 @@ int main(int argc, char** argv)
         {
             std::fprintf(stderr, "usage: ragtime_fake_air [--bots N] [--airtime MS] [--call CALL] [--fade] "
                                  "[--rate BPS] [--loss PCT] [--files] [--voice] [--voice-file FILE.sot] "
-                                 "[--no-snr] [--no-cut] [--no-reasons] [--no-hands] "
+                                 "[--no-snr] [--no-cut] [--no-reasons] [--no-hands] [--lose-headers PCT] "
                                  "[--rig PORT [--dial HZ] [--dial-hop] [--rig-vfo] [--rig-swr X] [--rig-noise DB]]\n"
                                  "       ragtime_fake_air --replay FILE|FOLDER... [--from 2026-10-25T16:20] "
                                  "[--speed X]\n");
@@ -939,6 +944,7 @@ int main(int argc, char** argv)
         h->setAnswerOnCall(2);
         h->setIdleBroadcastMs(3000);
         h->setLoss(std::min(100, std::max(0, lossPct)) / 100.0);
+        h->setHeaderLoss(std::min(100, std::max(0, headerLossPct)) / 100.0);
         h->setReportsSnr(snr);
         h->setCuts(cuts);
         h->setReasons(reasons);

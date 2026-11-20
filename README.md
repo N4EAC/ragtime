@@ -23,6 +23,10 @@ chats on the D2G broadcast group. Current features include:
 - Peer-to-peer sessions, which feature automatic rate negotiation and
   file transfer.
 - Group file transfer which includes repair rounds.
+- Progressive inline images using JPEG 2000, or the much more impressive
+  [Cool-Chic](https://github.com/Orange-OpenSource/Cool-Chic) low complexity
+  neural image codec.
+- Reactions to messages.
 - "Recent work," under the station list: the stations you hear and
   work, the ones likely around at this hour first, from two weeks of
   the path log (who was heard when, and on which band).
@@ -53,8 +57,8 @@ the Ear waterfall following the built-in Data2G modem over TCI.
 
 ## Downloads
 
-Ragtime 0.3.1 beta bundles Data2G v0.5.1 with the upstream Hand timing
-fix. It is available as a DMG or ZIP for Apple Silicon with macOS 27 or
+Ragtime 0.3.1 beta 2 bundles Data2G v0.5.3 and the updated sotto v3.8
+voice library. It is available as a DMG or ZIP for Apple Silicon with macOS 27 or
 later. The app is ad hoc signed and has no Apple notarization.
 [Ragtime macOS releases](https://github.com/N4EAC/ragtime-data2g/releases)
 
@@ -85,13 +89,11 @@ On Fedora 44:
 
 ### macOS
 
-The integrated modem uses Data2G v0.5.1 plus the upstream Hand timing fix
-at commit `fc69e77a69a4e00efd6836b4ffd3c03feb1b6661`. The modem's version
-reply is still `Data2G 0.5.1`. Use a separate checkout for this build.
-[Data2G PR #201](https://github.com/arodland/Data2G/pull/201)
+The integrated modem uses Data2G v0.5.3 at commit
+`ede34e7c15627b09a55c3f6bbae71511cfbb6882`. Use a separate checkout for
+this build. [Data2G v0.5.3](https://github.com/arodland/Data2G/releases/tag/v0.5.3)
 
-    git clone --no-checkout https://github.com/arodland/Data2G.git ../Data2G-ragtime
-    git -C ../Data2G-ragtime checkout --detach fc69e77a69a4e00efd6836b4ffd3c03feb1b6661
+    git clone --branch v0.5.3 https://github.com/arodland/Data2G.git ../Data2G-ragtime
 
 Install the build dependencies with Homebrew:
 
@@ -152,6 +154,27 @@ includes both Hamlib tools. To list supported rigs or start a local daemon:
 
 The second command uses your Hamlib model number and serial port. Select
 **Read the dial from rigctld** in Ragtime to use that daemon.
+
+The macOS connection bar includes a frequency dropdown. Selecting a value
+tunes the radio through the rig connection configured in **Settings > Rig**.
+The initial selection is **7.066 MHz**. The list starts with **3.566,
+7.066, 7.110, 14.066, and 28.066 MHz**. Ragtime remembers the selection
+after the radio confirms the change and restores it when reopened.
+Reopening restores the selection without automatically tuning the radio.
+
+Use **File > Edit frequency list** to edit
+`~/Library/Application Support/Ragtime/frequencies.txt`. Enter one
+frequency per line in MHz, with a decimal point. Lines may contain
+`# comments`. Saved changes load automatically. An invalid file leaves the
+last valid list available and reports the offending line in the dropdown's
+tooltip. The last-used frequency stays available if removed from the file.
+With `--config PATH`, the list is stored at `PATH.frequencies.txt`.
+
+Frequency changes are unavailable while disconnected or transmitting.
+The built-in modem's transmit audio and Auto ALC are capped at 0 dB,
+matching Data2G v0.5.3.
+**About Ragtime** lists the Ragtime version, built-in Data2G version, loaded
+sotto format, and bundled sotto revision.
 
 ### Libraries
 
@@ -236,9 +259,11 @@ that folder where it is. The microphone deck shows which sotto loaded (hover
 over its codec line to see the path), or why none did.
 
 The AppImage carries libsotto and its Codec 2 (`make-appimage.sh` runs
-`build-sotto.sh`). There is no Windows `sotto.dll` yet, so the Windows
-zip can't record or play voice. `make-zip.sh` adds one when
-`RAGTIME_SOTTO_DLL_DIR` names a folder that holds it.
+`build-sotto.sh`). The Windows zip carries `sotto.dll` and
+`libcodec2.dll` beside `ragtime.exe`: `make-zip.sh` cross-builds them
+with `packaging/windows/build-sotto.sh` at the same pinned commit, or
+takes them from `RAGTIME_SOTTO_DLL_DIR`. (Zips up to 0.3.1-beta had none, so
+they couldn't record or play voice: issue #166.)
 
 The helper scripts need a few more tools: `tools/ear/pretend_radio.sh`
 wants `pipewire-pulse`, `pulseaudio-utils` (`pactl`),
@@ -361,6 +386,10 @@ Messages are signed, never encrypted, as Part 97 requires.
 MIT. See [LICENSE](LICENSE).
 
 ## Credits
+
+The packaged sotto library is pinned to commit
+`6686fe4f783d7bdf9d96cd1177aa59155e18b833`. It retains the v3.8 frame
+formats and improves pitch estimation and shape selection.
 
 Voice messages are coded with [sotto](https://github.com/baitisj/sotto),
 by Jeff Baitis (AG7EW). Ragtime loads it at run time as a shared library

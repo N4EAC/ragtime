@@ -703,6 +703,21 @@ adds VARA's `SN` for the session partner (`docs/PROTOCOL.md`).
   refusal.
 - `Stations` keeps each station's last SNR (the SNR column, sortable,
   blank from an older host) and the mean of its last 5 bursts.
+- **Always on the left (Jeff, 2026-11-17).** The narrow list beside
+  Globus shows the SNR under the heard time. A pane dragged narrow drops
+  the distance from the locator line, then the locator, never the SNR,
+  and the first line sits in a table of its own so a long status can't
+  push the SNR aside. Recent work's rows show the newest SNR the path log
+  holds for the station, before the time (`WorkRow::snrDb`).
+- **A burst with its header lost.** When a burst's control is lost but
+  its data is found under D2G's key, data2g-host's line is
+  `BCAST n HEARD snr`, with no call, so no `HeardFrom`. Its frames still
+  carry the burst's Hand reference (`REF id end offset snr`, the same
+  figure), so the sender of each record in them is heard at that SNR
+  (`MainFrame::heardBurst`). `Stations::heard` counts one burst once:
+  the same SNR from the same station within 5 s (`SAME_BURST_MS`) is the
+  burst already told, by whichever of the HEARD line and the frames came
+  first over their two sockets, and isn't logged again.
 - **Auto** shifts for the weakest station heard in the last 15 minutes
   (`Stations::weakestPath`, `PATH_WINDOW_MS`): a broadcast goes to every
   station, so it has to reach the weakest. The gearshift names the
@@ -712,7 +727,10 @@ adds VARA's `SN` for the session partner (`docs/PROTOCOL.md`).
 - A MISSED shows in the status bar: "Heard a E2C burst at +3.1 dB that
   didn't decode; it may not be D2G's".
 - `ragtime_fake_air` reports SNRs: each bot at its own strength, +12 to
-  −11 dB, give or take 2 dB a burst; `--no-snr` plays an older host.
+  −11 dB, give or take 2 dB a burst; `--no-snr` plays an older host
+  (with `--no-hands`, for a host before both: Hand references carry an
+  SNR too); `--lose-headers PCT` loses that share of the headers of the
+  group bursts hosts A and B hear, so their HEARD lines name no call.
 
 ## The dial, the path log and the watch list
 
@@ -2199,9 +2217,15 @@ in the deck's own ink and follows a theme switch (`inked` in
   margins do the same.
 - **Packages.** The AppImage carries libsotto and the Codec 2 it links,
   built by `packaging/build-sotto.sh`, with their licences (and
-  RNNoise's) in `usr/share/doc/ragtime/licences`. The Windows zip takes
-  `sotto.dll` and its Codec 2 DLL from `RAGTIME_SOTTO_DLL_DIR`; sotto has
-  no MinGW build yet, so until it does the zip has no voice coding.
+  RNNoise's) in `usr/share/doc/ragtime/licences`. The Windows zip
+  carries `sotto.dll` and `libcodec2.dll`, cross-built with MinGW-w64 by
+  `packaging/windows/build-sotto.sh` (sotto's own Makefile compiles the
+  objects, one DLL is linked from them, and the GCC runtime goes inside
+  both, so they need no MinGW DLLs), or taken from
+  `RAGTIME_SOTTO_DLL_DIR`. The Windows unit tests under Wine run sotto's
+  round trip through it. Zips before issue #166's fix had none, and Play
+  said why only on the status line, so it looked as if nothing happened;
+  now Play and Save as WAV say so in a box.
 
 ## Voice at 16 kHz: sotto v3.8
 
@@ -2418,6 +2442,18 @@ is a roll call, and Jeff chose that Check in itself calls it.
   one is 6 dB stronger, the bots' check-ins call the roll, and the bots
   answer every roll call they hear, yours included.
 
+## Repairs by Hand
+
+Jeff, 2026-11-16: "let's finish out an early version of using Hand
+Mode to request repairs." A seal now goes alone in its burst with a
+SealRound record and a Hand window, and a station missing something
+under it asks with a Hand (-19 dB) rather than a RepairRequest burst
+(PROTOCOL.md, "Repairs by Hand"; `Seals::answerSealRound`,
+`Seals::heardRepairHand`, `protocol::RepairHand`). The sender repairs
+each Hand as a request. A Hand that doesn't go falls back to asking by
+burst. The plan's other parts (holders answering, a short window,
+chat seals' rounds, a confirmed-by list) wait for Jeff.
+
 ## Callsigns open a ragchew
 
 Jeff, 2026-11-13: "double-clicking on a callsign should take to a
@@ -2444,6 +2480,34 @@ boldface."
   until the tab is looked at. GTK sets the tab label's weight
   (`boldTab` in `Theme`); wx can't bold one tab elsewhere, so on
   Windows a dot leads the label instead.
+
+## Fix a line before its seal
+
+Jeff, 2026-11-17: "Allow edit of typos before a seal window closes."
+The plan, with the choices put to Jeff, is the Claude Doc "Ragtime:
+edit a line before its seal"; what goes on the air is PROTOCOL.md,
+"Edits".
+
+- **Edit...** on our line's menu, or Up in an empty entry line (our
+  newest line still open), puts its text in the entry line, `@CALL`
+  included, with a strip over it: "Fixing your line: Enter sends the fix
+  (one more burst, about 16 s in A32; open 0:42 more). Esc cancels."
+  Send reads Fix meanwhile. A line with data2g-host shows "Edit (once it
+  has gone)", greyed. If the seal goes while the operator types, the
+  strip says so and Enter sends the text as a new line.
+- **The engine** is `BroadcastChat::edit` (`canEdit`, `editWaits`): a
+  queued line's burst is made again with the fix (and the Hello and
+  reactions it carried); one on the air goes again as the same record
+  with `Text::edited`. `Seals::going` takes the fix's record and digest
+  for a line it hasn't sealed, and `Seals::draft` says whether a line is
+  still open, for sealed chat and, by the seal's clock, unsealed
+  (`draftUntilMs` gives the strip its countdown). The app joins them
+  with `BroadcastChat::setDraftCheck`.
+- **Heard**, a fix replaces the line's text and shows "(edited)" after
+  it; the tooltip gives the first text ("First heard as: ..."). The
+  Broadcast log keeps it with a `T` line.
+- Not in ragchews yet: a session has no seal, so it would need a window
+  of its own.
 
 ## Waiting on Andrew (via Jeff)
 

@@ -587,6 +587,12 @@ void autoAlc()
     high.setEnabled(true);
     for (int i = 0; i < 10; i++) apply(high, high.burstEnded(burstStep(1.0)));
     CHECK(near(high.level(), AutoAlc::LEVEL_MAX_DB));
+    AutoAlc capped;
+    capped.setMaximumDb(0.0);
+    capped.hostLevel(-1.0, 0);
+    capped.setEnabled(true);
+    for (int i = 0; i < 10; ++i) apply(capped, capped.burstEnded(burstStep(1.0)));
+    CHECK(near(capped.level(), 0.0));
 }
 
 int main()

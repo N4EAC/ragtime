@@ -157,12 +157,15 @@ Station& Stations::touch(const std::string& call, uint64_t nowMs)
     return s;
 }
 
-void Stations::heard(const std::string& call, uint64_t nowMs, std::optional<double> snr)
+bool Stations::heard(const std::string& call, uint64_t nowMs, std::optional<double> snr)
 {
     std::string normal = protocol::normalCallsign(call);
-    if (normal.empty() || normal == me_) return;
+    if (normal.empty() || normal == me_) return false;
     Station& s = touch(normal, nowMs);
-    if (!snr || !std::isfinite(*snr)) return;
+    if (!snr || !std::isfinite(*snr)) return true;
+    // One burst, told twice: by its HEARD line and by the Hand reference
+    // its frames came with, in either order, with the same figure.
+    if (s.snrDb && nowMs < s.snrMs + SAME_BURST_MS && std::fabs(*s.snrDb - *snr) < 0.05) return false;
     // A path heard long ago has changed since.
     if (s.snrDb && nowMs > s.snrMs + PATH_WINDOW_MS) s.path.clear();
     s.snrDb = snr;
@@ -170,6 +173,7 @@ void Stations::heard(const std::string& call, uint64_t nowMs, std::optional<doub
     s.path.record(*snr);
     s.snrs.emplace_back(nowMs, *snr);
     while (!s.snrs.empty() && nowMs > s.snrs.front().first + PATH_WINDOW_MS) s.snrs.pop_front();
+    return true;
 }
 
 std::optional<PathReport> Stations::pathFrom(const std::string& call, uint64_t nowMs, uint64_t windowMs) const

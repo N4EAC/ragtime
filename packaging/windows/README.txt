@@ -64,7 +64,8 @@ Voice
 The microphone button beside the picture button opens the microphone
 deck: hold Push to talk (or the space bar) to record a voice message for
 the net or the station you're in a session with, and let go to send it.
-It needs sotto.dll beside ragtime.exe. The radio's sound card is never
+It needs sotto.dll and libcodec2.dll, which come in this folder: keep
+them beside ragtime.exe. The radio's sound card is never
 offered as a microphone or speaker. The clips you send are kept in
 %APPDATA%\Ragtime\sent-voice.
 

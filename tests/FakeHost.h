@@ -158,6 +158,10 @@ public:
     // A fading path: each group frame this host hears from another is lost
     // with this chance (0 to 1); a burst it loses all of is reported LOST.
     void setLoss(double fraction) { loss_ = fraction; }
+    // A burst's header lost but its frames found under the group's key:
+    // with this chance (0 to 1), its HEARD line names no call
+    // ("BCAST n HEARD snr"), as data2g-host's does then.
+    void setHeaderLoss(double fraction) { headerLoss_ = fraction; }
     size_t framesLost() const { return framesLost_; }
     // Closes the command port's client, as a host that stopped would.
     void closeCommand();
@@ -240,6 +244,7 @@ private:
     std::vector<Tagged> burst_;
     size_t burstsSent_ = 0;
     double loss_ = 0.0;
+    double headerLoss_ = 0.0;
     size_t framesLost_ = 0;
     std::mt19937 lossRandom_{12345};
     int airtimeMs_ = 0;

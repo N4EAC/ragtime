@@ -4,6 +4,7 @@
 #include <utility>
 
 #include <wx/choice.h>
+#include <wx/font.h>
 #include <wx/htmllbox.h>
 #include <wx/settings.h>
 #include <wx/simplebook.h>
@@ -14,6 +15,7 @@
 #include "Html.h"
 #include "Theme.h"
 #include "ragtime/broadcast/Stations.h"
+#include "ragtime/gearbox/Gearbox.h"
 
 using namespace ragtime::radio;
 
@@ -71,15 +73,28 @@ protected:
                                                                          : accentText())
                             : wxString();
         // On now, or when it was last heard (or worked, if never heard).
+        std::string ago = r->onNow             ? std::string("on now")
+                          : r->lastHeardMs != 0 ? ragtime::broadcast::heardAgo(r->lastHeardMs, owner_->nowMs_)
+                                                : "worked " + ragtime::broadcast::heardAgo(r->lastWorkedMs, owner_->nowMs_);
+        // Its last burst's SNR, before the time, as in the station list.
+        // A narrow pane drops the words first ("on now" keeps its dot),
+        // never the SNR.
+        std::string snr = r->snrDb ? ragtime::gearbox::formatDb(*r->snrDb) : std::string();
+        if (!snr.empty())
+        {
+            int room = GetClientSize().x - FromDIP(2 * 4 + 16 + (bell.empty() ? 0 : BELL_DIP + 4));
+            wxFont bold = GetFont().Bold();
+            int call = 0, high = 0;
+            GetTextExtent(utf8(r->call), &call, &high, nullptr, nullptr, &bold);
+            if (call + GetTextExtent(utf8(snr + "  \xe2\x97\x8f " + ago)).x > room) ago.clear();
+        }
         wxString when;
         if (r->onNow)
-            when = "<font" + green + ">" + utf8("\xe2\x97\x8f on now") + "</font>";
-        else if (r->lastHeardMs != 0)
-            when = "<font" + grey + ">" + htmlEscape(ragtime::broadcast::heardAgo(r->lastHeardMs, owner_->nowMs_))
-                   + "</font>";
-        else
-            when = "<font" + grey + ">worked " + htmlEscape(ragtime::broadcast::heardAgo(r->lastWorkedMs, owner_->nowMs_))
-                   + "</font>";
+            when = "<font" + green + ">" + utf8("\xe2\x97\x8f") + (ago.empty() ? "" : " " + htmlEscape(ago)) + "</font>";
+        else if (!ago.empty())
+            when = "<font" + grey + ">" + htmlEscape(ago) + "</font>";
+        if (!snr.empty())
+            when = "<font" + grey + ">" + htmlEscape(snr) + "</font>" + (when.empty() ? "" : "&nbsp;&nbsp;") + when;
         wxString html;
         html << "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"1\">"
              << "<tr><td nowrap><b>" << htmlEscape(r->call) << "</b>" << bell << "</td>"

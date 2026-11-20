@@ -113,6 +113,8 @@ private:
     void showThemeButton();     // its icon and tooltip, for the theme showing
     void showStatus();
     void refreshMessages();
+    // The fix strip's words: what fixing line id costs, and how long it stays open.
+    std::string editInfo(uint64_t id) const;
     // A station reacted to one of our lines: a line in the status bar for a
     // while, and one more unread on the tab out of sight.
     void noteReaction(const std::string& from, uint8_t code, const std::string& line);
@@ -237,6 +239,10 @@ private:
     bool startArrivingVoice(const std::string& key, uint32_t fromFrame, std::string& why);
     // The clip's sound saved as a WAV file the operator picks.
     void saveVoiceAsWav(const std::string& key);
+    // Says so in a box when the voice codec can't be loaded, for a play or
+    // Save as WAV the operator asked for (issue #166: the status line alone
+    // looked like nothing at all).
+    bool voiceCodecReady(const wxString& title);
     void voiceDone(const std::string& key, bool played);
     // A line in the flight recorder about voice: what played, and how it
     // ended.
@@ -288,6 +294,9 @@ private:
     // Pause sending (the operator's) and the guard's hold, to the link,
     // the session and the pages.
     void applySending();
+    // A D2G burst heard from this call: the station list, the watch list
+    // and the path log, once a burst.
+    void heardBurst(const std::string& call, std::optional<double> snr, uint64_t nowMs);
     void logPath(const std::string& call, std::optional<double> snr, bool session, uint64_t nowMs);
     // A contact for the path log: a session came up, or a message went
     // between the station and us.

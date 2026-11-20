@@ -182,6 +182,11 @@ std::vector<std::string> EmbeddedModem::devices(bool input)
     return names;
 }
 
+std::string EmbeddedModem::version()
+{
+    return DATA2G_VERSION;
+}
+
 int EmbeddedModem::runWithRuntime(int argc, char** argv, int (*run)(int, char**))
 {
     // Qt needs an application object even though wx owns the main loop.

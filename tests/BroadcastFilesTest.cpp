@@ -67,6 +67,7 @@ struct Station
         seals.setMode("qpsk-r1/3");
         chat.onItems([this](const std::vector<protocol::Record>& items, uint64_t burst, const std::string& mode,
                             uint64_t at) { seals.going(items, burst, mode, at); });
+        chat.setDraftCheck([this](uint32_t seq, uint32_t time) { return seals.draft(seq, time); });
         link.commandUp(now);
     }
 
@@ -2452,6 +2453,91 @@ void testVoice()
     if (fb.id != 0) CHECK(readAll(fb.path) == want);
 }
 
+// A line fixed before its seal: the seal lists the fix, and a station that
+// heard the typo but missed the fix gets the fix by repair.
+void testEditBeforeSeal()
+{
+    Air air;
+    Station& a = air.add("AG7EW", 1);
+    Station& b = air.add("KC2G", 2);
+    b.lose = [&](protocol::Record& r) {
+        const protocol::Text* t = r.as<protocol::Text>();
+        return t != nullptr && t->edited && t->text == "hello";
+    };
+    air.run(2000);
+    std::vector<uint64_t> ids = a.chat.send("helo", "", now);
+    air.run(5000);
+    const broadcast::Message* mine = a.chat.find(ids[0]);
+    CHECK(mine->state == broadcast::Message::State::Sent);
+    CHECK(a.seals.draft(mine->seq, mine->time));
+    CHECK(a.chat.canEdit(*mine));
+    CHECK(a.chat.edit(ids[0], "hello", "", now) == BroadcastChat::EditResult::Edited);
+    air.run(5000);
+    CHECK(b.chat.messages().back().text == "helo");
+    std::optional<uint64_t> until = a.seals.draftUntilMs(mine->seq, mine->time);
+    CHECK(until && *until > now && *until <= now + Seals::QUIET_MS);
+
+    // Only the fix gets through once: the repair below brings it.
+    b.lose = nullptr;
+    air.run(Seals::QUIET_MS + 60000);
+    CHECK_EQ(a.seals.sealsSent() >= 1, true);
+    CHECK(!a.seals.draft(mine->seq, mine->time));
+    CHECK(!a.chat.canEdit(*mine));
+    CHECK(a.chat.edit(ids[0], "hello!", "", now) == BroadcastChat::EditResult::Final);
+    const protocol::Seal* seal = nullptr;
+    for (const protocol::Record& r : b.heard)
+    {
+        if (const protocol::Seal* s = r.as<protocol::Seal>()) seal = s;
+    }
+    CHECK(seal != nullptr && seal->items.size() == 1);
+    protocol::Record fixed;
+    for (const protocol::Record& r : b.heard)
+    {
+        const protocol::Text* t = r.as<protocol::Text>();
+        if (t != nullptr && t->edited) fixed = r;
+    }
+    CHECK(fixed.as<protocol::Text>() != nullptr);
+    if (seal != nullptr && !seal->items.empty()) CHECK(seal->items[0] == protocol::recordDigest(fixed));
+    CHECK(b.seals.requestsSent() >= 1);
+    CHECK_EQ(b.textsFrom("AG7EW"), (size_t)1);
+    const broadcast::Message& line = b.chat.messages().back();
+    CHECK(line.text == "hello" && line.edited && line.firstText == "helo");
+    CHECK(b.seals.theirMark("AG7EW", line.seq).mark == Seals::Mark::Sealed);
+}
+
+// Unsealed chat (the default): a line can be fixed until a seal would have
+// gone over it, and a fix starts the quiet afresh.
+void testEditUnsealed()
+{
+    Air air;
+    Station& a = air.add("AG7EW", 1);
+    Station& b = air.add("KC2G", 2);
+    a.seals.setSealText(false);
+    air.run(2000);
+    std::vector<uint64_t> ids = a.chat.send("one", "", now);
+    air.run(30000);
+    const broadcast::Message* mine = a.chat.find(ids[0]);
+    CHECK(a.chat.canEdit(*mine));
+    CHECK(a.chat.edit(ids[0], "won", "", now) == BroadcastChat::EditResult::Edited);
+    air.run(40000);
+    CHECK(a.chat.canEdit(*mine));
+    CHECK(b.chat.messages().back().text == "won" && b.chat.messages().back().edited);
+    air.run(25000);
+    CHECK(!a.chat.canEdit(*mine));
+    CHECK(!a.seals.draftUntilMs(mine->seq, mine->time));
+    CHECK_EQ(b.heardFrom("AG7EW", protocol::RecordType::Seal), (size_t)0);
+
+    // Ten minutes at most, however busy the over.
+    ids = a.chat.send("two", "", now);
+    for (int i = 0; i < 13; i++)
+    {
+        air.run(50000);
+        a.chat.send("more " + std::to_string(i), "", now);
+    }
+    CHECK(!a.chat.canEdit(*a.chat.find(ids[0])));
+    CHECK(a.chat.canEdit(a.chat.messages().back()));
+}
+
 int main()
 {
     testAirtime();
@@ -2475,6 +2561,8 @@ int main()
     testRefused();
     testIgnore();
     testChatUnsealed();
+    testEditBeforeSeal();
+    testEditUnsealed();
     testPartsAcrossRestart();
     testPartsExpire();
     testRepairGear();

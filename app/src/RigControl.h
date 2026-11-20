@@ -53,6 +53,9 @@ public:
     void hostLost();
 
     std::optional<uint64_t> dialHz() const;
+    bool setFrequency(uint64_t hz);
+    void cancelFrequency();
+    std::string frequencyProblem() const;
     // "Hamlib, Icom IC-7100 on /dev/ttyUSB0: reading the dial every 1 s",
     // and why not, for the dial's tooltip.
     std::string describe() const;

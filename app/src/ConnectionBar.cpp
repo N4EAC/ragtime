@@ -16,6 +16,9 @@
 #include "SwrBar.h"
 #include "ToggleSwitch.h"
 #include "TxLamp.h"
+#ifdef __WXOSX__
+#include "FrequencySelector.h"
+#endif
 
 namespace
 {
@@ -85,6 +88,10 @@ ConnectionBar::ConnectionBar(wxWindow* parent)
     add(left_, callsign_, 8);
     add(left_, group, 12);
     add(left_, dial_, 12);
+#ifdef __WXOSX__
+    frequency = new FrequencySelector(this);
+    add(left_, frequency, 8);
+#endif
     add(left_, ear, 8);
     left_->Add(divider(this), 0, wxEXPAND | wxLEFT | wxTOP | wxBOTTOM, FromDIP(8));
     add(left_, narrow, 8);

@@ -117,6 +117,7 @@ void DialReader::connected(uint64_t nowMs)
 
 void DialReader::disconnected()
 {
+    frequencyWrite_.reset();
     connected_ = false;
     asking_ = Ask::None;
     answering_ = -1;
@@ -192,7 +193,24 @@ void DialReader::askNext(uint64_t nowMs)
             return;
         }
     }
-    // A filter setting from the Ear, never while keyed (above).
+    // Operator-requested tuning goes only while receiving.
+    if (frequencyWrite_)
+    {
+        if (!tunePttChecked_)
+        {
+            out_ += vfo_ == Vfo::Yes ? "+t currVFO\n" : "+t\n";
+            asking_ = Ask::TunePtt;
+            tunePttOn_ = false;
+            askedMs_ = nowMs;
+            return;
+        }
+        out_ += "F " + std::string(vfo_ == Vfo::Yes ? "currVFO " : "") +
+                std::to_string(*frequencyWrite_) + "\n";
+        frequencyWrite_.reset();
+        asking_ = Ask::SetFrequency;
+        askedMs_ = nowMs;
+        return;
+    }
     if (writeFilter(nowMs)) return;
     if (freqAsked_ && nowMs < freqAskedMs_ + ASK_MS)
     {
@@ -274,6 +292,16 @@ void DialReader::setFilter(const RigFilter& filter, uint64_t nowMs)
 {
     filterWrite_ = filter;
     askNext(nowMs);
+}
+
+bool DialReader::setFrequency(uint64_t hz, uint64_t nowMs)
+{
+    if (!connected_ || vfo_ == Vfo::Asking || keyed_ || hz < 1000 || hz >= 1000000000000ULL) return false;
+    frequencyProblem_.clear();
+    tunePttChecked_ = false;
+    frequencyWrite_ = hz;
+    askNext(nowMs);
+    return true;
 }
 
 void DialReader::flushFilter()
@@ -409,6 +437,18 @@ void DialReader::tick(uint64_t nowMs)
     if (!connected_) return;
     if (asking_ != Ask::None && nowMs >= askedMs_ + ANSWER_MS)
     {
+        if (asking_ == Ask::TunePtt)
+        {
+            frequencyProblem_ = "The radio did not answer the transmit state check";
+            frequencyWrite_.reset();
+            version_++;
+        }
+        if (asking_ == Ask::SetFrequency)
+        {
+            frequencyProblem_ = "The radio did not acknowledge the frequency change";
+            freqAsked_ = false;
+            version_++;
+        }
         // No answer: given up. No answer to \chk_vfo: no VFO names. A
         // late answer is still read for what it says.
         if (asking_ == Ask::Vfo) vfoAnswer(std::string());
@@ -429,6 +469,12 @@ void DialReader::setKeyed(bool keyed, uint64_t nowMs)
 {
     if (keyed_ == keyed) return;
     keyed_ = keyed;
+    if (keyed_ && frequencyWrite_)
+    {
+        frequencyWrite_.reset();
+        frequencyProblem_ = "Frequency change cancelled because transmission started";
+        version_++;
+    }
     meterDueMs_ = nowMs;
     // The reading from before the burst stands through it, and for a
     // moment after while the next answer comes.
@@ -555,6 +601,30 @@ void DialReader::onLine(const std::string& line, uint64_t nowMs)
 {
     if (line.empty()) return;
     int code = 0;
+    if (asking_ == Ask::TunePtt)
+    {
+        if (line.compare(0, 5, "PTT: ") == 0)
+            tunePttOn_ = line.substr(5) != "0";
+        if (!rprt(line, code)) return;
+        tunePttChecked_ = true;
+        if (tunePttOn_)
+        {
+            frequencyProblem_ = "Frequency change cancelled because the radio is transmitting";
+            frequencyWrite_.reset();
+            version_++;
+        }
+        answered(nowMs);
+        return;
+    }
+    if (asking_ == Ask::SetFrequency)
+    {
+        if (!rprt(line, code)) return;
+        if (code != 0) frequencyProblem_ = "The radio refused the frequency change: " + line;
+        freqAsked_ = false;
+        version_++;
+        answered(nowMs);
+        return;
+    }
 
     // Some rigctld-compatible servers respond with the extended reply
     // even to plain "f", after earlier commands requested that format.

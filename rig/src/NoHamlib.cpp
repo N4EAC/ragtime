@@ -65,6 +65,8 @@ void HamlibRig::stop()
 }
 
 void HamlibRig::setPollSeconds(int) {}
+bool HamlibRig::setFrequency(uint64_t) { return false; }
+void HamlibRig::cancelFrequency() {}
 
 void HamlibRig::setPtt(bool) {}
 

@@ -221,6 +221,7 @@ const int ID_RESEND = wxID_HIGHEST + 403;
 const int ID_COPY = wxID_HIGHEST + 404;
 const int ID_SEAL_LINE = wxID_HIGHEST + 405;
 const int ID_SAVE_WAV = wxID_HIGHEST + 406;
+const int ID_EDIT = wxID_HIGHEST + 407;
 const int ID_FILE_ACTION = wxID_HIGHEST + 410;     // and FILE_MENU_IDS after it
 const int ID_REACT = wxID_HIGHEST + 474;           // and REACTION_MENU_IDS after it
 
@@ -340,6 +341,8 @@ protected:
              << "</font></td>"
              << "<td valign=\"top\" width=\"100%\"><font" << body << "><b>" << htmlEscape(m->from) << "</b>&nbsp; "
              << to << htmlEscape(m->text) << "</font>";
+        // Fixed before its seal: what it first said is in the tooltip.
+        if (m->edited) html << " <font size=\"-1\"" << colour(secondaryText()) << ">(edited)</font>";
         // Its reactions, as chips under it.
         wxString chips = reactionChipsHtml(m->reactions, m->myReaction, m->myWaiting, me, owner_->chat_.canReact(*m),
                                            owner_->chat_.reactionWaiting(m->id), picked);
@@ -517,6 +520,9 @@ BroadcastPage::BroadcastPage(wxWindow* parent, const BroadcastChat& chat)
                                PAUSED_LINE);
     followThemeText(paused_, secondaryText);
     paused_->Hide();
+    editStrip_ = new wxStaticText(this, wxID_ANY, wxEmptyString);
+    followThemeText(editStrip_, accentText);
+    editStrip_->Hide();
 
     compose_ = new wxTextCtrl(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxTE_PROCESS_ENTER | PHRASE_ENTRY_STYLE);
     compose_->SetHint("Message to everyone on D2G; start with @CALL for one station");
@@ -567,6 +573,7 @@ BroadcastPage::BroadcastPage(wxWindow* parent, const BroadcastChat& chat)
     sizer->Add(clear_, 0, wxALIGN_RIGHT | wxRIGHT | wxTOP, 6);
     sizer->Add(list_, 1, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
     sizer->Add(paused_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
+    sizer->Add(editStrip_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
     sizer->Add(row_, 0, wxEXPAND | wxLEFT | wxRIGHT | wxTOP, 6);
     sizer->Add(under_, 0, wxEXPAND | wxLEFT | wxRIGHT, 6);
     sizer->AddSpacer(6);
@@ -579,6 +586,32 @@ BroadcastPage::BroadcastPage(wxWindow* parent, const BroadcastChat& chat)
     });
 
     compose_->Bind(wxEVT_TEXT_ENTER, [this](wxCommandEvent&) { send(); });
+    // Up in an empty line (or one with only "@CALL ") fixes our newest
+    // line still open; Esc leaves a fix.
+    compose_->Bind(wxEVT_KEY_DOWN, [this](wxKeyEvent& e) {
+        if (e.GetKeyCode() == WXK_ESCAPE && editing_ != 0)
+        {
+            endEdit();
+            compose_->Clear();
+            return;
+        }
+        // Empty, or only the address Send leaves for the next line.
+        wxString typed = compose_->GetValue();
+        typed.Trim(true).Trim(false);
+        bool bare = typed.empty() || (typed.StartsWith("@") && typed.Find(' ') == wxNOT_FOUND);
+        if (e.GetKeyCode() == WXK_UP && editing_ == 0 && bare && !e.HasAnyModifiers())
+        {
+            const auto& all = chat_.messages();
+            for (auto it = all.rbegin(); it != all.rend(); ++it)
+            {
+                if (!it->ours || it->kind != Message::Kind::Text || it->past) continue;
+                if (chat_.canEdit(*it)) startEdit(it->id);
+                break;
+            }
+            if (editing_ != 0) return;
+        }
+        e.Skip();
+    });
     compose_->Bind(wxEVT_TEXT, [this](wxCommandEvent& e) {
         showPhrases();
         e.Skip();
@@ -631,6 +664,11 @@ BroadcastPage::BroadcastPage(wxWindow* parent, const BroadcastChat& chat)
             {
                 tip = wxDateTime((time_t)m->time).FormatISOCombined(' ') + wxString::Format(", item %u", m->seq);
                 if (!m->mode.empty()) tip += ", " + wxString::FromUTF8(nameMode_ ? nameMode_(m->mode) : m->mode);
+                if (m->edited && !m->firstText.empty())
+                    tip += "\nEdited before its seal. " + wxString(m->ours ? "First sent as: " : "First heard as: ")
+                           + wxString::FromUTF8(m->firstText);
+                else if (m->edited)
+                    tip += "\nEdited before its seal, before we heard it";
             }
         }
         if (m != nullptr && m->kind == Message::Kind::File && !m->past && sealMark_
@@ -669,9 +707,87 @@ void BroadcastPage::arrange(int width)
     Layout();
 }
 
+void BroadcastPage::startEdit(uint64_t id)
+{
+    const Message* m = chat_.find(id);
+    if (m == nullptr || !chat_.canEdit(*m)) return;
+    editing_ = id;
+    editClosed_ = false;
+    compose_->SetFocus();
+    compose_->ChangeValue(wxString::FromUTF8(BroadcastChat::typedForm(*m)));
+    showPhrases();
+    compose_->SetInsertionPointEnd();
+    CallAfter([this]() {
+        compose_->SelectNone();
+        compose_->SetInsertionPointEnd();
+    });
+    send_->SetLabel("Fix");
+    showEditStrip();
+}
+
+void BroadcastPage::endEdit()
+{
+    editing_ = 0;
+    editClosed_ = false;
+    send_->SetLabel("Send");
+    if (editStrip_->IsShown())
+    {
+        editStrip_->Hide();
+        Layout();
+    }
+}
+
+void BroadcastPage::showEditStrip()
+{
+    if (editing_ == 0) return;
+    const Message* m = chat_.find(editing_);
+    wxString line;
+    if (m == nullptr || (!chat_.canEdit(*m) && !chat_.editWaits(*m)))
+    {
+        // Sealed while being fixed: what is typed can still go, as a new line.
+        editClosed_ = true;
+        send_->SetLabel("Send");
+        line = "That line is sealed now, so it can't be fixed. Enter sends this as a new line; Esc lets it go.";
+    }
+    else
+    {
+        std::string info = editInfo_ ? editInfo_(editing_) : std::string();
+        line = "Fixing your line: Enter sends the fix";
+        if (!info.empty()) line += " (" + wxString::FromUTF8(info) + ")";
+        line += ". Esc cancels.";
+    }
+    if (editStrip_->IsShown() && editStrip_->GetLabel() == line) return;
+    editStrip_->SetLabel(line);
+    editStrip_->SetToolTip("A broadcast line can be fixed until its seal goes, or would go: 60 s after your last "
+                           "line, 10 minutes at most. Stations that heard it see the fix marked (edited).");
+    editStrip_->Show();
+    Layout();
+}
+
 void BroadcastPage::send()
 {
     std::string typed(compose_->GetValue().utf8_str());
+    if (editing_ != 0 && !editClosed_ && onEdit_)
+    {
+        EditResult r = onEdit_(editing_, typed);
+        if (r == EditResult::Edited || r == EditResult::Unchanged)
+        {
+            endEdit();
+            compose_->Clear();
+            compose_->SetFocus();
+            return;
+        }
+        if (r == EditResult::TooLong)
+            editStrip_->SetLabel("Too long to fix in place: shorten it, or Esc and send it as a new line.");
+        else if (r == EditResult::Busy)
+            editStrip_->SetLabel("The line is with data2g-host now: wait until it has gone, then Enter again.");
+        else
+            showEditStrip();
+        Layout();
+        compose_->SetFocus();
+        return;
+    }
+    if (editing_ != 0) endEdit();
     if (onSend_ && onSend_(typed))
     {
         // Keep the address for the next line, as a reply goes on.
@@ -721,6 +837,11 @@ void BroadcastPage::updateRows()
     }
     clear_->Enable(canClear);
     list_->showRows(visibleRows_.size());
+}
+
+void BroadcastPage::refreshEdit()
+{
+    showEditStrip();
 }
 
 void BroadcastPage::refreshVoices()
@@ -830,12 +951,22 @@ void BroadcastPage::showMenu(int row)
                                         }),
                            "React");
     }
+    if (chat_.canEdit(*m))
+    {
+        menu.Append(ID_EDIT, "Edit...");
+    }
+    else if (chat_.editWaits(*m))
+    {
+        menu.Append(ID_EDIT, "Edit (once it has gone)");
+        menu.Enable(ID_EDIT, false);
+    }
     if (m->ours && m->state == State::Queued) menu.Append(ID_CANCEL, "Cancel");
     if (chat_.canResend(*m)) menu.Append(ID_RESEND, "Re-send");
     if (menu.GetMenuItemCount() > 0) menu.AppendSeparator();
     menu.Append(ID_COPY, "Copy text");
     menu.Bind(wxEVT_MENU, [=](wxCommandEvent& e) {
         if (e.GetId() == ID_REPLY) address(from);
+        if (e.GetId() == ID_EDIT) startEdit(id);
         if (e.GetId() == ID_CANCEL && onCancel_) onCancel_(id);
         if (e.GetId() == ID_RESEND && onResend_) onResend_(id);
         if (e.GetId() == ID_COPY && wxTheClipboard->Open())

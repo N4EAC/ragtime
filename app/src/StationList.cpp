@@ -80,17 +80,27 @@ protected:
                            ? " bgcolor=\"" + htmlColour(blendColour(wxSystemSettings::GetColour(wxSYS_COLOUR_LISTBOX),
                                                                     accentText(), 0.25)) + "\""
                            : wxString();
+        // The last burst's SNR, under the time, from a host that reports
+        // one. It is never the part a narrow pane cuts off: the distance
+        // goes first, then the locator.
+        std::string snr = owner_->stations_.cell(*s, Column::Snr, owner_->nowMs_);
+        std::string where = owner_->stations_.whereLine(*s);
+        if (!snr.empty())
+        {
+            int room = GetClientSize().x - FromDIP(2 * 4 + 16);   // the margins, the cells' padding, a gap
+            auto fits = [&](const std::string& left) { return GetTextExtent(utf8(left + snr)).x <= room; };
+            if (!fits(where)) where = s->locator.empty() || !fits(s->locator) ? std::string() : s->locator;
+        }
+        // Two tables, so a long first line never pushes the SNR aside.
+        wxString table = "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"1\"" + lit + ">";
         wxString html;
-        html << "<table width=\"100%\" cellspacing=\"0\" cellpadding=\"1\"" << lit << ">"
+        html << table
              << "<tr><td nowrap><b>" << htmlEscape(s->call) << "</b>" << bell << "&nbsp;&nbsp;<font" << tint << ">"
              << utf8(status.filled ? "\xe2\x97\x8f " : "\xe2\x97\x8b ") << htmlEscape(status.word) << "</font></td>"
              << "<td nowrap align=\"right\"><font" << grey << ">" << htmlEscape(heardAgo(s->lastHeardMs, owner_->nowMs_))
-             << "</font></td></tr>"
-             << "<tr><td nowrap><font" << grey << ">" << htmlEscape(owner_->stations_.whereLine(*s))
-             << "</font></td>"
-             // The last burst's SNR, under the time, from a host that reports one.
-             << "<td nowrap align=\"right\"><font" << grey << ">"
-             << htmlEscape(owner_->stations_.cell(*s, Column::Snr, owner_->nowMs_)) << "</font></td></tr></table>";
+             << "</font></td></tr></table>" << table
+             << "<tr><td nowrap><font" << grey << ">" << htmlEscape(where) << "</font></td>"
+             << "<td nowrap align=\"right\"><font" << grey << ">" << htmlEscape(snr) << "</font></td></tr></table>";
         return html;
     }
 

@@ -14,6 +14,9 @@ class wxGauge;
 class wxStaticText;
 class wxToggleButton;
 class wxBitmapToggleButton;
+#ifdef __WXOSX__
+class FrequencySelector;
+#endif
 
 // The bar across the top of the window (docs/MOCKUPS.md, "Connection
 // bar"), left to right: my callsign, the group D2G, the radio's dial
@@ -54,6 +57,9 @@ public:
     SwrBar* swrBar = nullptr;
     wxStaticText* swrReading = nullptr;
     TxLamp* tx = nullptr;
+#ifdef __WXOSX__
+    FrequencySelector* frequency = nullptr;
+#endif
 
 private:
     void lightToggle(wxToggleButton* button);

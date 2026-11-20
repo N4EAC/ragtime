@@ -87,6 +87,13 @@ std::optional<uint64_t> RigConnection::dialHz() const
     return reader_.dialHz(HostConnection::nowMs());
 }
 
+bool RigConnection::setFrequency(uint64_t hz)
+{
+    if (!up_ || !reader_.setFrequency(hz, HostConnection::nowMs())) return false;
+    write();
+    return true;
+}
+
 std::string RigConnection::describe() const
 {
     std::string where = "rigctld " + address() + ": ";

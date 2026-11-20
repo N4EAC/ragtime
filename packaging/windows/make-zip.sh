@@ -3,21 +3,24 @@
 # Cross-compiles Ragtime for 64-bit Windows and zips it as
 # dist/Ragtime-<version>-beta-<hash>-windows-x86_64.zip: ragtime.exe (one
 # file, with wxWidgets, Hamlib, the picture codecs and the C++ runtime
-# linked in), README.txt, LICENSE.txt and the libraries' licences in
-# licences/. There is no installer.
+# linked in), sotto.dll and libcodec2.dll for voice, README.txt,
+# LICENSE.txt and the libraries' licences in licences/. There is no
+# installer.
 #
-# Needs Ubuntu 24.04's g++-mingw-w64-x86-64-posix, cmake, git, zip, and
-# autoconf, automake and libtool for Hamlib. The build clones wxWidgets,
+# Needs Ubuntu 24.04's g++-mingw-w64-x86-64-posix, cmake, git, zip, a
+# native C compiler, and autoconf, automake and libtool for Hamlib. The build clones wxWidgets,
 # Hamlib, OpenJPEG, libwebp, libde265 and libheif into build-win (set
 # RAGTIME_WX_SOURCE or RAGTIME_HAMLIB_SOURCE to a checkout to use that
 # instead) and takes a while the first time. Set
-# BUILD_DIR to use another build tree. For voice messages, set
-# RAGTIME_SOTTO_DLL_DIR to a folder holding sotto.dll and the libcodec2
-# DLL it links (a MinGW-w64 build of baitisj/sotto at the commit in
-# packaging/sotto.sh) and, if it has them, licences/sotto.txt and
-# licences/codec2.txt: they go beside ragtime.exe. Without it the zip has
-# no voice coding, and the microphone deck says so. With Wine installed,
-# `ctest --test-dir build-win` runs the unit tests as Windows programs.
+# BUILD_DIR to use another build tree. For voice messages it builds
+# sotto.dll and libcodec2.dll at the commit in packaging/sotto.sh
+# (packaging/windows/build-sotto.sh, into $BUILD_DIR/build-sotto/out) and
+# puts them beside ragtime.exe with their licences. Set
+# RAGTIME_SOTTO_DLL_DIR to a folder holding a sotto.dll, its libcodec2 DLL
+# and, if it has them, licences/sotto.txt and licences/codec2.txt to use
+# those instead. With Wine installed, `ctest --test-dir build-win` runs the
+# unit tests as Windows programs, sotto's round trip through that
+# sotto.dll included.
 
 cd "$(dirname "$(realpath "$0")")/../.."
 ROOT=$PWD
@@ -25,10 +28,25 @@ ROOT=$PWD
 NAME="Ragtime-$RAGTIME_RELEASE-windows-x86_64"
 BUILD_DIR=${BUILD_DIR:-$ROOT/build-win}
 
+# sotto.dll, built once per pinned commit. Without it voice messages
+# neither record nor play (issue #166).
+if [ -z "$RAGTIME_SOTTO_DLL_DIR" ]; then
+    . packaging/sotto.sh
+    RAGTIME_SOTTO_DLL_DIR="$BUILD_DIR/build-sotto/out"
+    if [ ! -f "$RAGTIME_SOTTO_DLL_DIR/sotto.dll" ] \
+        || [ "$(cat "$RAGTIME_SOTTO_DLL_DIR/commit.txt" 2>/dev/null)" != "$SOTTO_COMMIT" ]; then
+        rm -rf "$RAGTIME_SOTTO_DLL_DIR"
+        SOTTO_WORK="$BUILD_DIR/build-sotto" packaging/windows/build-sotto.sh "$RAGTIME_SOTTO_DLL_DIR"
+    fi
+fi
+RAGTIME_SOTTO_DLL_DIR=$(realpath "$RAGTIME_SOTTO_DLL_DIR")
+# The tests run under Wine, which sees this machine's root as drive Z:.
+SOTTO_TEST_LIB="Z:$(printf '%s' "$RAGTIME_SOTTO_DLL_DIR/sotto.dll" | tr / '\\')"
+
 cmake -S . -B "$BUILD_DIR" -DCMAKE_TOOLCHAIN_FILE="$ROOT/cmake/Toolchain-mingw64.cmake" \
     -DCMAKE_BUILD_TYPE=Release -DRAGTIME_BUILD_WX=ON ${RAGTIME_WX_SOURCE:+-DRAGTIME_WX_SOURCE="$RAGTIME_WX_SOURCE"} \
     -DRAGTIME_BUILD_HAMLIB=ON ${RAGTIME_HAMLIB_SOURCE:+-DRAGTIME_HAMLIB_SOURCE="$RAGTIME_HAMLIB_SOURCE"} \
-    -DRAGTIME_BUILD_IMAGE_LIBS=ON
+    -DRAGTIME_BUILD_IMAGE_LIBS=ON -DRAGTIME_SOTTO_TEST_LIB:STRING="$SOTTO_TEST_LIB"
 cmake --build "$BUILD_DIR" -j"$(nproc)"
 
 WORK=$(mktemp -d)
@@ -55,17 +73,13 @@ for pair in \
     sed 's/$/\r/' "${pair#*:}" > "$WORK/$NAME/licences/${pair%%:*}.txt"
 done
 
-if [ -n "$RAGTIME_SOTTO_DLL_DIR" ]; then
-    cp "$RAGTIME_SOTTO_DLL_DIR"/sotto.dll "$WORK/$NAME/"
-    cp "$RAGTIME_SOTTO_DLL_DIR"/libcodec2*.dll "$WORK/$NAME/" 2>/dev/null || true
-    for l in sotto codec2; do
-        if [ -f "$RAGTIME_SOTTO_DLL_DIR/licences/$l.txt" ]; then
-            sed 's/$/\r/' "$RAGTIME_SOTTO_DLL_DIR/licences/$l.txt" > "$WORK/$NAME/licences/$l.txt"
-        fi
-    done
-else
-    echo "No RAGTIME_SOTTO_DLL_DIR: the zip goes without sotto.dll (no voice coding)" >&2
-fi
+cp "$RAGTIME_SOTTO_DLL_DIR"/sotto.dll "$WORK/$NAME/"
+cp "$RAGTIME_SOTTO_DLL_DIR"/libcodec2*.dll "$WORK/$NAME/"
+for l in sotto codec2; do
+    if [ -f "$RAGTIME_SOTTO_DLL_DIR/licences/$l.txt" ]; then
+        sed 's/$/\r/' "$RAGTIME_SOTTO_DLL_DIR/licences/$l.txt" > "$WORK/$NAME/licences/$l.txt"
+    fi
+done
 
 mkdir -p dist
 rm -f "dist/$NAME.zip"

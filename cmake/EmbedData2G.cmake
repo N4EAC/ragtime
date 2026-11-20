@@ -2,7 +2,7 @@ if(NOT APPLE)
     message(FATAL_ERROR "The built-in modem is currently supported on macOS.")
 endif()
 if(NOT EXISTS "${RAGTIME_DATA2G_SOURCE_DIR}/native/CMakeLists.txt")
-    message(FATAL_ERROR "Point RAGTIME_DATA2G_SOURCE_DIR at a Data2G checkout (v0.5.1 or later).")
+    message(FATAL_ERROR "Point RAGTIME_DATA2G_SOURCE_DIR at a Data2G checkout (tested with v0.5.3).")
 endif()
 
 # Find the imported targets in the parent scope as Ragtime also links them.
