@@ -1,6 +1,6 @@
 #!/bin/bash
 set -euo pipefail
-# Native development codecs. No source-tree objects, GNU utilities or
+# Native macOS voice codecs. No source-tree objects, GNU utilities or
 # Python generators; uses the committed tables at packaging/sotto.sh's pin.
 # SOTTO_SOURCE uses an existing checkout without changing it.
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)

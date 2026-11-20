@@ -1,6 +1,6 @@
 # Fetches OpenJPEG, libwebp, libde265 and libheif with git and builds them
-# as static libraries (-DRAGTIME_BUILD_IMAGE_LIBS=ON), for the Windows
-# build, where there are none to find. Defines ragtime::openjpeg,
+# as static libraries (-DRAGTIME_BUILD_IMAGE_LIBS=ON), for macOS and
+# Windows packages. Defines ragtime::openjpeg,
 # ragtime::webp and (with RAGTIME_HEIF) ragtime::heif, which the image
 # library links, and image_libs_build, which it waits for.
 #
@@ -26,13 +26,22 @@ set(common
     -DCMAKE_PREFIX_PATH=${prefix}
     -DBUILD_SHARED_LIBS=OFF
     -DBUILD_TESTING=OFF
-    -DCMAKE_POSITION_INDEPENDENT_CODE=ON
-    # libde265 1.0.15 asks for CMake 2.8, which CMake 4 (Homebrew's, on
-    # the Mac runner) refuses without this; older CMakes ignore it.
-    -DCMAKE_POLICY_VERSION_MINIMUM=3.5)
+    -DCMAKE_POSITION_INDEPENDENT_CODE=ON)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 4.0)
+    # libde265's pinned release still requests pre-3.5 policy compatibility.
+    list(APPEND common -DCMAKE_POLICY_VERSION_MINIMUM=3.5)
+endif()
 if(CMAKE_TOOLCHAIN_FILE)
     list(APPEND common -DCMAKE_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}
         "-DCMAKE_FIND_ROOT_PATH=${CMAKE_FIND_ROOT_PATH}|${prefix}")
+endif()
+if(APPLE)
+    foreach(setting CMAKE_OSX_ARCHITECTURES CMAKE_OSX_DEPLOYMENT_TARGET CMAKE_OSX_SYSROOT)
+        if(${setting})
+            string(REPLACE ";" "|" value "${${setting}}")
+            list(APPEND common "-D${setting}=${value}")
+        endif()
+    endforeach()
 endif()
 
 ExternalProject_Add(openjpeg_build

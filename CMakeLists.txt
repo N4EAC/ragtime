@@ -15,6 +15,10 @@
 # cmake/Toolchain-mingw64.cmake and packaging/windows/make-zip.sh.
 cmake_minimum_required(VERSION 3.16)
 
+if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 14.2 CACHE STRING "Minimum macOS version")
+endif()
+
 project(ragtime VERSION 0.3.1 LANGUAGES CXX)
 
 if(APPLE)
@@ -37,7 +41,7 @@ option(RAGTIME_TESTS "Build the unit tests and register them with ctest." ON)
 option(RAGTIME_WERROR "Treat compiler warnings as errors." ON)
 option(RAGTIME_BUILD_WX "Fetch and build wxWidgets statically instead of using the system's (macOS and Windows)." OFF)
 option(RAGTIME_HAMLIB "Rig control with Hamlib (Settings > Rig); needs libhamlib-dev." ON)
-option(RAGTIME_BUILD_HAMLIB "Fetch and build Hamlib statically instead of using the system's (the Windows build)." OFF)
+option(RAGTIME_BUILD_HAMLIB "Fetch and build Hamlib statically instead of using the system's (macOS and Windows)." OFF)
 if(WIN32 OR APPLE)
     set(RAGTIME_PIPEWIRE_DEFAULT OFF)
 else()
@@ -47,7 +51,7 @@ option(RAGTIME_PIPEWIRE "The Ear listens through PipeWire (Linux; Windows uses W
 option(RAGTIME_PICTURES "Inline pictures: JPEG 2000 (OpenJPEG) and WebP (libwebp); needs libopenjp2-7-dev and libwebp-dev." ON)
 option(RAGTIME_HEIF "Pictures read from HEIF files (libheif with libde265); needs libheif-dev." ON)
 option(RAGTIME_RNNOISE "Noise reduction for voice with RNNoise, fetched with git and built in (denoise/)." ON)
-option(RAGTIME_BUILD_IMAGE_LIBS "Fetch and build OpenJPEG, libwebp, libde265 and libheif statically instead of using the system's (the Windows build)." OFF)
+option(RAGTIME_BUILD_IMAGE_LIBS "Fetch and build OpenJPEG, libwebp, libde265 and libheif statically instead of using the system's (macOS and Windows)." OFF)
 if(UNIX AND NOT APPLE AND NOT CMAKE_CROSSCOMPILING)
     set(RAGTIME_BUILD_SOTTO_DEFAULT ON)
 else()

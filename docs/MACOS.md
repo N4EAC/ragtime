@@ -1,186 +1,176 @@
-# Ragtime on macOS
+# macOS
 
-The macOS port is Tim Vetter's work. It is the same wxWidgets app as on
-Linux and Windows, built against wxWidgets' Cocoa toolkit, with the Mac's
-own code for audio, serial ports and finding sotto. Everything works as on
-the other platforms: chat, sessions, files, pictures, voice, the Ear,
-Globus, the gearshift and rig control (Hamlib, or the dial from rigctld).
+Ragtime uses wxWidgets with the native Cocoa frontend and Core Audio for
+voice messages and the Ear. Apple Silicon is the first release target.
+Native audio device discovery requires macOS 14.2 or newer.
 
-It needs macOS 14.2 or later, on Apple Silicon or Intel. Voice and the
-Ear use Core Audio's process objects, which came in 14.2, to tell which
-audio devices data2g-host is using.
+## Release packages
+
+The package recipe follows the Linux and Windows release naming and uses
+the shared dependency recipes. It builds a self-contained Apple Silicon app for
+macOS 14.2 or newer, with static wxWidgets, Hamlib, picture libraries and
+RNNoise, plus the sotto and Codec 2 dylibs and third-party licences.
+
+Install the Xcode command-line tools, CMake, Git, Python 3.9 or newer,
+autoconf, automake and GNU libtool. For example, with Homebrew:
+
+```sh
+brew install cmake python autoconf automake libtool
+packaging/macos/make-zip.sh
+```
+
+The script configures a Release build, keeps warnings as errors, runs
+CTest, installs and signs the app, checks its architecture, deployment
+target and dynamic dependencies, then writes
+`dist/Ragtime-<version>-beta-<commit>-macos-arm64.zip` and its `.sha256`.
+The ZIP contains `Ragtime.app`, `README.txt` and `LICENSE.txt`. Unzip it
+and copy the app to Applications. No package manager is needed to run it.
+
+`BUILD_DIR` selects the build directory (default `build-macos-release`),
+`JOBS` controls parallelism (default 4), and `RAGTIME_RELEASE_TAG` changes
+or clears the default `beta` suffix, as on the other platforms.
+`RAGTIME_WX_SOURCE` and `RAGTIME_HAMLIB_SOURCE` can select existing source
+checkouts. `RAGTIME_MACOS_SOTTO_DIR` can select prebuilt voice codecs;
+their `commit.txt` must match `packaging/sotto.sh`.
+
+### Signing and notarization
+
+Without a signing identity the recipe uses ad-hoc signing, suitable for
+local testing. Public distribution requires a Developer ID Application
+certificate and notarization. Store the notary credentials in a local
+Keychain profile with `xcrun notarytool store-credentials`, then run:
+
+```sh
+MACOS_SIGN_IDENTITY='Developer ID Application: Your Name (TEAMID)' \
+MACOS_NOTARY_PROFILE='ragtime-notary' \
+  packaging/macos/make-zip.sh
+```
+
+The script signs the dylibs before the app, enables the hardened runtime
+with audio-input permission, submits a ZIP with `notarytool --wait`,
+staples and validates the ticket, then creates the final archive and
+checksum. Credentials stay in the Keychain; they do not belong in source
+or CI configuration. See Apple's
+[notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow).
+
+Run the macOS release recipe locally.
+Intel and universal packages are not currently provided.
 
 ## Building
 
-Install the Xcode command-line tools (`xcode-select --install`), then
-CMake, and the tools Hamlib's build needs, with Homebrew:
+Install the Xcode command-line tools, CMake 3.16 or newer, and Git.
+Run the following from the repository root. The first configure fetches
+wxWidgets 3.2.11 and needs network access:
 
-    brew install cmake autoconf automake libtool
+```sh
+cmake -S . -B build-macos \
+  -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_DEPLOYMENT_TARGET=14.2 \
+  -DRAGTIME_BUILD_WX=ON -DRAGTIME_HAMLIB=OFF \
+  -DRAGTIME_PICTURES=OFF -DRAGTIME_RNNOISE=OFF \
+  -DRAGTIME_BUILD_SOTTO=OFF
+cmake --build build-macos --parallel 4
+ctest --test-dir build-macos --output-on-failure --parallel 2
+open build-macos/app/Ragtime.app
+```
 
-The release zip is one command:
+This configuration omits direct Hamlib control, JPEG 2000/WebP/HEIF and
+RNNoise. The rigctld connection and built-in picture codecs remain
+available. The optional libraries and build switches are described in
+[the README](../README.md#libraries). Warnings are errors by default.
 
-    packaging/macos/make-zip.sh    # dist/Ragtime-<version>-...-macos-<arch>.zip
+An installed Cocoa wxWidgets 3.2.10 or newer can be used by leaving
+`RAGTIME_BUILD_WX` off and making its `wx-config` discoverable. To build
+an existing checkout, set `RAGTIME_WX_SOURCE` to its directory, including
+submodules. wxWidgets 3.2.9 has a native Save dialog regression; the
+macOS source build pins a version with the fix.
 
-It builds for the Mac it runs on (`arm64` or `x86_64`). The first run
-clones and builds wxWidgets, Hamlib, the picture libraries, RNNoise and
-sotto into `build-macos`, so it takes a while; later runs only rebuild
-what changed. After it, `ctest --test-dir build-macos --output-on-failure`
-runs the tests.
+To install the bundle into a staging directory:
 
-For a quicker build while working on the code, leave out the libraries
-you don't need:
+```sh
+cmake --install build-macos --prefix "$PWD/dist/macos"
+dist/macos/Ragtime.app/Contents/MacOS/Ragtime --version
+```
 
-    cmake -S . -B build-macos -DCMAKE_BUILD_TYPE=Release -DRAGTIME_BUILD_WX=ON \
-        -DRAGTIME_HAMLIB=OFF -DRAGTIME_PICTURES=OFF
-    cmake --build build-macos --parallel
-    ctest --test-dir build-macos --output-on-failure
-    open build-macos/app/Ragtime.app
+The CMake install alone does not collect third-party shared libraries.
+Use static dependencies or package their dylibs before distributing an
+app built against system libraries.
 
-The build options are those of the other platforms (README, "Building"):
-`-DRAGTIME_BUILD_HAMLIB=ON` and `-DRAGTIME_BUILD_IMAGE_LIBS=ON` build
-Hamlib and the picture libraries statically, as the release zip does, or
-leave them `OFF` to use Homebrew's (`brew install pkgconf hamlib openjpeg
-webp libheif`), which ties the build to that Mac. `RAGTIME_WX_SOURCE` and
-`RAGTIME_HAMLIB_SOURCE` name checkouts to build instead of cloning. An
-installed Cocoa wxWidgets works too (leave `RAGTIME_BUILD_WX` off), if it
-is 3.2.10 or newer.
+## Voice codecs
 
-The Mac builds wxWidgets 3.2.11, not the 3.2.9 that Windows uses: 3.2.9's
-native Save dialog asserts when given a single file filter
-([wxWidgets #26148](https://github.com/wxWidgets/wxWidgets/issues/26148)),
-fixed in 3.2.10. Hamlib's command-line tools don't compile against the
-current macOS SDK, so the Mac build makes only the library
-(`cmake/HamlibNoTools.mk`). `MACOSX_DEPLOYMENT_TARGET` (14.2 by default)
-sets the oldest macOS the build runs on.
+Ragtime loads sotto at run time. Build the pinned sotto and Codec 2
+libraries explicitly, then include them in the app:
 
-### Voice codecs
+```sh
+packaging/macos/build-sotto.sh
+cmake -S . -B build-macos \
+  -DRAGTIME_MACOS_SOTTO_DIR="$PWD/build-macos/build-sotto/out"
+cmake --build build-macos --parallel 4
+ctest --test-dir build-macos --output-on-failure
+cmake --install build-macos --prefix "$PWD/dist/macos"
+```
 
-sotto and its Codec 2 are built as dylibs by
-`packaging/macos/build-sotto.sh`, at the commit pinned in
-`packaging/sotto.sh`, into `build-macos/build-sotto/out`. `make-zip.sh`
-runs it once per pin. To bundle them in a build of your own, pass the
-folder:
+The pin is shared with the Linux and Windows packages in
+`packaging/sotto.sh`. The dylibs go in `Contents/Frameworks` and their
+licences in `Contents/Resources/licences`. The loader checks
+`RAGTIME_SOTTO`, the bundle, the executable directory, then dyld's search
+path. The codec architecture must match the application.
 
-    packaging/macos/build-sotto.sh
-    cmake -S . -B build-macos -DRAGTIME_MACOS_SOTTO_DIR="$PWD/build-macos/build-sotto/out"
+`SOTTO_WORK` changes the codec build directory; `SOTTO_SOURCE` uses an
+existing checkout without changing it. The optional first script argument
+selects the output directory, and `SOTTO_JOBS` controls parallelism.
+`RAGTIME_BUILD_SOTTO` is the Linux build helper; use the macOS script here.
 
-CMake then copies both dylibs into `Ragtime.app/Contents/Frameworks` and
-their licences into `Contents/Resources/licences`. Ragtime still loads
-sotto at run time and never links it. `SOTTO_SOURCE` names a sotto
-checkout to use instead of cloning one, and `SOTTO_WORK` another build
-folder. (`RAGTIME_BUILD_SOTTO`, which builds libsotto while configuring,
-is Linux only.)
+## Connecting to Data2G
 
-Ragtime looks for sotto in `$RAGTIME_SOTTO`, then in the bundle's
-`Contents/Frameworks`, then beside the program, then wherever dyld looks;
-it takes `libsotto.0.dylib` or `libsotto.dylib`. Paths are found from the
-program itself, so the app can be moved or started through a link.
+Run Data2G separately, then enter its host address, KISS port and command
+port in Settings > Station. Ragtime neither starts nor bundles the modem.
+See [the Data2G interface](DATA2G.md) for the connection details.
+
+Serial-device discovery lists macOS call-out devices (`/dev/cu.*`).
+Settings > Rig can connect to rigctld; direct Hamlib control requires
+building with Hamlib enabled.
+
+For the existing fake-host bench, follow
+[Trying it without Data2G](../README.md#trying-it-without-data2g). The app
+executable is `build-macos/app/Ragtime.app/Contents/MacOS/Ragtime`.
+Use `--config` with a separate settings file when testing.
+
+## Audio and permissions
+
+Settings > Voice selects the operator's microphone and speakers.
+Ragtime excludes the audio devices used by local `data2g-host` and
+`data2g-gui` processes, their related/aggregate devices, and remembered
+radio devices. Select the radio's input and output in Data2G before
+selecting voice devices in Ragtime. A missing explicit device stays
+unavailable rather than switching to another device.
+
+macOS asks for microphone permission when Ragtime first opens an input,
+including a radio input for the Ear. If denied, enable Ragtime in System
+Settings > Privacy & Security > Microphone and retry. Device discovery
+and speaker playback do not request microphone access.
+
+View > Ear shows a local input's spectrum and waterfall without playing
+it. **Same as data2g-host** follows an unambiguous local modem capture.
+With multiple possible inputs, select the radio input explicitly in
+**Listen to**. A remote modem's TCP connection does not carry its audio.
+The Ear and voice capture independently; Ragtime does not change the
+system's default devices or the hardware sample rate.
 
 ## Testing
 
-`ctest` runs the same tests as on Linux, plus the Mac's own in
-`tests/macos/`: Core Audio devices, voice and the Ear against a pretend
-audio system (they never open real devices or ask for the microphone),
-and sotto found inside a bundle. With the voice codecs bundled,
-`ragtime_packaged_sotto_test` moves a bundle to a folder whose name has
-spaces and checks that sotto still loads from it and codes a clip.
+Run CTest with the build commands above. Python 3 enables the application
+shutdown regression test. Cocoa widget and application tests require a
+logged-in graphical session; fake-host tests need loopback sockets.
+The shutdown check uses the standard fake-host ports 8100/8300 and
+8110/8310 and skips if those ports are occupied.
 
-A few tests need more than a terminal:
+Audio tests use synthetic devices and capture, without opening hardware
+or requesting microphone access. The packaged codec test, enabled by
+`RAGTIME_MACOS_SOTTO_DIR`, relocates a codec bundle and requires the real
+encoder/decoder round trips to succeed. Without codecs, the loader tests
+still check missing and incompatible libraries.
 
-- `ragtime_chat_list_test` and `ragtime_recent_work_pane_test` open real
-  windows, so they need a logged-in desktop session.
-- `ragtime_app_shutdown_test` (registered when Python 3 is found) starts
-  the app against its own fake hosts, quits it, and checks that another
-  client can call again. It needs ports 8100, 8300, 8110 and 8310 free,
-  and is skipped when one is taken.
-
-The bench is the same as on Linux (CLAUDE.md, "The bench"):
-`build-macos/tests/ragtime_fake_air` runs two fake data2g-hosts, and
-`build-macos/app/Ragtime.app/Contents/MacOS/Ragtime --config bench.conf`
-runs a Ragtime with settings of its own, to point at one of them in
-Settings > Station.
-
-To list the Mac's audio devices as voice and the Ear see them, with
-nothing recorded or played:
-
-    build-macos/tests/ragtime_voice_probe
-
-`--speaker NAME --play` plays a test chime on one of them, and
-`ragtime_ear_probe --source NAME --seconds 3` prints what the Ear hears
-from an input. The names are Core Audio's, such as
-`coreaudio:input:BuiltInMicrophoneDevice`. The probes can't ask for the
-microphone (only the app can), so let the app have it first.
-
-## The release zip
-
-`Ragtime-<version>-beta-<hash>-macos-arm64.zip` (Apple Silicon) and
-`...-macos-x86_64.zip` (Intel) each hold:
-
-- `Ragtime.app`, with wxWidgets, Hamlib, the picture libraries and
-  RNNoise linked in, and `libsotto.0.dylib` and its Codec 2 in
-  `Contents/Frameworks`;
-- `README.txt` (`packaging/macos/README.txt`), `LICENSE.txt`, and the
-  libraries' licences in `licences/`.
-
-The app is signed ad hoc (`codesign --sign -`), not with an Apple
-Developer ID, and is not notarized. macOS therefore stops it the first
-time it opens; System Settings > Privacy & Security > Open Anyway lets it
-run, and the zip's README says so.
-
-The full CI run (Actions > Build and test > Run workflow) builds both on
-GitHub's Mac runners (`macos-15` and `macos-15-intel`): `make-zip.sh`,
-then `ctest`, then the zip's SHA-256 in the log and the run summary. The
-zips are kept as the run's `ragtime-macos-arm64` and
-`ragtime-macos-x86_64` artifacts, beside the AppImage and the Windows zip.
-Pull requests run only the quick Ubuntu job.
-
-## What is different on the Mac
-
-**The app bundle.** `packaging/macos/Bundle.cmake` makes `Ragtime.app`:
-the program in `Contents/MacOS`, the icon (made from `app/res/ragtime.png`
-by `make-icon.sh`) in `Contents/Resources`, and `Info.plist` from
-`Info.plist.in`, with the words macOS shows when it asks for the
-microphone. The bundle identifier is `io.github.baitisj.ragtime`.
-Settings are in `~/Library/Preferences/Ragtime Preferences`, and
-Ragtime's own files in `~/Library/Application Support/Ragtime`.
-
-**Voice.** `platform/macos/CoreAudioVoice.mm`. Settings > Voice offers
-the operator's microphones and speakers and leaves out every device a
-local `data2g-host` or `data2g-gui` uses, both halves of it, found
-through Core Audio's process objects. Devices joined to one of those
-(an aggregate device, or the two halves of one card) go with it, as do
-the radio devices remembered from before. Choices are kept by device UID,
-so they survive a replug. A chosen device that is missing stays missing
-rather than falling back to another, and a default that is the radio's
-moves to another device. The microphone opens only while recording;
-macOS asks for it the first time, and Settings and the deck say when
-permission is still pending or was refused. Ragtime never changes the
-system defaults or a device's sample rate. Devices are checked every
-750 ms.
-
-**The Ear.** `platform/macos/CoreAudioEar.mm`. It records on a queue of
-its own (three 100 ms buffers at the input's own rate) and never plays.
-Listen to offers every input, the radio's included. With Same as
-data2g-host it follows a local host's input when there is exactly one;
-with several (two hosts, or a data2g-gui recording from two inputs),
-pick one. Ragtime can't tell a host's process from its command port on
-the Mac, and only local audio can be heard, even when Ragtime talks to a
-host on another computer. It never takes a device for itself or changes
-its rate or buffer size. The microphone permission covers radio inputs
-too, so the Ear asks for it when it first has something to open.
-
-**Serial ports.** `platform/macos/SerialPorts.cpp` offers the `/dev/cu.*`
-devices (the call-out ones, not their `/dev/tty.*` twins) in Settings >
-Rig.
-
-**Leaving on quit.** Ragtime leaves its session when it quits, before
-its sockets close, so data2g-host doesn't keep the old link and refuse
-the next call. (This came from the port, and helps every platform.)
-
-## Not done yet
-
-- Signing with a Developer ID and notarizing, so that macOS opens the
-  app without asking.
-- Trying Hamlib with a real radio on a Mac, and the first-time microphone
-  prompt, device hotplug and data2g-host sharing a real radio's card.
-- A single universal app in place of two zips.
+Before distributing a build, also check microphone permission, voice
+recording/playback, the Ear alongside Data2G, device unplug/replug, native
+file dialogs, and opening the installed app on a clean Mac. Automated
+tests cannot establish radio-device compatibility.
