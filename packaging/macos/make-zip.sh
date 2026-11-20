@@ -1,11 +1,13 @@
 #!/bin/bash
 set -euo pipefail
-# Native Apple Silicon package, using upstream's release naming and shared
-# dependency recipes. Run from any working directory.
+# Native macOS package for the Mac it runs on (arm64 on Apple Silicon,
+# x86_64 on Intel), using upstream's release naming and shared dependency
+# recipes. Run from any working directory.
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 cd "$ROOT"
-if [ "$(uname -s)" != Darwin ] || [ "$(uname -m)" != arm64 ]; then
-    echo "Build this package on an Apple Silicon Mac using a native shell." >&2
+ARCH=$(uname -m)
+if [ "$(uname -s)" != Darwin ] || { [ "$ARCH" != arm64 ] && [ "$ARCH" != x86_64 ]; }; then
+    echo "Build this package on a Mac (Apple Silicon or Intel) using a native shell." >&2
     exit 1
 fi
 for tool in cmake ctest git python3 autoconf automake glibtoolize; do
@@ -26,7 +28,7 @@ fi
 
 if [ -z "${RAGTIME_MACOS_SOTTO_DIR:-}" ]; then
     RAGTIME_MACOS_SOTTO_DIR="$BUILD_DIR/build-sotto/out"
-    SOTTO_WORK="$BUILD_DIR/build-sotto" SOTTO_ARCH=arm64 SOTTO_JOBS="$JOBS" \
+    SOTTO_WORK="$BUILD_DIR/build-sotto" SOTTO_ARCH="$ARCH" SOTTO_JOBS="$JOBS" \
         packaging/macos/build-sotto.sh "$RAGTIME_MACOS_SOTTO_DIR"
 fi
 RAGTIME_MACOS_SOTTO_DIR=$(cd "$RAGTIME_MACOS_SOTTO_DIR" && pwd)
@@ -36,7 +38,7 @@ if [ "$(cat "$RAGTIME_MACOS_SOTTO_DIR/commit.txt")" != "$SOTTO_COMMIT" ]; then
 fi
 
 args=(
-    -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES=arm64
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="$ARCH"
     -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET"
     -DRAGTIME_APP=ON -DRAGTIME_TESTS=ON -DRAGTIME_WERROR=ON
     -DRAGTIME_BUILD_WX=ON -DRAGTIME_HAMLIB=ON -DRAGTIME_BUILD_HAMLIB=ON
@@ -85,7 +87,7 @@ python3 packaging/macos/check-bundle.py "$APP"
 "$APP/Contents/MacOS/Ragtime" --version
 
 mkdir -p dist
-OUT="$ROOT/dist/Ragtime-$RAGTIME_RELEASE-macos-arm64.zip"
+OUT="$ROOT/dist/Ragtime-$RAGTIME_RELEASE-macos-$ARCH.zip"
 if [ -n "${MACOS_NOTARY_PROFILE:-}" ]; then
     ditto -c -k --keepParent "$APP" "$WORK/notarize.zip"
     xcrun notarytool submit "$WORK/notarize.zip" \

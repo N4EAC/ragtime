@@ -2,10 +2,15 @@
 """Reject macOS release bundles that depend on the build machine."""
 
 import argparse
+import platform
 import plistlib
 import re
 import subprocess
 from pathlib import Path
+
+
+# The Mac it runs on: make-zip.sh builds for that one.
+ARCH = platform.machine()
 
 
 def output(*command):
@@ -41,8 +46,8 @@ def check(app):
     for binary in binaries:
         if not binary.resolve().is_relative_to(app.resolve()):
             raise ValueError(f'Library symlink leaves the bundle: {binary.name}')
-        if output('lipo', '-archs', str(binary)).strip() != 'arm64':
-            raise ValueError(f'Expected an arm64 binary: {binary.name}')
+        if output('lipo', '-archs', str(binary)).strip() != ARCH:
+            raise ValueError(f'Expected an {ARCH} binary: {binary.name}')
         loads = output('otool', '-l', str(binary))
         minimum = re.search(r'\bminos\s+(\S+)', loads)
         if minimum is None or version(minimum[1]) > version('14.2'):
@@ -65,7 +70,7 @@ def check(app):
             if not target.resolve().is_relative_to(app.resolve()) or not target.is_file():
                 raise ValueError(f'Unresolved dependency in {binary.name}: {dependency}')
     subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
-    print('Bundle verified: arm64, macOS 14.2, bundled codecs and licences, no external libraries.')
+    print(f'Bundle verified: {ARCH}, macOS 14.2, bundled codecs and licences, no external libraries.')
 
 
 if __name__ == '__main__':

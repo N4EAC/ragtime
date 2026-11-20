@@ -1,14 +1,15 @@
 # macOS
 
 Ragtime uses wxWidgets with the native Cocoa frontend and Core Audio for
-voice messages and the Ear. Apple Silicon is the first release target.
+voice messages and the Ear. There is a release zip each for Apple Silicon
+and Intel Macs.
 Native audio device discovery requires macOS 14.2 or newer.
 
 ## Release packages
 
 The package recipe follows the Linux and Windows release naming and uses
-the shared dependency recipes. It builds a self-contained Apple Silicon app for
-macOS 14.2 or newer, with static wxWidgets, Hamlib, picture libraries and
+the shared dependency recipes. It builds a self-contained app for the Mac it
+runs on (arm64 on Apple Silicon, x86_64 on Intel) and macOS 14.2 or newer, with static wxWidgets, Hamlib, picture libraries and
 RNNoise, plus the sotto and Codec 2 dylibs and third-party licences.
 
 Install the Xcode command-line tools, CMake, Git, Python 3.9 or newer,
@@ -22,7 +23,7 @@ packaging/macos/make-zip.sh
 The script configures a Release build, keeps warnings as errors, runs
 CTest, installs and signs the app, checks its architecture, deployment
 target and dynamic dependencies, then writes
-`dist/Ragtime-<version>-beta-<commit>-macos-arm64.zip` and its `.sha256`.
+`dist/Ragtime-<version>-beta-<commit>-macos-<arch>.zip` and its `.sha256`.
 The ZIP contains `Ragtime.app`, `README.txt` and `LICENSE.txt`. Unzip it
 and copy the app to Applications. No package manager is needed to run it.
 
@@ -53,8 +54,11 @@ checksum. Credentials stay in the Keychain; they do not belong in source
 or CI configuration. See Apple's
 [notarization workflow](https://developer.apple.com/documentation/security/customizing-the-notarization-workflow).
 
-Run the macOS release recipe locally.
-Intel and universal packages are not currently provided.
+The full CI run (Actions > Build and test > Run workflow) runs this
+recipe on GitHub's `macos-15` (Apple Silicon) and `macos-15-intel`
+runners, signed ad hoc, and keeps the zips as the run's
+`ragtime-macos-arm64` and `ragtime-macos-x86_64` artifacts. A universal
+package is not provided.
 
 ## Building
 

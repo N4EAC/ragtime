@@ -264,9 +264,10 @@ Hamlib (which needs `autoconf automake libtool`); with
 Wine installed, `ctest --test-dir build-win` runs the unit tests as
 Windows programs.
 
-The macOS recipe builds on Apple Silicon with static dependencies and
-bundled voice codecs, runs the tests, and creates a ZIP and SHA-256 file.
-See [macOS release packages](docs/MACOS.md#release-packages) for tools,
+The macOS recipe builds on the Mac it runs on (Apple Silicon or Intel)
+with static dependencies and bundled voice codecs, runs the tests, and
+creates a ZIP and SHA-256 file. See
+[macOS release packages](docs/MACOS.md#release-packages) for tools,
 options, signing and notarization.
 
 ### Trying it without Data2G

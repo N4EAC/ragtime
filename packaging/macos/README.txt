@@ -4,9 +4,15 @@ Ragtime for macOS
 Ragtime is a chat and file-transfer client for Data2G, the HF data modem
 by Andrew Rodland, KC2G. https://github.com/baitisj/ragtime
 
-This package is for Apple Silicon Macs running macOS 14.2 or newer.
-Unzip it, copy Ragtime.app to Applications, and open it. No package
-manager or separately installed libraries are required.
+This package is for Macs running macOS 14.2 or newer: the zip named
+arm64 is for Apple Silicon, the one named x86_64 for Intel. Unzip it,
+copy Ragtime.app to Applications, and open it. No package manager or
+separately installed libraries are required.
+
+If Ragtime is signed ad hoc rather than with a Developer ID, macOS stops
+it the first time with "Apple could not verify Ragtime". Click Done, then
+open System Settings > Privacy & Security, scroll down to Ragtime and
+click Open Anyway. macOS remembers the choice.
 
 Run Data2G separately, on this Mac or another computer on your network.
 Ragtime neither starts nor bundles the modem. Get Data2G and follow its
