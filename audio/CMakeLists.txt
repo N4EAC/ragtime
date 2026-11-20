@@ -10,6 +10,7 @@
 if(APPLE)
     add_library(ragtime_audio STATIC src/NoEar.cpp
         ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioVoice.mm
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioCapture.cpp
         ${PROJECT_SOURCE_DIR}/platform/macos/MicrophonePermission.mm
         ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioDevices.cpp
         ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioGraph.cpp

@@ -2,6 +2,8 @@
 // share the operator microphone or follow the speaker's default route.
 #include "ragtime/audio/VoiceAudio.h"
 #include "CoreAudioDevices.h"
+#include "CoreAudioCapture.h"
+#include "CoreAudioQueue.h"
 #include "VoiceBuffer.h"
 #include "MicrophonePermission.h"
 
@@ -28,73 +30,10 @@ namespace
 
 using Clock = std::chrono::steady_clock;
 
-int64_t nowMs()
-{
-    return std::chrono::duration_cast<std::chrono::milliseconds>(Clock::now().time_since_epoch()).count();
-}
-
-std::string error(const char* operation, OSStatus code)
-{
-    return std::string(operation) + " (Core Audio " + std::to_string(code) + ")";
-}
-
-AudioStreamBasicDescription format(int rate)
-{
-    AudioStreamBasicDescription f{};
-    f.mSampleRate = rate;
-    f.mFormatID = kAudioFormatLinearPCM;
-    f.mFormatFlags = kAudioFormatFlagsNativeFloatPacked;
-    f.mBytesPerPacket = f.mBytesPerFrame = sizeof(float);
-    f.mFramesPerPacket = 1;
-    f.mChannelsPerFrame = 1;
-    f.mBitsPerChannel = 32;
-    return f;
-}
-
-OSStatus pin(AudioQueueRef queue, const std::string& uid)
-{
-    CFStringRef device = CFStringCreateWithBytes(nullptr, reinterpret_cast<const UInt8*>(uid.data()),
-                          static_cast<CFIndex>(uid.size()), kCFStringEncodingUTF8, false);
-    if (!device) return kAudio_ParamError;
-    const auto result = AudioQueueSetProperty(queue, kAudioQueueProperty_CurrentDevice, &device, sizeof(device));
-    CFRelease(device);
-    return result;
-}
-
-struct Capture
-{
-    VoiceAudio::Samples samples;
-    int rate = 0;
-    std::string name;
-    AudioQueueRef queue = nullptr;
-    std::atomic<bool> active{true};
-    std::atomic<int64_t> lastSamples{0};
-    std::atomic<OSStatus> failure{noErr};
-
-    ~Capture()
-    {
-        active = false;
-        if (queue)
-        {
-            AudioQueueStop(queue, true);
-            AudioQueueDispose(queue, true);
-        }
-    }
-
-    static void receive(void* user, AudioQueueRef queue, AudioQueueBufferRef buffer,
-                        const AudioTimeStamp*, UInt32, const AudioStreamPacketDescription*)
-    {
-        auto& c = *static_cast<Capture*>(user);
-        if (!c.active) return;
-        const auto n = buffer->mAudioDataByteSize / sizeof(float);
-        if (n)
-        {
-            c.lastSamples = nowMs();
-            c.samples(static_cast<const float*>(buffer->mAudioData), n, c.rate);
-        }
-        if (c.active) c.failure = AudioQueueEnqueueBuffer(queue, buffer, 0, nullptr);
-    }
-};
+using macos::audioNowMs;
+using macos::audioError;
+using macos::monoFormat;
+using macos::pinQueue;
 
 struct Playback
 {
@@ -361,31 +300,8 @@ private:
     void openCapture(const macos::Device& device)
     {
         retryCapture_ = false;
-        if (!std::isfinite(device.rate) || device.rate < 1000 || device.rate > 192000)
-        {
-            state_.microphoneProblem = "The microphone's sample rate is unavailable";
-            return;
-        }
-        auto c = std::make_unique<Capture>();
-        c->samples = samples_;
-        c->rate = static_cast<int>(std::lround(device.rate));
-        c->name = state_.microphone.node.name;
-        const auto f = format(c->rate);
-        auto result = AudioQueueNewInput(&f, Capture::receive, c.get(), nullptr, nullptr, 0, &c->queue);
-        if (result == noErr) result = pin(c->queue, device.uid);
-        for (int i = 0; result == noErr && i < 3; ++i)
-        {
-            AudioQueueBufferRef buffer = nullptr;
-            result = AudioQueueAllocateBuffer(c->queue, static_cast<UInt32>(c->rate / 20 * sizeof(float)), &buffer);
-            if (result == noErr) result = AudioQueueEnqueueBuffer(c->queue, buffer, 0, nullptr);
-        }
-        if (result == noErr) result = AudioQueueStart(c->queue, nullptr);
-        if (result != noErr) state_.microphoneProblem = error("Could not start the microphone", result);
-        else
-        {
-            state_.microphoneProblem.clear();
-            capture_ = std::move(c);
-        }
+        capture_ = macos::openInputCapture(device, 50, samples_, state_.microphoneProblem);
+        captureName_ = capture_ ? state_.microphone.node.name : "";
     }
 
     void openPlayback(const macos::Device& device)
@@ -393,9 +309,9 @@ private:
         auto& p = *playback_;
         p.name = state_.speaker.node.name;
         p.gain = volume_;
-        const auto f = format(p.rate);
+        const auto f = monoFormat(p.rate);
         auto result = AudioQueueNewOutput(&f, Playback::supply, &p, nullptr, nullptr, 0, &p.queue);
-        if (result == noErr) result = pin(p.queue, device.uid);
+        if (result == noErr) result = pinQueue(p.queue, device.uid);
         if (result == noErr) result = AudioQueueAddPropertyListener(p.queue, kAudioQueueProperty_IsRunning, Playback::running, &p);
         for (int i = 0; result == noErr && i < 3; ++i)
         {
@@ -410,7 +326,7 @@ private:
         if (result == noErr) result = AudioQueueStart(p.queue, nullptr);
         if (result != noErr)
         {
-            state_.speakerProblem = error("Could not start the speaker", result);
+            state_.speakerProblem = audioError("Could not start the speaker", result);
             finish(false);
         }
         else p.startTime = Clock::now();
@@ -422,21 +338,25 @@ private:
         if (authorization_->completed.exchange(false)) retryCapture_ = true;
         const auto* mic = macos::findDevice(snapshot_, state_.microphone.node.name, true);
         const bool useMic = samples_ && state_.available && state_.microphone.usable() && mic;
-        if (capture_ && (!useMic || capture_->name != state_.microphone.node.name ||
-                         std::fabs(mic->rate - capture_->rate) > 0.5 ||
+        if (capture_ && (!useMic || captureName_ != state_.microphone.node.name ||
+                         std::fabs(mic->rate - capture_->rate()) > 0.5 ||
                          macos::microphonePermission() != macos::MicrophonePermission::Authorized))
             capture_.reset();
         if (useMic && !capture_ && retryCapture_ && authorized()) openCapture(*mic);
         if (samples_ && !useMic) state_.microphoneProblem = state_.available
             ? voice::describe(state_.microphone, true) : state_.problem;
-        if (capture_ && capture_->failure != noErr)
+        if (capture_)
         {
-            state_.microphoneProblem = error("Microphone capture stopped", capture_->failure);
-            capture_.reset();
+            const auto problem = capture_->problem();
+            if (!problem.empty())
+            {
+                state_.microphoneProblem = problem;
+                capture_.reset();
+            }
         }
         state_.listening = capture_ != nullptr;
-        state_.recording = capture_ && capture_->lastSamples && nowMs() - capture_->lastSamples < 1000;
-        state_.microphoneRate = capture_ ? capture_->rate : 0;
+        state_.recording = capture_ && capture_->lastSamplesMs() && audioNowMs() - capture_->lastSamplesMs() < 1000;
+        state_.microphoneRate = capture_ ? capture_->rate() : 0;
 
         if (playback_)
         {
@@ -465,7 +385,7 @@ private:
             }
             if (result != noErr)
             {
-                state_.speakerProblem = error("Speaker playback stopped", result);
+                state_.speakerProblem = audioError("Speaker playback stopped", result);
                 finish(false);
             }
             else if (p.draining && !running) finish(true);
@@ -544,7 +464,8 @@ private:
     bool scan_ = true;
     bool retryCapture_ = false;
     Samples samples_;
-    std::unique_ptr<Capture> capture_;
+    std::unique_ptr<macos::InputCapture> capture_;
+    std::string captureName_;
     std::unique_ptr<Playback> playback_;
     std::shared_ptr<Authorization> authorization_;
     std::atomic<double> position_{0};

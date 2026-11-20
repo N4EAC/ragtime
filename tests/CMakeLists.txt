@@ -107,6 +107,7 @@ if(APPLE)
     target_link_libraries(ragtime_voice_buffer_test PRIVATE Threads::Threads)
     ragtime_test(ragtime_core_audio_voice_test macos/CoreAudioVoiceTest.cpp
         ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioVoice.mm
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioCapture.cpp
         ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioGraph.cpp)
     target_include_directories(ragtime_core_audio_voice_test PRIVATE
         ${PROJECT_SOURCE_DIR}/platform/macos ${PROJECT_SOURCE_DIR}/audio/include)
