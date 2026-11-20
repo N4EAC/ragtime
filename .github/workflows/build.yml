@@ -1,11 +1,8 @@
 name: Build and test
 
-# Each PR gets the quick Ubuntu build and tests. The rest (GCC 16, Windows,
-# AppImage) runs only when started by hand: Actions > Build and test >
-# Run workflow, which runs every job. Jeff chose this on 2026-10-22, since
-# threads build, test and run tools/gcc16/check.py before every push.
+# Run only by hand: Actions > Build and test > Run workflow.
+# Builds and tests are run locally before submitting changes.
 on:
-  pull_request:
   workflow_dispatch:
 
 jobs:

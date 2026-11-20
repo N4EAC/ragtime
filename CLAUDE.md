@@ -515,16 +515,15 @@ one: `ragtime_chat_list_test` (`tests/ChatListTest.cpp`, built in
 with no wx needed. Rig tests use Hamlib's dummy rig (model 1), never a
 real radio.
 
-CI (`.github/workflows/build.yml`) runs only the Ubuntu 24.04 build with
-tests on each PR (Jeff's choice, 2026-10-22: threads already build and
-test before pushing). Nothing runs on a push to `main`. The full set runs
-only when started by hand (Actions > Build and test > Run workflow, or
+CI (`.github/workflows/build.yml`) runs only when started by hand; pushes
+and pull requests never start it. Run local builds and tests before
+submitting changes. The full set runs through Actions > Build and test >
+Run workflow (or
 the GitHub `actions_run_trigger` tool on the branch): Ubuntu, the same
 build and tests in the `gcc:16` image with `-Werror` at `-O2`
 (RelWithDebInfo) and `-O3` (Release), the Windows cross build with the
 unit tests run under Wine, and the AppImage. The last two keep the zip and
-the AppImage as the run's artifacts. Start a full run on a PR that
-changes CMake, packaging or platform code, and always on a release PR. Before pushing C++, run `tools/gcc16/check.py` (needs docker;
+the AppImage as the run's artifacts. Before pushing C++, run `tools/gcc16/check.py` (needs docker;
 start `dockerd &` in a cloud session): it compiles every source in
 `gcc:16` at both levels without apt, which the cloud sandbox can't reach.
 
