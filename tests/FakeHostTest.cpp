@@ -569,8 +569,13 @@ void testAShowOfHands()
     CHECK(ref && ref->offsetHz == 3.0);
     // The command port's REF line says the same.
     bool line = false;
-    for (const auto& e : b.events) line = line || (e.type == Type::HandRef && e.handRef && e.handRef->id == ref->id);
-    CHECK(line);
+    // KISS and command bytes arrive on independent TCP streams; hearing
+    // the frame does not mean the command socket has delivered REF yet.
+    CHECK(run(air, a, b, [&] {
+        for (const auto& e : b.events)
+            line = line || (e.type == Type::HandRef && e.handRef && e.handRef->id == ref->id);
+        return line;
+    }));
     CHECK(b.link.handSend(ref->id, 7, 1.0, 2, 42, now));
 
     CHECK(run(air, a, b, [&] { return a.heard(Type::HandEnd); }));

@@ -11,6 +11,7 @@
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <memory>
@@ -267,13 +268,11 @@ int main()
         CHECK(!none.encoder());
         CHECK(!none.decoder(voice::CODEC_SOTTO_V38));
     }
-#ifndef _WIN32
     {
-        voice::Sotto notSotto("libm.so.6");
+        voice::Sotto notSotto(std::filesystem::absolute(RAGTIME_NOT_SOTTO).string());
         CHECK(!notSotto.available());
         CHECK(notSotto.info().why.find("missing") != std::string::npos);
     }
-#endif
     CHECK(!voice::sottoCandidates().empty());
 
     voice::Sotto& lib = voice::Sotto::library();
