@@ -216,7 +216,7 @@ No voice, Ear or local-radio control is required for that demo.
 - [x] Identify the first warnings-as-errors blocker on both Clang toolchains.
 - [x] Record completed macOS baseline build/test results and Android core build results.
 - [x] Resolve the two remaining macOS baseline test failures and Clang warnings.
-- [ ] M1: demonstrate the Cocoa app with the fake-host bench.
+- [x] M1: demonstrate the Cocoa app with the fake-host bench on Apple Silicon (acceptance results in [MACOS.md](MACOS.md)).
 - [ ] A1: load a JNI library and run core checks on an Android device/emulator.
 - [ ] A2: demonstrate phone-to-desktop chat and file transfer over LAN.
 - [ ] Decide supported OS/ABI matrix, first-release features and background behavior.

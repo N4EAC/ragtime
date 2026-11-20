@@ -105,8 +105,9 @@ Files with the fake stations. A second instance can use ports `8110`
 and `8310` and a different config file. The bench never uses a radio.
 See `CLAUDE.md`, "The bench", for loss, session and reconnect scenarios.
 
-Further acceptance still needs session and file exchange, restart and
-reconnect checks, native dialogs, menus and multiple display scales.
+The initial demo acceptance covers session/file exchange, restart,
+reconnect, native file dialogs and menus on the development Mac. Other
+display scales, Intel Macs and release packaging still need validation.
 See [PORTING.md](PORTING.md) for the original investigation and later
 audio/distribution work. GitHub workflows are manual-only; run local
 validation before submitting changes.
@@ -115,8 +116,9 @@ validation before submitting changes.
 
 Tested on Apple Silicon with macOS 15.8.3, Apple Clang 17 and the static
 wxWidgets 3.2.11 configuration above. Release builds keep
-`RAGTIME_WERROR=ON`. All 44 registered tests pass (with Python 3), including the bundle
-codec search, application version and both Cocoa widget checks.
+`RAGTIME_WERROR=ON`. All 44 registered tests pass (with Python 3),
+including the bundle codec search, application version, both Cocoa widget
+checks and the real-app session shutdown check.
 The real sotto codec round trip remains skipped because no codec is
 installed. Other optional features disabled above are not covered.
 
@@ -129,5 +131,48 @@ three HTML list classes now initialize their empty visible ranges, with
 GUI checks covering startup and empty/nonempty transitions.
 
 This is development validation on one Mac, not a release or a claim of
-complete macOS feature parity. The first-demo checklist in `PORTING.md`
-remains open until the remaining interactive scenarios pass.
+complete macOS feature parity.
+
+## Desktop acceptance, 2026-11-20
+
+These checks used the installed development bundle, isolated `--config`
+profiles, and the fake-host bench. No radio or real modem was involved.
+File contents were compared byte for byte, with SHA-256 checked as well.
+
+| Scenario | Observed result |
+| --- | --- |
+| Session chat and clipboard | UTF-8 `café —` text delivered to W1AW; its response and reaction displayed. |
+| Outgoing session file | Native Open dialog selected `café — outbound.txt`; all 2,080 bytes matched the bot's saved copy. |
+| Incoming session file | Native Save As stored the 5,734-byte bulletin as `reçu — bulletin.txt`; contents matched the bot's source. |
+| History after restart | Session messages, reactions, completed file entries and the kept partial transfer reappeared. |
+| Interrupted session transfer | Quit during a 98,304-byte transfer. After restart, **Send the rest to W1AW** opened a new session, reused 13,052 bytes held by W1AW, and completed with an identical SHA-256. |
+| Host loss and reconnect | UI showed reconnect backoff, retained a queued UTF-8 broadcast, then delivered it after the host returned. The flight log recorded down/up without restarting the app. |
+| Broadcast repair at 25% loss | Recovered a lost file announcement through item parity, requested missing file pieces, and saved the 2,871-byte bulletin with matching contents. Files visibly progressed through **Repairing, 3 pieces missing** to **Saved**. |
+| Native UI | Call shortcut, File/View menus, About dialog, file pickers, Cmd+Q and Globus toggle worked. Normal and zoomed layouts were inspected on the same 2x Retina display. Other display scales remain untested. |
+
+The checks exposed two fixes: macOS needs the corrected wxWidgets Save
+dialog implementation, and closing Ragtime must explicitly end its active
+modem session. Otherwise the modem can retain the old ARQ link after the
+client sockets close and reject the next call. The shutdown regression
+test exercises this with a real app process and a new fake-host client.
+
+To repeat the session and repair checks, run:
+
+```sh
+build-macos/tests/ragtime_fake_air --files --call MACOS1 \
+  --rate 2400 --airtime 150 --loss 25
+```
+
+Use `MACOS1` in the isolated app profile. Call W1AW, send a message asking
+for its bulletin, and exchange files through the native pickers. For
+partial recovery, keep the bench running while quitting and restarting
+Ragtime; use **Send the rest** on the kept file in Files. For broadcast
+repair, leave the session and enable **File > Receive broadcast files
+automatically**. Allow the seal windows and repair rounds to finish;
+losing the announcement can require a metadata repair before file repair.
+Bot source and received files are under the temporary directory's
+`ragtime-fake-air-<pid>/W1AW` folder.
+
+For reconnect, stop and restart only the bench, keeping Ragtime open.
+Send a broadcast while disconnected, then verify it leaves the queue
+after automatic reconnect. The backoff may take about a minute.
