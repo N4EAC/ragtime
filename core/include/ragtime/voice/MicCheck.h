@@ -1,5 +1,5 @@
 // MicCheck: what Settings > Voice's Test says about three seconds from the
-// microphone, before any processing (docs/STAGE1.md, "Voice audio").
+// microphone, before any processing.
 //
 // It measures as sotto does, by RMS, never sample peaks: sotto codes each
 // frame's RMS energy, saturating above -7.3 dBFS of 10 ms RMS

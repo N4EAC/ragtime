@@ -1,5 +1,5 @@
 // RigFilter: the rig's receive filter as it reports it, for the Ear
-// (docs/STAGE1.md, "The Ear", step 2): its mode, the passband width
+//: its mode, the passband width
 // Hamlib gives with the mode, and the twin passband tuning (PBT_IN and
 // PBT_OUT), read between bursts while the Ear is open, through rigctld
 // ("+m", "+l PBT_IN", "+l PBT_OUT") or the rig opened with Hamlib. Read

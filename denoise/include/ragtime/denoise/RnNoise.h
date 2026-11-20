@@ -1,6 +1,5 @@
-// Noise reduction for the voice chain (docs/STAGE1.md, "Voice: the
-// processing chain"): RNNoise, Jean-Marc Valin's recurrent network noise
-// suppressor (Xiph.Org, BSD-3-Clause), as a voice::Denoiser.
+// Noise reduction for the voice chain: RNNoise, Jean-Marc Valin's recurrent
+// network noise suppressor (Xiph.Org, BSD-3-Clause), as a voice::Denoiser.
 //
 // Kept out of ragtime_core, which links no libraries. RNNoise is built
 // from its git repository at 0.1.1, the last release whose trained model

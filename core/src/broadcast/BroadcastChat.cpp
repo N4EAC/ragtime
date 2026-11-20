@@ -562,7 +562,7 @@ void BroadcastChat::answerRollCall(const protocol::Record& record, const protoco
     if (!settings_.answerRollCalls) return add("Check in by Hand is off in Settings");
     if (me.empty()) return add("no callsign set");
     if (!ref) return add("data2g-host gave its burst no Hand reference");
-    // Stations in a ragchew raise no hand (docs/PLAN.md).
+    // Stations in a ragchew raise no hand.
     if (link_.sessionState() != link::HostLink::SessionState::None) return add("we're in a ragchew");
     // The host sends one Hand at a time: a roll call heard while ours for
     // another waits goes unanswered.
@@ -1604,9 +1604,8 @@ void BroadcastChat::flushAcks(const std::string& mode, uint64_t nowMs)
 }
 
 // Its Ack goes as soon as the station decodes it, in a burst of one
-// codeword or so: a listening window's worth (docs/PLAN.md, "Windows in
-// Data2G terms") lets it in before a file's next burst. A mode we can't
-// time holds nothing beyond the usual gap.
+// codeword or so: a listening window's worth lets it in before a file's next
+// burst. A mode we can't time holds nothing beyond the usual gap.
 void BroadcastChat::holdForAck(const Message& m, uint64_t nowMs)
 {
     link::ModeInfo info = findMode(link_.modes(), m.mode, link_.groupMode());

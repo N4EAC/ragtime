@@ -1,8 +1,8 @@
-// libsotto, Jeff's vocoder, loaded at run time (docs/STAGE1.md, "Voice
-// messages"). sotto keeps Codec 2's analysis and synthesis, which
-// are LGPL-2.1, so it is a shared library (libsotto.so.0, sotto.dll) that
-// Ragtime opens with dlopen or LoadLibrary, as it opens PipeWire, and never
-// links: Ragtime stays MIT, and runs without it, saying voice is missing.
+// libsotto, Jeff's vocoder, loaded at run time. sotto keeps Codec 2's
+// analysis and synthesis, which are LGPL-2.1, so it is a shared library
+// (libsotto.so.0, sotto.dll) that Ragtime opens with dlopen or LoadLibrary,
+// as it opens PipeWire, and never links: Ragtime stays MIT, and runs without
+// it, saying voice is missing.
 //
 // Where it looks, in order: the file named by RAGTIME_SOTTO; beside the
 // program (the Windows zip's sotto.dll, the AppImage's usr/lib); then the

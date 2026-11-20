@@ -11,7 +11,7 @@
 # build/tests/ragtime_ear_probe. Never point this at a real radio's sound
 # card: it only creates and uses its own source.
 #
-# Headless (a cloud session), start PipeWire first: a session bus,
+# Headless (no desktop session), start PipeWire first: a session bus,
 # pipewire, wireplumber and pipewire-pulse, with XDG_RUNTIME_DIR set.
 
 HERE="$(dirname "$(realpath "$0")")"

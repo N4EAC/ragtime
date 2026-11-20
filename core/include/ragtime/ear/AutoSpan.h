@@ -1,6 +1,6 @@
-// AutoSpan: how high the Ear's picture goes (docs/STAGE1.md, "The Ear",
-// "Span"). Jeff, 2026-10-26: no black space on the right when the filter
-// stops short of 4 kHz, and room for FM's wider audio on 2 m and 70 cm.
+// AutoSpan: how high the Ear's picture goes. Jeff, 2026-10-26: no black space
+// on the right when the filter stops short of 4 kHz, and room for FM's wider
+// audio on 2 m and 70 cm.
 //
 // The operator picks 4, 8 or 12 kHz, or Auto. Auto fits the picture to
 // what the radio passes: the high edge the noise shows plus MARGIN_HZ,

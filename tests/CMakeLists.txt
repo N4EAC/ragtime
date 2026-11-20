@@ -137,7 +137,7 @@ if(APPLE)
             RAGTIME_NOT_SOTTO="$<TARGET_FILE_NAME:ragtime_not_sotto>")
         add_dependencies(ragtime_sotto_bundle_roundtrip ragtime_not_sotto)
         set_target_properties(ragtime_sotto_bundle_roundtrip PROPERTIES MACOSX_BUNDLE YES
-            MACOSX_BUNDLE_GUI_IDENTIFIER org.ragtime.radio.codec-test)
+            MACOSX_BUNDLE_GUI_IDENTIFIER io.github.baitisj.ragtime.codec-test)
         ragtime_macos_sotto(ragtime_sotto_bundle_roundtrip)
         add_test(NAME ragtime_packaged_sotto_test COMMAND ${CMAKE_COMMAND}
             "-DBUNDLE=$<TARGET_BUNDLE_DIR:ragtime_sotto_bundle_roundtrip>"

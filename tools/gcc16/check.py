@@ -2,7 +2,7 @@
 """Compile every Ragtime source with GCC 16 and -Werror, at -O2 and -O3.
 
 CI does this too (the gcc16 job), but this runs where apt can't reach
-Debian's mirrors, such as the Claude cloud sandbox: it configures a host
+Debian's mirrors, such as a sandbox with no outside apt access: it configures a host
 build for its compile commands, then replays them in the gcc:16 Docker
 image with the host's headers mounted read-only, so wxWidgets is found
 without installing anything in the container.

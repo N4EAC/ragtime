@@ -1,5 +1,5 @@
 // The amateur bands, and where US rules let a station send data
-// (docs/PLAN.md, "Frequency plans"). The radio's dial frequency comes
+//. The radio's dial frequency comes
 // from rigctld (radio::DialReader); this names its band for the path log,
 // and says whether a Data2G burst may go out there.
 //

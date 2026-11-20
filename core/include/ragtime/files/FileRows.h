@@ -1,4 +1,4 @@
-// What the Files tab shows (docs/PLAN.md, "The Files tab"): a row for
+// What the Files tab shows: a row for
 // every transfer that isn't finished, and a lasting log of the finished
 // ones. Session files (package G) and broadcast files (package H) both
 // fill it: each hands the tab its rows in progress as FileRow, and adds a

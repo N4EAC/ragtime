@@ -1,4 +1,4 @@
-// Voice levels (docs/STAGE1.md, "Voice: the processing chain"): sotto's
+// Voice levels: sotto's
 // level figures, the active speech level of ITU-T P.56, a live version of it
 // for meters, and the Level check a clip gets once it is recorded.
 //

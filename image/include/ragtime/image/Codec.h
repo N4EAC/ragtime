@@ -1,4 +1,4 @@
-// The picture codecs (docs/STAGE1.md, "Inline pictures"): JPEG 2000 both
+// The picture codecs: JPEG 2000 both
 // ways through OpenJPEG, and WebP (libwebp) and HEIF (libheif, with
 // libde265 for HEVC) read from disk. JPEG, PNG and the rest are read by
 // wxImage in the app. Kept out of ragtime_core, which links no codecs;

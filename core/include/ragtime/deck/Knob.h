@@ -1,4 +1,4 @@
-// The microphone deck's knobs (docs/STAGE1.md, "The microphone deck"),
+// The microphone deck's knobs,
 // with the feel of Glissando's Dial (Jeff, 2026-10-31; ported from
 // Glissando's ChaoticaControls.cpp, written by Claude and Jeff, under MIT):
 //

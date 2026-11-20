@@ -107,9 +107,9 @@ can't show.
 
 Releases carry a Linux AppImage (x86_64, glibc 2.39 or newer, as on
 Ubuntu 24.04) and a portable Windows zip (64-bit); releases after
-0.3.1-beta add a macOS zip for Apple Silicon (macOS 14.2 or newer,
-signed ad hoc: its `README.txt` says how to open it the first time).
-Ragtime needs a
+0.3.1-beta add macOS zips for Apple Silicon and Intel (macOS 14.2 or
+newer; the app isn't signed by an Apple developer, and its `README.txt`
+says how to open it the first time). Ragtime needs a
 [data2g-host](https://github.com/arodland/Data2G) running on your
 computer or your network; it never bundles or starts one. Give its
 address and ports in Settings > Station.
@@ -124,9 +124,6 @@ thresholds...** in the gearshift. See [docs/GEARBOX.md](docs/GEARBOX.md).
 
 ## Building
 
-For the macOS build (Cocoa, on a Mac) and its limits, see
-[docs/MACOS.md](docs/MACOS.md).
-
 On Ubuntu 24.04:
 
     sudo apt-get install build-essential cmake pkg-config libwxgtk3.2-dev libgtk-3-dev libhamlib-dev libpipewire-0.3-dev \
@@ -139,6 +136,20 @@ On Ubuntu 24.04:
 On Fedora 44:
 
     sudo dnf install wxGTK-devel libde265-devel libheif-devel openjpeg-devel libwebp-devel pipewire-devel hamlib-devel
+
+On macOS 14.2 or newer, with the Xcode command-line tools and Homebrew
+(wxWidgets, Hamlib and the picture libraries are built from source, so
+the first build takes a while):
+
+    brew install cmake autoconf automake libtool
+    cmake -S . -B build-macos -DCMAKE_BUILD_TYPE=Release -DRAGTIME_BUILD_WX=ON \
+        -DRAGTIME_BUILD_HAMLIB=ON -DRAGTIME_BUILD_IMAGE_LIBS=ON
+    cmake --build build-macos --parallel
+    ctest --test-dir build-macos --output-on-failure
+    open build-macos/app/Ragtime.app
+
+[docs/MACOS.md](docs/MACOS.md) has the rest: quicker builds, bundling
+the voice codecs, and what is different on the Mac.
 
 ### Libraries
 
@@ -242,13 +253,15 @@ wants `librsvg2-bin` and `imagemagick`.
 
     packaging/linux/make-appimage.sh      # dist/Ragtime-<version>-...-x86_64.AppImage
     packaging/windows/make-zip.sh         # dist/Ragtime-<version>-...-windows-x86_64.zip
-    packaging/macos/make-zip.sh           # dist/Ragtime-<version>-...-macos-arm64.zip (on a Mac)
+    packaging/macos/make-zip.sh           # dist/Ragtime-<version>-...-macos-<arch>.zip (on a Mac)
 
 The Windows build cross-compiles on Ubuntu 24.04 with
 `g++-mingw-w64-x86-64-posix` and builds its own static wxWidgets and
 Hamlib (which needs `autoconf automake libtool`); with
 Wine installed, `ctest --test-dir build-win` runs the unit tests as
-Windows programs.
+Windows programs. The macOS zip builds on a Mac, for that Mac's
+architecture, with wxWidgets, Hamlib, the picture libraries and sotto
+built from source (docs/MACOS.md).
 
 ### Trying it without Data2G
 
@@ -325,8 +338,7 @@ How these were picked (2026-10-26):
   segment, or less than 3 kHz inside its edge, and says so in the
   connection bar.
 - Unattended stations (automatic control) must stay in the narrower
-  segments of 97.221(b); see "Frequencies and band plans" in
-  [docs/PLAN.md](docs/PLAN.md#frequencies-and-band-plans).
+  segments of 97.221(b).
 
 Sources: [ARRL band plan](https://www.arrl.org/band-plan),
 [IARU Region 2 band plan](https://www.iaru.org/wp-content/uploads/2020/10/IARU-Region-2-Band-plan.pdf),
@@ -353,18 +365,17 @@ on the waterfall, or the notch out of its bay, and the change goes back
 after 15 s unless you keep it (off by default).
 Messages are signed, never encrypted, as Part 97 requires.
 
-## Plan
+## Documents
 
 | Document | What |
 | --- | --- |
-| [docs/PLAN.md](docs/PLAN.md) | The full design: the net, ragchews, broadcast mode, files, signing, store and forward, frequencies, decisions and open questions |
-| [docs/STAGE1.md](docs/STAGE1.md) | Stage 1, parity with Glissando's Data2G mode, split into work packages |
-| [docs/MACOS.md](docs/MACOS.md) | macOS Cocoa development build, native adapters and remaining platform limits |
-| [docs/PORTING.md](docs/PORTING.md) | macOS port investigation: baseline experiments, platform gaps and work packages |
+| [docs/PROTOCOL.md](docs/PROTOCOL.md) | What goes on the air: records, frames, sessions, seals and repair, roll calls, pictures and voice |
+| [docs/DATA2G.md](docs/DATA2G.md) | data2g-host at the edges Ragtime touches: KISS, commands, the session stream, Hands |
+| [docs/MACOS.md](docs/MACOS.md) | Ragtime on macOS: building, testing, the release zip, and what is different on the Mac |
 | [docs/HOW_SEALS_WORK.md](docs/HOW_SEALS_WORK.md) | Seals in plain words, with pictures: what is inside one, how repairs work, and what a late joiner asks for |
 | [docs/GEARBOX.md](docs/GEARBOX.md) | The gearshift: how a Data2G mode is picked from the Submode Map |
-| [docs/MOCKUPS.md](docs/MOCKUPS.md) | The screens, colours, Globus and seal icons |
-| [docs/PICTURES_AND_VOICE.md](docs/PICTURES_AND_VOICE.md) | Draft spec for analogue SSTVAE pictures in chat, with the US band segments and Part 97 notes (not built; waits on Data2G). Its RADE voice clips are retired in favour of sotto voice messages |
+| [docs/PICTURE_CODEC.md](docs/PICTURE_CODEC.md) | Cool-chic pictures: the bitstream and how it is decoded |
+| [docs/FLIGHT_RECORDER.md](docs/FLIGHT_RECORDER.md) | The flight recorder, Help > Save a report, and replaying a recording on the bench |
 | [CLAUDE.md](CLAUDE.md) | Working notes and ground rules for contributors |
 
 ## Licence

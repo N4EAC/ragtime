@@ -1,18 +1,18 @@
 // Graph: finding the sound card data2g-host listens to, from what PipeWire
 // says about its graph, so the Ear can listen to the same one alongside it
-// (docs/STAGE1.md, "The Ear").
+//.
 //
 // PipeWire tells every program the graph's nodes (sound cards' sources and
 // sinks, and each program's streams), the clients that own them (with the
 // process id the kernel vouches for, pipewire.sec.pid) and the links
 // between them. data2g-host's capture is a "Stream/Input/Audio" node whose
 // client is named data2g-host, or data2g-gui when the host runs inside
-// Data2G's window (as on Jeff's radio PC). Its source is the node at the
+// Data2G's window. Its source is the node at the
 // other end of the link feeding it: the stream's target (target.object,
 // node.target) is only what it asked for, so it counts only while no link
 // is up.
 //
-// With several hosts running (the two-host bench), the one whose process
+// With several hosts running on one machine, the one whose process
 // listens on the command port Ragtime talks to wins; ProcNet.h finds it.
 //
 // Pure functions over plain structs, so tests build graphs by hand.

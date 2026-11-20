@@ -4,8 +4,9 @@ Ragtime for macOS
 Ragtime is a plain, friendly chat and file-transfer client for Data2G,
 the HF data modem by Andrew Rodland, KC2G. https://github.com/baitisj/ragtime
 
-The macOS port is Tim Vetter's work. This build is for Apple Silicon
-Macs on macOS 14.2 or later. There is no installer: drag Ragtime.app to
+The macOS port is Tim Vetter's work. It runs on macOS 14.2 or later:
+the zip named arm64 is for Apple Silicon Macs, the one named x86_64 for
+Intel Macs. There is no installer: drag Ragtime.app to
 Applications (or anywhere) and open it. To remove Ragtime, delete the app,
 the settings file ~/Library/Preferences/Ragtime Preferences and the folder
 ~/Library/Application Support/Ragtime.

@@ -69,7 +69,7 @@ class wxNotebook;
 class wxPanel;
 class wxSplitterWindow;
 
-// The one main window (docs/MOCKUPS.md): the connection bar on top; the
+// The one main window: the connection bar on top; the
 // station list, the tabs (Broadcast, Session, Files) and Globus side by
 // side behind draggable dividers it remembers; the status bar at the foot.
 // With Globus off the messages take the full width, the station list
@@ -81,7 +81,7 @@ public:
     MainFrame();
     ~MainFrame() override;
 
-    // Voice messages (docs/STAGE1.md, "Voice cards"), for the microphone
+    // Voice messages, for the microphone
     // deck. The program's one microphone and speaker, made and started the
     // first time it is asked for, so the deck's Monitor and a card's play
     // replace each other rather than fight.
@@ -113,7 +113,8 @@ private:
     void showThemeButton();     // its icon and tooltip, for the theme showing
     void showStatus();
     void refreshMessages();
-    // The fix strip's words: what fixing line id costs, and how long it stays open.
+    // The fix strip's words: what fixing line id costs, and how long it stays
+    // open.
     std::string editInfo(uint64_t id) const;
     // A station reacted to one of our lines: a line in the status bar for a
     // while, and one more unread on the tab out of sight.
@@ -123,7 +124,7 @@ private:
     void stationMenu(const std::string& call);
     void updateTabLabels();
 
-    // Sessions (docs/PLAN.md, "Sometimes we ragchew"): entered only with
+    // Sessions: entered only with
     // Call or by being called, left only with Leave or Leave now.
     // askFirst: "Call W1AW?" before it goes, unless another question
     // (busy, no sessions, leave the ragchew we're in) asks already.
@@ -143,7 +144,7 @@ private:
     void refreshSession();
     bool canCall() const;
 
-    // Files (docs/PLAN.md, "File transfer"). In a session they go to the
+    // Files. In a session they go to the
     // partner; to another station, Ragtime offers to call it first: there
     // is no hidden session for a file.
     void sendFilePrompt(const std::string& call);
@@ -181,7 +182,7 @@ private:
     std::string whyNoPing(const std::string& call) const;
     void setPaused(bool paused);
 
-    // Broadcast files (docs/STAGE1.md, package H): Broadcast a file... with
+    // Broadcast files: Broadcast a file... with
     // the estimate box, each file's card on the Broadcast tab, what its
     // links do, and keeping the seal chain across restarts.
     // Asks which file when path is empty.
@@ -199,7 +200,7 @@ private:
     void onBroadcastFiles();
     void saveBroadcastState();
 
-    // Inline pictures (docs/STAGE1.md, "Inline pictures"): the picture
+    // Inline pictures: the picture
     // dialog, to D2G or to the session's partner, the picture kept as it
     // went in sentPicturesDir(); each picture shown among the messages as
     // it stands, on the shelf; and the picture window, one a picture.
@@ -222,7 +223,7 @@ private:
     wxString pastPictureHtml(const std::string& path, const wxWindow* list, const wxString& href);
     void showInFrame(const std::string& key);
 
-    // Voice cards (docs/STAGE1.md, "Voice cards"): each voice message's
+    // Voice cards: each voice message's
     // card as it stands, on the shelf; the play queue; the player.
     // Received ones arrive in the queue when saved, and play by themselves
     // while the deck is open.
@@ -265,12 +266,12 @@ private:
     std::optional<double> filterWidthHz() const;
     void gearChanged();
     void showGear();
-    // Auto's path S/N: the weakest station heard lately (Stations::weakestPath).
+    // Auto's path S/N: the weakest station heard lately
+    // (Stations::weakestPath).
     void updatePathSnr(uint64_t nowMs);
     void setNarrow(bool narrow);
 
-    // The radio (docs/STAGE1.md, "The dial, the path log and the watch
-    // list"): its dial read from rigctld (never set), sending held
+    // The radio: its dial read from rigctld (never set), sending held
     // outside the US data segments when the operator asks, a line in the
     // path log for every burst heard, and the watch list's bells.
     void applyRadioPrefs();

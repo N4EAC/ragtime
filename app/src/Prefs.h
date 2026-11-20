@@ -121,7 +121,7 @@ void saveColumns(const std::vector<ragtime::broadcast::Column>& columns);
 void loadGearshift(ragtime::gearbox::Gearshift& shift);
 void saveGearshift(const ragtime::gearbox::Gearshift& shift);
 
-// Files (docs/PLAN.md, "File transfer"): where received files go (by
+// Files: where received files go (by
 // default "Ragtime received" in the documents folder), and the stations
 // whose session files are taken without asking.
 std::string receivedFolder();
@@ -159,10 +159,10 @@ std::string broadcastPartsDir();
 // The path log, a line for every burst heard, appended and never cut:
 // beside the --config file (<config>.paths.log), or appDataDir()/paths.log.
 std::string pathLogPath();
-// The pictures we send, as they went (JPEG 2000 or Cool-chic), kept to repair and to
-// show: beside the --config file (<config>.sent-pictures), or
-// appDataDir()/sent-pictures; each in a folder of its own, named by the
-// UTC time it went, so it keeps its name.
+// The pictures we send, as they went (JPEG 2000 or Cool-chic), kept to repair
+// and to show: beside the --config file (<config>.sent-pictures), or
+// appDataDir()/sent-pictures; each in a folder of its own, named by the UTC
+// time it went, so it keeps its name.
 std::string sentPicturesDir();
 // The voice messages we send (.sot files), kept to repair and to play
 // again: beside the --config file (<config>.sent-voice), or

@@ -33,7 +33,7 @@ constexpr uint64_t READ_BACK_MS = 3000;
 constexpr double CALIBRATE_QUIET_S = 4.0;
 // The edges missed what was wanted by more than this.
 constexpr double MISS_HZ = 100.0;
-// After a write the noise is left out this long: Jeff's IC-7100's AGC
+// After a write the noise is left out this long: an IC-7100's AGC
 // swells about 10 dB for 5 to 7 s after each knob turn (2026-10-26).
 constexpr double AGC_SETTLE_S = 7.0;
 // The notch's dip is looked for this far either side of where the model
@@ -61,7 +61,7 @@ wxString spanText(const Span& s)
 }
 
 // The rig reads back what was written: the knobs come back in the rig's
-// own steps, which can be coarser than Hamlib's 1/255 (Jeff's IC-7100
+// own steps, which can be coarser than Hamlib's 1/255 (an IC-7100
 // reads 0.43 back as 0.44), so within four of those.
 bool readsBack(const RigFilter& got, const RigFilter& want)
 {
@@ -584,8 +584,8 @@ void EarFilterBar::finishCalibration()
         const ear::KnobModel& m = *calibration_.result();
         saveEarCalibration(rig_.key, calibrationFrom_->mode, calibrationFrom_->widthHz, m);
         calibrationKey_.clear();
-        // Short enough to fit the line (Hamlet, 2026-10-26: the longer
-        // wording was cut off); the tooltip has it too.
+        // Short enough to fit the line (2026-10-26: the longer wording
+        // was cut off); the tooltip has it too.
         std::string news = "Calibrated: " + std::to_string(std::abs(tens(m.hzPerKnob))) + " Hz a turn, " +
                            std::to_string(tens(m.widthHz)) + " Hz wide about " + std::to_string(tens(m.centreHz)) +
                            " Hz";

@@ -1,5 +1,5 @@
 // VoiceAudio: the microphone and speaker for voice messages, Ragtime's
-// first (docs/STAGE1.md, "Voice audio"). PipeWire on Linux, WASAPI in
+// first. PipeWire on Linux, WASAPI in
 // shared mode on Windows, Core Audio on macOS.
 //
 // It never touches the radio's sound card: the devices it offers leave out

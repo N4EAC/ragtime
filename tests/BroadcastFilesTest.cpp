@@ -355,7 +355,7 @@ void testAirtime()
     CHECK(!broadcast::findMode({}, "no-such-mode").valid());
     CHECK(broadcast::findMode({}, "", "qpsk-r1/3").valid());
 
-    // docs/PLAN.md's table: fsk16r25-r1/3 about 16 s a one-codeword
+    // From Data2G's modes: fsk16r25-r1/3 about 16 s a one-codeword
     // burst and a 52 s window; qpsk-r1/3 about 3 s and 13 s.
     CHECK(broadcast::oneCodewordSeconds(fsk) > 15.0 && broadcast::oneCodewordSeconds(fsk) < 16.5);
     uint64_t wf = broadcast::listeningWindowMs(fsk);

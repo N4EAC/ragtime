@@ -1,13 +1,13 @@
 // Devices: the microphones and speakers voice messages may use, with the
-// radio's sound card left out (docs/STAGE1.md, "Voice audio").
+// radio's sound card left out.
 //
 // Ragtime never plays to the radio, and a voice message recorded from the
 // radio's input would be the band, not the operator. So every sound card
 // data2g-host records from or plays to is the radio's: the source at the
 // other end of each data2g capture (as ear::findHostCapture finds it) and
 // the sink at the other end of each data2g playback, the playback twin.
-// All of them, not just the host Ragtime talks to: on the two-host bench
-// both cards are radios. A card's other half goes too (its input and
+// All of them, not just the host Ragtime talks to: with two hosts on one
+// machine both cards are radios. A card's other half goes too (its input and
 // output share ear::GraphNode::device), and so do the cards Ragtime saw
 // data2g-host use before, remembered by name, so the radio stays left out
 // while data2g-host isn't running.

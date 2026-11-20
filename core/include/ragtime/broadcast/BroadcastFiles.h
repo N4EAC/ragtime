@@ -1,5 +1,5 @@
-// Files broadcast on the D2G group, both ways (docs/PLAN.md, "File
-// transfer"; docs/PROTOCOL.md, "Broadcast files").
+// Files broadcast on the D2G group, both ways (docs/PROTOCOL.md, "Broadcast
+// files").
 //
 // Ours. A file of at most 300 KB is announced (a FileAnnounce, an item of
 // the broadcast numbering) and sent once in pieces (FilePiece records,
@@ -18,9 +18,9 @@
 // (docs/PROTOCOL.md, "Parity"): as many as it lacks, and more for the
 // share it expects to lose; any of them fill any gap, so once the pieces
 // and parity pieces held are as many as the file's pieces, the missing
-// ones are rebuilt. With every piece in, the whole file's digest is checked against the announce's; a match
-// is saved, a mismatch throws the pieces away and asks for them all again
-// once, then fails.
+// ones are rebuilt. With every piece in, the whole file's digest is checked
+// against the announce's; a match is saved, a mismatch throws the pieces away
+// and asks for them all again once, then fails.
 //
 // No sockets and no clock: HostLink is the socket-free one the app feeds,
 // and the time is passed in (Unix ms; records are stamped with it).

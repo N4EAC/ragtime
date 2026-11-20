@@ -1,7 +1,6 @@
-// Playing a voice message while it is still arriving (docs/STAGE1.md,
-// "Voice while it arrives"). A ragchew's stream is reliable and in order,
-// so the far end can play a clip as its bytes come, if it starts late
-// enough that the bytes keep ahead of the speech.
+// Playing a voice message while it is still arriving. A ragchew's stream is
+// reliable and in order, so the far end can play a clip as its bytes come, if
+// it starts late enough that the bytes keep ahead of the speech.
 //
 // The professor's sum: a clip of S bytes arriving at R bytes a second and
 // played at P = 300 bytes a second can start after S/R - S/P seconds and

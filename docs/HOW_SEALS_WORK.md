@@ -4,8 +4,7 @@ A plain-words primer on Ragtime's seals: what they are, when they go,
 what is inside one, how they get lost lines sent again, and what a
 station that tunes in late does with them. The exact rules, byte for
 byte, are in [PROTOCOL.md](PROTOCOL.md) ("Seal", "RepairRequest" and
-"Seals and repair"), and the reasoning behind them is in
-[PLAN.md](PLAN.md) ("Seals, receipts and repairs"). The code is
+"Seals and repair"). The code is
 `core/src/broadcast/Seals.*`.
 
 ## The problem a seal solves

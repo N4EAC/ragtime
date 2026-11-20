@@ -1,5 +1,5 @@
 // The Session tab's engine: one ragchew at a time, entered on purpose and
-// left on purpose (docs/PLAN.md, "Sometimes we ragchew"; docs/PROTOCOL.md,
+// left on purpose (docs/PROTOCOL.md,
 // "Sessions").
 //
 // A session starts only when the operator presses Call or one comes in,
