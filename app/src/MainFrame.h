@@ -443,6 +443,7 @@ private:
     std::string notedFilter_;   // the rig's filter, as last written there
     ragtime::radio::AutoAlc autoAlc_;   // the TX level, kept under the rig's ALC
     ragtime::radio::WorkOrder recentOrder_ = ragtime::radio::WorkOrder::LikelyNow;
+    uint64_t recentClearedMs_ = 0;
     uint64_t recentVersion_ = ~0ull;    // the path log's version Recent work was drawn from
     uint64_t recentMs_ = 0;
     std::string recentBand_;

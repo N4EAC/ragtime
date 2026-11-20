@@ -303,6 +303,9 @@ MainFrame::MainFrame()
             recentOrder_ = static_cast<radio::WorkOrder>(order);
     }
 
+    wxULongLong_t cleared = 0;
+    if (wxString::FromUTF8(loadString(keys::RECENT_CLEARED, "0")).ToULongLong(&cleared))
+        recentClearedMs_ = cleared;
     buildMenus();
     buildLayout();
 
@@ -825,6 +828,13 @@ void MainFrame::buildLayout()
     recent_->onOrder([this](radio::WorkOrder order) {
         recentOrder_ = order;
         saveInt(keys::RECENT_ORDER, (int)order);
+        refreshRecent(true);
+    });
+    recent_->onClear([this] {
+        // Path log timestamps are stored to whole seconds.
+        recentClearedMs_ = HostConnection::nowMs() / 1000 * 1000 + 999;
+        saveString(keys::RECENT_CLEARED, std::to_string(recentClearedMs_));
+        wxConfigBase::Get()->Flush();
         refreshRecent(true);
     });
     recent_->bells([this](const std::string& call) { return watch_.belled(call); });
@@ -1505,8 +1515,8 @@ void MainFrame::refreshRecent(bool force)
     bool fresh = pathLog_.version() != recentVersion_ && now >= recentMs_ + 5000;
     if (force || fresh || band != recentBand_ || now >= recentMs_ + 30 * 1000)
     {
-        recent_->setWork(radio::recentWork(pathLog_.entries(), now, radio::PathLog::KEEP_DAYS, band, recentOrder_),
-                         now);
+        recent_->setWork(radio::recentWork(pathLog_.entries(), now, radio::PathLog::KEEP_DAYS, band,
+                                           recentOrder_, recentClearedMs_), now);
         recentVersion_ = pathLog_.version();
         recentMs_ = now;
         recentBand_ = band;

@@ -284,8 +284,21 @@ void snrs()
     CHECK(!k7abc->snrDb);
 }
 
+void clearedHistory()
+{
+    auto all = net();
+    CHECK(!recentWork(all, NOW, 14, "", WorkOrder::Latest).rows.empty());
+    CHECK(recentWork(all, NOW, 14, "", WorkOrder::Latest, NOW).rows.empty());
+    all.push_back(worked(NOW + 1000, "N4EAC"));
+    const auto fresh = recentWork(all, NOW + 1000, 14, "", WorkOrder::Latest, NOW);
+    CHECK_EQ(fresh.rows.size(), size_t(1));
+    CHECK(row(fresh, "N4EAC") != nullptr);
+    CHECK(all.size() > size_t(1)); // Clearing the view keeps archived entries.
+}
+
 int main()
 {
+    clearedHistory();
     likelyNow();
     locators();
     snrs();

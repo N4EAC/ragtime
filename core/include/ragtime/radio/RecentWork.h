@@ -74,9 +74,10 @@ struct RecentWork
 };
 
 // The stations in the entries from the last `days` days, sorted. Our own
-// call is never in the path log, so never here.
+// call is never in the path log, so never here. Entries at or before
+// clearedThroughMs are hidden without removing them from the log.
 RecentWork recentWork(const std::vector<PathEntry>& entries, uint64_t nowMs, size_t days, const std::string& bandNow,
-                      WorkOrder order);
+                      WorkOrder order, uint64_t clearedThroughMs = 0);
 
 // Under the call: "At this hour 5 days, 17 m · worked 3", "Worked 2 days",
 // "Heard 4 days".

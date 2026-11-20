@@ -50,7 +50,7 @@ const char* workOrderLabel(WorkOrder order)
 }
 
 RecentWork recentWork(const std::vector<PathEntry>& entries, uint64_t nowMs, size_t span, const std::string& bandNow,
-                      WorkOrder order)
+                      WorkOrder order, uint64_t clearedThroughMs)
 {
     RecentWork work;
     work.days = span;
@@ -71,7 +71,7 @@ RecentWork recentWork(const std::vector<PathEntry>& entries, uint64_t nowMs, siz
     std::map<std::string, Gather> byCall;
     for (const PathEntry& e : entries)
     {
-        if (e.call.empty() || e.atMs < since || e.atMs > nowMs + HOUR_MS) continue;
+        if (e.call.empty() || e.atMs <= clearedThroughMs || e.atMs < since || e.atMs > nowMs + HOUR_MS) continue;
         Gather& g = byCall[e.call];
         uint64_t day = e.atMs / PathLog::DAY_MS;
         if (!e.locator.empty() && e.atMs >= g.locatorMs)

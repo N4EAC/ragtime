@@ -212,6 +212,7 @@ constexpr const char* RECENT_HEIGHT = "/Window/RecentWorkHeight";      // under 
 constexpr const char* THEME = "/Window/Theme";                        // ThemeChoice: 0 the desktop's, 1 light, 2 dark
 constexpr const char* SORT_COLUMN = "/Stations/SortColumn";
 constexpr const char* SORT_ASCENDING = "/Stations/SortAscending";
+constexpr const char* RECENT_CLEARED = "/Stations/RecentWorkClearedThroughMs";
 constexpr const char* RECENT_ORDER = "/Stations/RecentWorkOrder";     // radio::WorkOrder
 constexpr const char* RECEIVED_FOLDER = "/Files/ReceivedFolder";
 constexpr const char* AUTO_ACCEPT = "/Files/AutoAccept";             // callsigns, comma separated

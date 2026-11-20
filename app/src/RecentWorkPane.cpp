@@ -3,6 +3,7 @@
 #include <string>
 #include <utility>
 
+#include <wx/button.h>
 #include <wx/choice.h>
 #include <wx/font.h>
 #include <wx/htmllbox.h>
@@ -133,7 +134,13 @@ RecentWorkPane::RecentWorkPane(wxWindow* parent)
 
     auto* header = new wxBoxSizer(wxHORIZONTAL);
     header->Add(title, 1, wxALIGN_CENTER_VERTICAL | wxLEFT, FromDIP(6));
-    header->Add(orderChoice_, 0, wxALIGN_CENTER_VERTICAL | wxALL, FromDIP(3));
+    clear_ = new wxButton(this, wxID_ANY, "Clear", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+    clear_->SetToolTip("Clear Recent Work. Session and path logs are kept.");
+    clear_->Enable(false);
+    clear_->Bind(wxEVT_BUTTON, [this](wxCommandEvent&) {
+        if (onClear_) onClear_();
+    });
+    header->Add(clear_, 0, wxALIGN_CENTER_VERTICAL | wxALL, FromDIP(3));
 
     book_ = new wxSimplebook(this);
     list_ = new RecentWorkList(book_, this);
@@ -156,6 +163,7 @@ RecentWorkPane::RecentWorkPane(wxWindow* parent)
 
     auto* sizer = new wxBoxSizer(wxVERTICAL);
     sizer->Add(header, 0, wxEXPAND);
+    sizer->Add(orderChoice_, 0, wxEXPAND | wxALL, FromDIP(3));
     sizer->Add(book_, 1, wxEXPAND);
     SetSizer(sizer);
 
@@ -221,6 +229,7 @@ void RecentWorkPane::setWork(RecentWork work, uint64_t nowMs)
 {
     work_ = std::move(work);
     nowMs_ = nowMs;
+    clear_->Enable(!work_.rows.empty());
     bool listed = false;
     for (const WorkRow& r : work_.rows)
     {

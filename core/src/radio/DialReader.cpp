@@ -196,16 +196,23 @@ void DialReader::askNext(uint64_t nowMs)
     // Operator-requested tuning goes only while receiving.
     if (frequencyWrite_)
     {
+        if (vfo_ == Vfo::Yes && tuneVfo_.empty())
+        {
+            out_ += "+v\n";
+            asking_ = Ask::TuneVfo;
+            askedMs_ = nowMs;
+            return;
+        }
+        const std::string vfo = vfo_ == Vfo::Yes ? tuneVfo_ + " " : "";
         if (!tunePttChecked_)
         {
-            out_ += vfo_ == Vfo::Yes ? "+t currVFO\n" : "+t\n";
+            out_ += vfo_ == Vfo::Yes ? "+t " + tuneVfo_ + "\n" : "+t\n";
             asking_ = Ask::TunePtt;
             tunePttOn_ = false;
             askedMs_ = nowMs;
             return;
         }
-        out_ += "F " + std::string(vfo_ == Vfo::Yes ? "currVFO " : "") +
-                std::to_string(*frequencyWrite_) + "\n";
+        out_ += "F " + vfo + std::to_string(*frequencyWrite_) + "\n";
         frequencyWrite_.reset();
         asking_ = Ask::SetFrequency;
         askedMs_ = nowMs;
@@ -298,6 +305,7 @@ bool DialReader::setFrequency(uint64_t hz, uint64_t nowMs)
 {
     if (!connected_ || vfo_ == Vfo::Asking || keyed_ || hz < 1000 || hz >= 1000000000000ULL) return false;
     frequencyProblem_.clear();
+    tuneVfo_.clear();
     tunePttChecked_ = false;
     frequencyWrite_ = hz;
     askNext(nowMs);
@@ -437,9 +445,9 @@ void DialReader::tick(uint64_t nowMs)
     if (!connected_) return;
     if (asking_ != Ask::None && nowMs >= askedMs_ + ANSWER_MS)
     {
-        if (asking_ == Ask::TunePtt)
+        if (asking_ == Ask::TunePtt || asking_ == Ask::TuneVfo)
         {
-            frequencyProblem_ = "The radio did not answer the transmit state check";
+            frequencyProblem_ = "The radio did not answer the VFO or transmit state check";
             frequencyWrite_.reset();
             version_++;
         }
@@ -601,15 +609,38 @@ void DialReader::onLine(const std::string& line, uint64_t nowMs)
 {
     if (line.empty()) return;
     int code = 0;
+    if (asking_ == Ask::TuneVfo)
+    {
+        std::string name = line.compare(0, 5, "VFO: ") == 0 ? line.substr(5) : line;
+        // Explicit names work with both Hamlib and CAT servers whose
+        // setters do not recognize the currVFO placeholder.
+        const bool named = !name.empty() && name != "get_vfo:" &&
+                           name.find_first_not_of("ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789_") ==
+                               std::string::npos;
+        if (named) tuneVfo_ = name;
+        if (!rprt(line, code)) return;
+        // Older Hamlib backends may not implement get_vfo. The standard
+        // current-VFO token remains valid for those servers.
+        if (unknownCode(code)) tuneVfo_ = "currVFO";
+        if ((!unknownCode(code) && code != 0) || tuneVfo_.empty())
+        {
+            frequencyProblem_ = "The radio did not report an active VFO: " + line;
+            frequencyWrite_.reset();
+            version_++;
+        }
+        answered(nowMs);
+        return;
+    }
     if (asking_ == Ask::TunePtt)
     {
         if (line.compare(0, 5, "PTT: ") == 0)
             tunePttOn_ = line.substr(5) != "0";
         if (!rprt(line, code)) return;
         tunePttChecked_ = true;
-        if (tunePttOn_)
+        if (tunePttOn_ || (code != 0 && !unknownCode(code)))
         {
-            frequencyProblem_ = "Frequency change cancelled because the radio is transmitting";
+            frequencyProblem_ = tunePttOn_ ? "Frequency change cancelled because the radio is transmitting"
+                                          : "The radio refused the transmit state check: " + line;
             frequencyWrite_.reset();
             version_++;
         }

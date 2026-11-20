@@ -10,6 +10,7 @@
 #include "UnpickClick.h"
 #include "ragtime/radio/RecentWork.h"
 
+class wxButton;
 class wxChoice;
 class wxSimplebook;
 class RecentWorkList;
@@ -34,6 +35,7 @@ public:
     void onMenu(CallFn fn) { onMenu_ = std::move(fn); }
     // The order was picked from the pane's own menu.
     void onOrder(OrderFn fn) { onOrder_ = std::move(fn); }
+    void onClear(std::function<void()> fn) { onClear_ = std::move(fn); }
     void bells(BellFn belled) { belled_ = std::move(belled); }
 
     // Our own locator, for the distance in the tooltips.
@@ -61,6 +63,8 @@ private:
     wxString tooltip(int row) const;
     void showSelection();
 
+    std::function<void()> onClear_;
+    wxButton* clear_ = nullptr;
     wxChoice* orderChoice_ = nullptr;
     wxSimplebook* book_ = nullptr;
     RecentWorkList* list_ = nullptr;

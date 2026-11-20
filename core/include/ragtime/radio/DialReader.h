@@ -177,6 +177,7 @@ private:
         Set,        // a filter setting, answered by an RPRT
         SetFrequency,
         TunePtt,
+        TuneVfo,
     };
     enum class State
     {
@@ -218,6 +219,7 @@ private:
     uint64_t readMs_ = 0;           // the last answer (or the end of keying)
     std::optional<uint64_t> hz_;
     std::optional<uint64_t> frequencyWrite_;
+    std::string tuneVfo_;
     bool tunePttChecked_ = false;
     bool tunePttOn_ = false;
     std::string frequencyProblem_;

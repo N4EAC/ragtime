@@ -1133,8 +1133,9 @@ void file()
 
 void frequencySelection()
 {
-    for (const bool vfo : {false, true})
+    for (const std::string name : {"", "VFOA", "VFOB", "Main", "Sub", "currVFO"})
     {
+        const bool vfo = !name.empty();
         DialReader dial;
         uint64_t t = T0;
         CHECK(!dial.setFrequency(7066000, t));
@@ -1146,20 +1147,30 @@ void frequencySelection()
         say(dial, "7110000\n", t);
         dial.takeOutput();
         CHECK(dial.setFrequency(7066000, ++t));
-        CHECK_EQ(dial.takeOutput(), vfo ? std::string("+t currVFO\n") : std::string("+t\n"));
+        auto checkVfo = [&] {
+            if (vfo)
+            {
+                CHECK_EQ(dial.takeOutput(), std::string("+v\n"));
+                say(dial, name == "currVFO" ? "RPRT -11\n" : "get_vfo:\nVFO: " + name + "\nRPRT 0\n", t);
+            }
+        };
+        checkVfo();
+        CHECK_EQ(dial.takeOutput(), vfo ? "+t " + name + "\n" : std::string("+t\n"));
         say(dial, "get_ptt:\nPTT: 0\nRPRT 0\n", t);
-        CHECK_EQ(dial.takeOutput(), vfo ? std::string("F currVFO 7066000\n") : std::string("F 7066000\n"));
+        CHECK_EQ(dial.takeOutput(), vfo ? "F " + name + " 7066000\n" : std::string("F 7066000\n"));
         say(dial, "RPRT 0\n", t);
         CHECK_EQ(dial.takeOutput(), vfo ? std::string("f currVFO\n") : std::string("f\n"));
         say(dial, "7066000\n", t);
         CHECK(dial.dialHz(t) == std::optional<uint64_t>(7066000));
         CHECK(dial.frequencyProblem().empty());
         CHECK(dial.setFrequency(14066000, ++t));
+        checkVfo();
         dial.takeOutput();
         say(dial, "get_ptt:\nPTT: 1\nRPRT 0\n", t);
         CHECK(dial.takeOutput().find("F ") == std::string::npos);
         CHECK(!dial.frequencyProblem().empty());
         CHECK(dial.setFrequency(14066000, ++t));
+        checkVfo();
         dial.takeOutput();
         say(dial, "get_ptt:\nPTT: 0\nRPRT 0\n", t);
         dial.takeOutput();
@@ -1167,6 +1178,27 @@ void frequencySelection()
         CHECK(dial.frequencyProblem().find("RPRT -11") != std::string::npos);
         dial.takeOutput();
         say(dial, "7066000\n", t);
+        if (vfo)
+        {
+            CHECK(dial.setFrequency(14066000, ++t));
+            CHECK_EQ(dial.takeOutput(), std::string("+v\n"));
+            say(dial, "RPRT -5\n", t);
+            CHECK(dial.takeOutput().find("F ") == std::string::npos);
+            CHECK(dial.frequencyProblem().find("active VFO") != std::string::npos);
+        }
+        CHECK(dial.setFrequency(14066000, ++t));
+        checkVfo();
+        dial.takeOutput();
+        say(dial, "RPRT -5\n", t);
+        CHECK(dial.takeOutput().find("F ") == std::string::npos);
+        CHECK(dial.frequencyProblem().find("transmit state check") != std::string::npos);
+        CHECK(dial.setFrequency(14066000, ++t));
+        checkVfo();
+        dial.takeOutput();
+        t += 4000;
+        dial.tick(t);
+        CHECK(dial.takeOutput().find("F ") == std::string::npos);
+        CHECK(!dial.frequencyProblem().empty());
         dial.setKeyed(true, ++t);
         CHECK(!dial.setFrequency(14066000, t));
         dial.setKeyed(false, ++t);

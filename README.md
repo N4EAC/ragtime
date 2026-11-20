@@ -176,6 +176,10 @@ matching Data2G v0.5.3.
 **About Ragtime** lists the Ragtime version, built-in Data2G version, loaded
 sotto format, and bundled sotto revision.
 
+Recent Work has a **Clear** button. Clearing persists across restarts and
+keeps the archived path and session logs; stations appear again as new
+activity arrives.
+
 ### Libraries
 
 These are all the libraries the build looks for. The package names are
