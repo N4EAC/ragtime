@@ -4,7 +4,11 @@
 if(RAGTIME_BUILD_WX)
     include(BuildWxWidgets)
 else()
-    find_package(wxWidgets 3.2 REQUIRED COMPONENTS html net core base)
+    if(APPLE)
+        find_package(wxWidgets 3.2.10 REQUIRED COMPONENTS html net core base)
+    else()
+        find_package(wxWidgets 3.2 REQUIRED COMPONENTS html net core base)
+    endif()
     set(RAGTIME_WX_LIBS ${wxWidgets_LIBRARIES})
 endif()
 

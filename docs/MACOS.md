@@ -7,7 +7,7 @@ minimum supported OS and Intel/universal distribution are still open.
 
 ## Build the desktop app
 
-This configuration builds a static, pinned wxWidgets 3.2.9 from source
+This configuration builds a static, pinned wxWidgets 3.2.11 from source
 and leaves optional Hamlib, image dependencies, RNNoise and sotto out.
 Git and network access are needed on the first configure. PipeWire and
 automatic Linux sotto building are already off by default on Apple.
@@ -24,8 +24,13 @@ open build-macos/app/Ragtime.app
 
 To use an existing wxWidgets checkout with its submodules, also pass
 `-DRAGTIME_WX_SOURCE=/absolute/path/to/wxWidgets`. To use an installed
-Cocoa wxWidgets instead, leave `RAGTIME_BUILD_WX` off and make its
-`wx-config` discoverable. Warnings remain errors for Ragtime's sources.
+Cocoa wxWidgets (3.2.10 or newer) instead, leave `RAGTIME_BUILD_WX` off
+and make its `wx-config` discoverable. Warnings remain errors for
+Ragtime's sources.
+
+macOS fetches wxWidgets 3.2.11. Version 3.2.9 has a native Save dialog
+assertion with a single file filter ([upstream #26148](https://github.com/wxWidgets/wxWidgets/issues/26148)),
+fixed in 3.2.10. An existing source checkout must also include that fix.
 
 The widget tests open real Cocoa windows and need a logged-in
 graphical session. Fake-host tests need permission to open loopback
@@ -104,7 +109,7 @@ validation before submitting changes.
 ## Validation of the initial port
 
 Tested on Apple Silicon with macOS 15.8.3, Apple Clang 17 and the static
-wxWidgets 3.2.9 configuration above. Release builds keep
+wxWidgets 3.2.11 configuration above. Release builds keep
 `RAGTIME_WERROR=ON`. All 43 registered tests pass, including the bundle
 codec search, application version and both Cocoa widget checks.
 The real sotto codec round trip remains skipped because no codec is
