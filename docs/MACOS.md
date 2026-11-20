@@ -37,6 +37,11 @@ graphical session. Fake-host tests need permission to open loopback
 sockets. The codec round trip is skipped when no real libsotto is found;
 the missing-symbol and bundle-search checks still run.
 
+When Python 3 is available, macOS also registers `ragtime_app_shutdown_test`.
+It opens a real app session on its own fake-host bench, quits the app and
+checks that a fresh client can call again. Ports 8100/8300 and 8110/8310
+must be free; an occupied bench port skips this check before app launch.
+
 Stage the development bundle with:
 
 ```sh
@@ -110,7 +115,7 @@ validation before submitting changes.
 
 Tested on Apple Silicon with macOS 15.8.3, Apple Clang 17 and the static
 wxWidgets 3.2.11 configuration above. Release builds keep
-`RAGTIME_WERROR=ON`. All 43 registered tests pass, including the bundle
+`RAGTIME_WERROR=ON`. All 44 registered tests pass (with Python 3), including the bundle
 codec search, application version and both Cocoa widget checks.
 The real sotto codec round trip remains skipped because no codec is
 installed. Other optional features disabled above are not covered.

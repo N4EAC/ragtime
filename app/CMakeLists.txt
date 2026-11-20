@@ -147,4 +147,13 @@ if(RAGTIME_TESTS AND NOT WIN32)
     ragtime_widget_test(ragtime_recent_work_pane_test ${PROJECT_SOURCE_DIR}/tests/RecentWorkPaneTest.cpp
         src/RecentWorkPane.cpp src/DrawnIcon.cpp src/Html.cpp src/Theme.cpp src/UnpickClick.cpp)
     set_tests_properties(ragtime_chat_list_test ragtime_recent_work_pane_test PROPERTIES TIMEOUT 30)
+    if(APPLE)
+        find_package(Python3 QUIET COMPONENTS Interpreter)
+        if(Python3_Interpreter_FOUND)
+            add_test(NAME ragtime_app_shutdown_test COMMAND ${Python3_EXECUTABLE}
+                ${PROJECT_SOURCE_DIR}/tests/macos/AppShutdownTest.py
+                --app $<TARGET_FILE:ragtime> --bench $<TARGET_FILE:ragtime_fake_air>)
+            set_tests_properties(ragtime_app_shutdown_test PROPERTIES TIMEOUT 75 SKIP_RETURN_CODE 77)
+        endif()
+    endif()
 endif()

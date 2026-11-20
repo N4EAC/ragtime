@@ -361,6 +361,11 @@ MainFrame::MainFrame()
         // What is under way ends here; a part received is kept, and the
         // log keeps it for next time.
         sessionFiles_.stopAll("Ragtime was closed");
+        // Closing the client sockets does not end the modem's ARQ link.
+        // Leave it explicitly while the command port is still open, so
+        // the next Ragtime can call again and resume the kept file.
+        session_.leaveNow(HostConnection::nowMs());
+        host_->flush();
         // The deck lets go of the microphone before the audio stops.
         if (voiceDeck_) voiceDeck_->Close(true);
         // The gearshift stops asking the rig for the band's noise.
