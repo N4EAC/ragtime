@@ -49,11 +49,10 @@ cmake --install build-macos --prefix "$PWD/dist/macos"
 dist/macos/Ragtime.app/Contents/MacOS/Ragtime --version
 ```
 
-This is an unsigned development bundle. Signing, notarization and
-redistribution of optional third-party dylibs are not implemented. If
-optional dependencies or a shared wxWidgets are enabled, installation
-does not collect their dylibs. Do not distribute that build as a
-self-contained application.
+This is an unsigned development bundle. Signing and notarization are not
+implemented. The explicit voice-codec option below collects sotto and
+Codec 2 with their licences. Other optional dependencies and a shared
+wxWidgets are not collected; those builds are not self-contained.
 
 ## Directory layout
 
@@ -82,7 +81,44 @@ Both `libsotto.0.dylib` and `libsotto.dylib` are recognized. Paths are
 resolved from the executable, including symlink launches, independently
 of the working directory. A real codec and its dependent libraries must
 be built for the same architecture and have suitable dylib install names.
-`packaging/build-sotto.sh` remains Linux-only.
+`packaging/build-sotto.sh` remains Linux-only. The macOS recipe below
+builds native dylibs without changing the codec source checkout.
+
+## Build and bundle voice codecs
+
+The codec build is explicit and separate from configuring the application:
+
+```sh
+packaging/macos/build-sotto.sh
+cmake -S . -B build-macos \
+  -DRAGTIME_MACOS_SOTTO_DIR="$PWD/build-macos/build-sotto/out"
+cmake --build build-macos --parallel 6
+ctest --test-dir build-macos --output-on-failure
+cmake --install build-macos --prefix "$PWD/dist/macos"
+```
+
+The recipe uses the sotto commit in `packaging/sotto.sh`, its Codec 2
+fork and committed v3.8 tables. It needs Apple Clang, CMake and Git, and
+network access for the initial checkout. `SOTTO_SOURCE` uses an existing
+checkout without fetching or modifying it; `SOTTO_WORK` changes the build
+directory. The optional first argument changes the output directory.
+`SOTTO_JOBS` controls parallelism (default 4). Builds target the native
+architecture and macOS 14.2 by default; Intel/universal builds remain
+unverified. Ragtime's `RAGTIME_BUILD_SOTTO` remains Linux-only.
+
+With `RAGTIME_MACOS_SOTTO_DIR` set, CMake requires both dylibs and licence
+files. It copies the dylibs into `Contents/Frameworks` and licences into
+`Contents/Resources/licences`. Ragtime still loads sotto dynamically;
+neither codec is linked into the application. The dylibs use `@rpath`
+install names and `@loader_path` search paths, with system-library
+dependencies only. These artifacts are development builds, not notarized
+releases.
+
+The opt-in `ragtime_packaged_sotto_test` relocates a real codec-test bundle
+to a path containing spaces, clears dyld/library overrides, verifies the
+loaded sotto path and runs the encoder/decoder checks. It requires the
+codec to load rather than silently skipping. The original tests still
+cover missing and incompatible libraries when codecs are omitted.
 
 Voice uses Core Audio on macOS 14.2 and later, whose process objects let
 Ragtime identify the audio devices used by local `data2g-host` and
@@ -137,16 +173,31 @@ The initial audio validation used the built-in speakers on the development
 Mac: ordinary and streamed 8 kHz chimes completed, including a stream gap.
 A temporary process named `data2g-host` using that output with silence
 verified native ownership discovery and exclusion of its microphone twin.
-All 47 registered tests pass with the native voice backend enabled.
+All 48 registered tests pass with bundled native voice codecs enabled.
 Automated audio tests use synthetic topology and a radio-only inventory, and
 never open hardware or prompt for permission. They cover aggregate and
 related-device exclusion, remembered names, missing/refused selections,
 stream gaps, attenuation/boost and completion/cancellation during shutdown.
 
-Microphone permission grant/denial, capture, physical hotplug and device
+The native Settings microphone test captured and played back built-in
+microphone audio. Closing Settings during capture and then quitting the
+app completed normally. Microphone access was already authorized on this
+Mac; permission waiting, grant/denial transitions and late completion after
+stop/destruction are covered with a fake permission adapter. The three
+second Settings test pauses its clock while an OS permission prompt is
+pending, and the deck disables Push to talk until permission is settled.
+
+Actual first-use permission interaction, physical hotplug and device
 changes during active recording/playback still need hardware acceptance.
-The sotto codec is a separate dependency: audio I/O does not by itself
-enable encoding or decoding voice messages.
+The real codec round trips pass for 2400, 1200, 600 and 400 bit/s, as well
+as playback of the older codec-1 fixture.
+
+The two-instance fake-host bench also passed the complete native voice
+path: MACOS1 captured a three-second clip (156 codec-2 frames), monitored
+it through sotto, and broadcast the 943-byte `.sot` to MACOS2. The receiver
+saved the complete file, byte-for-byte identical to the sender's, and
+played it through the built-in speakers to completion. Both instances used
+isolated settings and loopback hosts; no real radio was involved.
 
 ## Fake-host bench
 
@@ -178,8 +229,9 @@ wxWidgets 3.2.11 configuration above. Release builds keep
 `RAGTIME_WERROR=ON`. All 44 registered tests pass (with Python 3),
 including the bundle codec search, application version, both Cocoa widget
 checks and the real-app session shutdown check.
-The real sotto codec round trip remains skipped because no codec is
-installed. Other optional features disabled above are not covered.
+The initial acceptance run skipped the real sotto round trip because no
+codec was installed. The native voice checks above cover the later codec
+build. Other optional features disabled above are not covered.
 
 The installed bundle starts, connects to `ragtime_fake_air`, displays
 incoming broadcasts and sends UTF-8 chat through the clipboard (`café —
