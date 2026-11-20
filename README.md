@@ -121,7 +121,7 @@ thresholds...** in the gearshift. See [docs/GEARBOX.md](docs/GEARBOX.md).
 
 ## Building
 
-For the initial macOS Cocoa build and platform limits, see
+For macOS build, audio and test instructions, see
 [docs/MACOS.md](docs/MACOS.md).
 
 On Ubuntu 24.04:
@@ -336,7 +336,8 @@ Sources: [ARRL band plan](https://www.arrl.org/band-plan),
 Ragtime is a front end for a separately running `data2g-host`, reached
 over TCP. It never starts the modem and never plays to the radio's
 sound card; its Ear only listens in, through PipeWire on Linux or
-WASAPI on Windows, to what data2g-host records, and voice uses your own
+WASAPI on Windows or Core Audio on macOS, to what data2g-host records,
+and voice uses your own
 microphone and speaker, never the radio's card (Settings > Voice).
 It reads the radio's dial from rigctld, or opens the rig itself with
 Hamlib (Settings > Rig), and can key it when data2g-host does, for rigs
@@ -352,8 +353,7 @@ Messages are signed, never encrypted, as Part 97 requires.
 | --- | --- |
 | [docs/PLAN.md](docs/PLAN.md) | The full design: the net, ragchews, broadcast mode, files, signing, store and forward, frequencies, decisions and open questions |
 | [docs/STAGE1.md](docs/STAGE1.md) | Stage 1, parity with Glissando's Data2G mode, split into work packages |
-| [docs/MACOS.md](docs/MACOS.md) | macOS Cocoa development build, native adapters and remaining platform limits |
-| [docs/PORTING.md](docs/PORTING.md) | macOS port investigation: baseline experiments, platform gaps and work packages |
+| [docs/MACOS.md](docs/MACOS.md) | macOS build, audio and test instructions |
 | [docs/HOW_SEALS_WORK.md](docs/HOW_SEALS_WORK.md) | Seals in plain words, with pictures: what is inside one, how repairs work, and what a late joiner asks for |
 | [docs/GEARBOX.md](docs/GEARBOX.md) | The gearshift: how a Data2G mode is picked from the Submode Map |
 | [docs/MOCKUPS.md](docs/MOCKUPS.md) | The screens, colours, Globus and seal icons |
