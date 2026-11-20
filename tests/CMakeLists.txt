@@ -120,6 +120,24 @@ if(APPLE)
         "-DWRONG_LIBRARY=$<TARGET_FILE:ragtime_not_sotto>"
         "-DBUNDLE_DIR=${CMAKE_CURRENT_BINARY_DIR}/sotto-bundle-test/Codec.app"
         -P "${CMAKE_CURRENT_SOURCE_DIR}/macos/SottoBundleTest.cmake")
+    if(RAGTIME_MACOS_SOTTO_DIR)
+        add_executable(ragtime_sotto_bundle_roundtrip MACOSX_BUNDLE SottoTest.cpp Check.h)
+        target_include_directories(ragtime_sotto_bundle_roundtrip PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+        ragtime_warnings(ragtime_sotto_bundle_roundtrip)
+        target_link_libraries(ragtime_sotto_bundle_roundtrip PRIVATE ragtime_audio)
+        target_compile_definitions(ragtime_sotto_bundle_roundtrip PRIVATE
+            RAGTIME_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+            RAGTIME_NOT_SOTTO="$<TARGET_FILE_NAME:ragtime_not_sotto>")
+        add_dependencies(ragtime_sotto_bundle_roundtrip ragtime_not_sotto)
+        set_target_properties(ragtime_sotto_bundle_roundtrip PROPERTIES MACOSX_BUNDLE YES
+            MACOSX_BUNDLE_GUI_IDENTIFIER org.ragtime.radio.codec-test)
+        ragtime_macos_sotto(ragtime_sotto_bundle_roundtrip)
+        add_test(NAME ragtime_packaged_sotto_test COMMAND ${CMAKE_COMMAND}
+            "-DBUNDLE=$<TARGET_BUNDLE_DIR:ragtime_sotto_bundle_roundtrip>"
+            "-DSTAGE=${CMAKE_CURRENT_BINARY_DIR}/relocated-codec/Voice Round Trip.app"
+            "-DWRONG_LIBRARY=$<TARGET_FILE:ragtime_not_sotto>"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/macos/PackagedSottoTest.cmake")
+    endif()
 endif()
 set(RAGTIME_SOTTO_TEST_LIB "" CACHE FILEPATH "A libsotto for ragtime_sotto_test's round trip")
 if(RAGTIME_SOTTO_TEST_LIB)

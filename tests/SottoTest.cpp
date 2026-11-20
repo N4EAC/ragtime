@@ -276,12 +276,16 @@ int main()
     CHECK(!voice::sottoCandidates().empty());
 
     voice::Sotto& lib = voice::Sotto::library();
+    const char* require = std::getenv("RAGTIME_REQUIRE_SOTTO");
+    if (require && std::string(require) == "1") CHECK(lib.available());
     if (!lib.available())
     {
         std::printf("libsotto not found (%s): round trip skipped\n", lib.info().why.c_str());
         return ragtime_test::finish();
     }
     std::printf("loaded %s: %s\n", lib.info().path.c_str(), lib.info().format.c_str());
+    if (const char* expected = std::getenv("RAGTIME_EXPECT_SOTTO"))
+        CHECK(std::filesystem::weakly_canonical(lib.info().path) == std::filesystem::weakly_canonical(expected));
     CHECK_EQ((int)lib.info().codec, (int)voice::CODEC_SOTTO_V38);
     CHECK(!lib.decoder(0));
     CHECK(!lib.decoder(6));

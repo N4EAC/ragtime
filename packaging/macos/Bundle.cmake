@@ -17,4 +17,5 @@ set_target_properties(ragtime PROPERTIES
     MACOSX_BUNDLE_ICON_FILE ragtime.icns
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
     MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}")
+ragtime_macos_sotto(ragtime)
 install(TARGETS ragtime BUNDLE DESTINATION .)
