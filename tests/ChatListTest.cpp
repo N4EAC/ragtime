@@ -77,6 +77,8 @@ int main(int argc, char** argv)
     {
         auto* frame = new wxFrame(nullptr, wxID_ANY, "ChatList", wxDefaultPosition, wxSize(420, 300));
         auto* list = new Rows(frame);
+        CHECK_EQ(list->GetItemCount(), (size_t)0);
+        CHECK_EQ(list->GetVisibleRowsEnd(), (size_t)0);
 #if defined(__WXGTK3__)
         // As the chat tabs have it (scrollbarBeside, Theme.h): a scroll bar
         // beside the rows, which GTK lays out anew as its thumb changes.
