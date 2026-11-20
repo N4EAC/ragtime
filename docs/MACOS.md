@@ -262,6 +262,10 @@ exclusive-device refusal and modem coexistence still need hardware checks.
 
 ## Fake-host bench
 
+For the real Data2G release-host preflight and ESP32 USB mock-radio setup,
+see [MACOS_RADIO_BENCH.md](MACOS_RADIO_BENCH.md). Keep the fake-host tests
+separate from modem/USB hardware acceptance.
+
 Run `build-macos/tests/ragtime_fake_air --files` in a terminal. Launch a
 separate app settings file so bench choices stay separate from real
 station settings:
