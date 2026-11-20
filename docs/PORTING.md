@@ -160,8 +160,8 @@ does not prove Ragtime's widgets and event behavior work unchanged.
 3. **M3 — Distributable build.** Create a `.app` with resources,
    `Info.plist`, usage descriptions and correctly located dylibs. Package
    optional codec dependencies and notices; verify loading without the
-   developer's package-manager paths. Add macOS CI, then Developer ID
-   signing, notarization and a clean-machine install check. Choose the
+   developer's package-manager paths. Keep GitHub workflows manual-only.
+   Add Developer ID signing, notarization and a clean-machine install check. Choose the
    minimum macOS version and architecture policy before release.
 
 **First demo exits:** the Cocoa app launches, passes available tests,

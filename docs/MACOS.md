@@ -57,12 +57,12 @@ self-contained application.
 
 ## Directory layout
 
-- `platform/macos/`: native serial-device and codec-path adapters, plus
-  the explicit unavailable host-process lookup. The existing audio and
+- `platform/macos/`: native serial-device, codec-path and Core Audio voice
+  adapters, plus the explicit unavailable host-process lookup. The audio and
   rig targets select these sources only on Apple.
 - `packaging/macos/`: bundle CMake setup, `Info.plist` and Finder/Dock
   icon generation from the existing application artwork.
-- `tests/macos/`: native bundle-loader integration checks.
+- `tests/macos/`: native bundle, shutdown and audio checks.
 - `app/`, `core/`, `audio/` and `rig/`: shared interfaces, UI and engines.
 
 The bundle follows Apple's [macOS bundle layout](https://developer.apple.com/documentation/bundleresources/placing-content-in-a-bundle):
@@ -84,10 +84,69 @@ of the working directory. A real codec and its dependent libraries must
 be built for the same architecture and have suitable dylib install names.
 `packaging/build-sotto.sh` remains Linux-only.
 
-Microphone/speaker audio and the Ear remain unavailable until native
-backends implement device isolation, authorization and hotplug handling.
-Host process lookup returns no PID on macOS; it does not search `/proc`.
-Do not infer the radio's audio device from a remote host connection.
+Voice uses Core Audio on macOS 14.2 and later, whose process objects let
+Ragtime identify the audio devices used by local `data2g-host` and
+`data2g-gui` processes. Discovery does not open audio streams. An older
+system, an unresolved radio device or an unreadable ownership inventory
+leaves voice unavailable with a status message.
+
+The Ear remains unavailable. Host-to-command-port PID lookup still
+returns no PID on macOS; voice exclusion inspects all local audio clients
+independently of that lookup. Do not infer a remote radio's audio device
+from its host connection.
+
+## Native voice audio
+
+Settings > Voice offers the operator's microphones and speakers, leaving
+out both halves of every local modem's device and remembered radio devices.
+Related devices and aggregate members are excluded together; consequently
+an aggregate containing a radio can also exclude its other members.
+Selections persist by device UID, independently of transient Core Audio
+IDs. A missing explicit selection stays missing. A default that belongs to
+the radio selects another allowed device.
+
+Microphone capture opens only when requested. The app's usage description
+allows macOS to ask for microphone permission on the first request; denial
+is reported in Settings. Enable access in System Settings > Privacy &
+Security > Microphone, then retry. The command-line probe does not request
+permission without a bundle usage description. Device discovery and
+speaker playback do not request microphone permission.
+
+Capture uses mono floats at the device's nominal rate. Playback accepts
+mono floats at the clip's rate, using the audio queue's conversion. Both
+queues are pinned to the selected UID before starting; Ragtime does not
+change system defaults or hardware sample rates. Inventory changes are
+polled every 750 ms. Capture follows a new selection or a returning device;
+playback cancels if its device disappears or becomes excluded. Cancellation
+and shutdown dispose the queues before completing callbacks.
+
+The existing probe can list devices without recording or playing:
+
+```sh
+build-macos/tests/ragtime_voice_probe
+```
+
+To test output, pass an allowed speaker's exact name from that listing:
+
+```sh
+build-macos/tests/ragtime_voice_probe --speaker 'coreaudio:output:BuiltInSpeakerDevice' --play
+build-macos/tests/ragtime_voice_probe --speaker 'coreaudio:output:BuiltInSpeakerDevice' --stream
+```
+
+The initial audio validation used the built-in speakers on the development
+Mac: ordinary and streamed 8 kHz chimes completed, including a stream gap.
+A temporary process named `data2g-host` using that output with silence
+verified native ownership discovery and exclusion of its microphone twin.
+All 47 registered tests pass with the native voice backend enabled.
+Automated audio tests use synthetic topology and a radio-only inventory, and
+never open hardware or prompt for permission. They cover aggregate and
+related-device exclusion, remembered names, missing/refused selections,
+stream gaps, attenuation/boost and completion/cancellation during shutdown.
+
+Microphone permission grant/denial, capture, physical hotplug and device
+changes during active recording/playback still need hardware acceptance.
+The sotto codec is a separate dependency: audio I/O does not by itself
+enable encoding or decoding voice messages.
 
 ## Fake-host bench
 
