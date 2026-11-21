@@ -36,10 +36,11 @@ with the code when the seal rules change.
 picture kind beside JPEG 2000 (its reference code is `tools/codecs/rcc/`,
 its test vectors `tests/data/coolchic/`). `docs/MACOS.md` is the Mac
 port: building, testing, the release zip and what differs there.
-`docs/ANDROID.md` is the Android port: its screens, what is built and
-what is not, demo mode and the runs over real modems;
+`docs/ANDROID.md` is the Android port: its views, what it does and
+does not do yet, how it is built, and demo mode;
 `android/README.md` has its build and tests. `docs/ANDROID_LICENSES.md`
-is its licence audit, with what Google Play asks for;
+is what is in the APK and which notices it owes, with what Google Play
+asks for;
 `docs/ANDROID_PRIVACY.md` and `docs/ANDROID_RELEASE_NOTES.md` are copied
 into the APK, so rebuild it after changing them.
 
@@ -143,7 +144,7 @@ into the APK, so rebuild it after changing them.
   foreground service that keeps the connection while the app is out of
   sight (`RadioService`). Four views share that one connection:
   Stations, Conversations, Field desk and Files (`docs/ANDROID.md`,
-  "Agreed UI direction"). It has Broadcast with `@` and
+  "The four views"). It has Broadcast with `@` and
   acknowledgements, ragchews, session and broadcast files with seals
   and repair, inline pictures (JPEG 2000 sent, Cool-chic shown too; the
   picked picture is read by Android), the gearshift from the host's
@@ -161,8 +162,8 @@ into the APK, so rebuild it after changing them.
   Data2G's own Android TNC, a separate app on the phone. It has its own
   `versionName` and `versionCode` (`android/app/build.gradle.kts`,
   0.2.0 build 3), not the project's version; it is debug-signed, built
-  for ARM64 only, tested on one phone (a Samsung S26), in no CI job and
-  not on Google Play.
+  for ARM64 only, tested on one phone so far, in no CI job and not on
+  Google Play.
 - Data2G PR #118 (CLEANTXBUFFER, DATA2G ON) gives cuts, for 0.2.0:
   `HostLink` asks for DATA2G ON (WRONG from an older host is fine),
   `SessionChat` cuts and mends the stream from `session::StreamLog`,
@@ -669,9 +670,7 @@ or emulator on adb and a `ragtime_fake_air` running:
 `tools/android-smoke.sh SERIAL [PORT_OFFSET]` builds, installs, forwards
 the bench's ports and runs them (an offset of 10000 for a phone whose
 own Data2G TNC holds 8100 and 8300), then puts the app's saved settings
-back. Two more device tests run over real modems and are skipped unless
-asked for (`android/README.md`, "Real-modem tests"). Never point any of
-them at a modem that is on a radio.
+back. Never point them at a modem that is on a radio.
 
 ## Releases
 
