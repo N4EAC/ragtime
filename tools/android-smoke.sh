@@ -4,8 +4,8 @@
 #   tools/android-smoke.sh SERIAL [PORT_OFFSET]
 #
 # PORT_OFFSET moves the bench's ports on the device (10000: 18100, 18300...),
-# for a phone whose own Data2G TNC holds 8100/8300. The app's saved Radio &
-# host settings are put back afterwards.
+# for a phone whose own Data2G TNC holds 8100/8300. The app's saved settings
+# are put back afterwards.
 set -eu
 root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
 serial=${1:-emulator-5554}
