@@ -161,7 +161,8 @@ std::string AndroidClient::fileSnapshot(uint64_t now) const {
                    uint64_t size, uint64_t done, uint64_t at, bool ours, bool live, bool checked,
                    bool receive, bool decline, bool cancel, bool resume, bool forget, const std::string& error,
                    bool picture) {
-        if (!first) out << ','; first = false;
+        if (!first) out << ',';
+        first = false;
         out << "{\"key\":" << quote(key) << ",\"via\":" << quote(via) << ",\"name\":" << quote(name)
             << ",\"peer\":" << quote(peer) << ",\"state\":" << quote(state) << ",\"path\":" << quote(path)
             << ",\"size\":" << size << ",\"done\":" << done << ",\"time\":" << at
