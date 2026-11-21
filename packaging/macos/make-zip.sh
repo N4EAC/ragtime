@@ -1,81 +1,105 @@
-#!/bin/bash -e
-#
-# Builds Ragtime for macOS on this Mac's architecture and zips the app as
-# dist/Ragtime-<version>-beta-<hash>-macos-<arch>.zip: Ragtime.app (with
-# wxWidgets, Hamlib and the picture codecs linked in, and libsotto and
-# libcodec2 for voice in Contents/Frameworks with their licences),
-# README.txt, LICENSE.txt and the libraries' licences in licences/.
-# There is no installer, and the app is not signed by a developer: it is
-# signed ad hoc, so macOS asks once before it opens (README.txt says how).
-#
-# Needs the Xcode command-line tools, CMake, git, and autoconf, automake
-# and libtool for Hamlib (Homebrew's). The first build clones wxWidgets,
-# Hamlib, OpenJPEG, libwebp, libde265, libheif, RNNoise and sotto into
-# build-macos (set RAGTIME_WX_SOURCE or RAGTIME_HAMLIB_SOURCE to a checkout
-# to use that instead) and takes a while. Set BUILD_DIR to use another
-# build tree. After it, `ctest --test-dir build-macos` runs the tests,
-# sotto's round trip in a bundle included.
-#
-# MACOSX_DEPLOYMENT_TARGET (14.2 by default: voice needs Core Audio's
-# process objects) sets the oldest macOS it runs on.
-
-cd "$(dirname "$0")/../.."
-ROOT=$PWD
-. packaging/release-name.sh
+#!/bin/bash
+set -euo pipefail
+# Native macOS package for the Mac it runs on (arm64 on Apple Silicon,
+# x86_64 on Intel), using upstream's release naming and shared dependency
+# recipes. Run from any working directory.
+ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+cd "$ROOT"
 ARCH=$(uname -m)
-NAME="Ragtime-$RAGTIME_RELEASE-macos-$ARCH"
-BUILD_DIR=${BUILD_DIR:-$ROOT/build-macos}
-export MACOSX_DEPLOYMENT_TARGET=${MACOSX_DEPLOYMENT_TARGET:-14.2}
-JOBS=$(sysctl -n hw.ncpu)
-
-# libsotto and libcodec2, built once per pinned commit.
+if [ "$(uname -s)" != Darwin ] || { [ "$ARCH" != arm64 ] && [ "$ARCH" != x86_64 ]; }; then
+    echo "Build this package on a Mac (Apple Silicon or Intel) using a native shell." >&2
+    exit 1
+fi
+for tool in cmake ctest git python3 autoconf automake glibtoolize; do
+    command -v "$tool" >/dev/null || { echo "Missing build tool: $tool" >&2; exit 1; }
+done
+. packaging/release-name.sh
 . packaging/sotto.sh
-SOTTO_OUT="$BUILD_DIR/build-sotto/out"
-if [ ! -f "$SOTTO_OUT/libsotto.0.dylib" ] \
-    || [ "$(cat "$SOTTO_OUT/commit.txt" 2>/dev/null)" != "$SOTTO_COMMIT" ]; then
-    rm -rf "$SOTTO_OUT"
-    SOTTO_WORK="$BUILD_DIR/build-sotto" SOTTO_JOBS="$JOBS" packaging/macos/build-sotto.sh "$SOTTO_OUT"
+BUILD_DIR=${BUILD_DIR:-$ROOT/build-macos-release}
+mkdir -p "$BUILD_DIR"
+BUILD_DIR=$(cd "$BUILD_DIR" && pwd)
+JOBS=${JOBS:-4}
+export MACOSX_DEPLOYMENT_TARGET=14.2
+IDENTITY=${MACOS_SIGN_IDENTITY:--}
+if [ -n "${MACOS_NOTARY_PROFILE:-}" ] && [ "$IDENTITY" = - ]; then
+    echo "Notarization requires MACOS_SIGN_IDENTITY (a Developer ID Application identity)." >&2
+    exit 1
 fi
 
-cmake -S . -B "$BUILD_DIR" -DCMAKE_BUILD_TYPE=Release \
-    -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET" \
-    -DRAGTIME_BUILD_WX=ON ${RAGTIME_WX_SOURCE:+-DRAGTIME_WX_SOURCE="$RAGTIME_WX_SOURCE"} \
-    -DRAGTIME_BUILD_HAMLIB=ON ${RAGTIME_HAMLIB_SOURCE:+-DRAGTIME_HAMLIB_SOURCE="$RAGTIME_HAMLIB_SOURCE"} \
-    -DRAGTIME_BUILD_IMAGE_LIBS=ON -DRAGTIME_BUILD_SOTTO=OFF \
-    -DRAGTIME_MACOS_SOTTO_DIR="$SOTTO_OUT"
+if [ -z "${RAGTIME_MACOS_SOTTO_DIR:-}" ]; then
+    RAGTIME_MACOS_SOTTO_DIR="$BUILD_DIR/build-sotto/out"
+    SOTTO_WORK="$BUILD_DIR/build-sotto" SOTTO_ARCH="$ARCH" SOTTO_JOBS="$JOBS" \
+        packaging/macos/build-sotto.sh "$RAGTIME_MACOS_SOTTO_DIR"
+fi
+RAGTIME_MACOS_SOTTO_DIR=$(cd "$RAGTIME_MACOS_SOTTO_DIR" && pwd)
+if [ "$(cat "$RAGTIME_MACOS_SOTTO_DIR/commit.txt")" != "$SOTTO_COMMIT" ]; then
+    echo "Voice codecs must be built at the pin in packaging/sotto.sh." >&2
+    exit 1
+fi
+
+args=(
+    -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES="$ARCH"
+    -DCMAKE_OSX_DEPLOYMENT_TARGET="$MACOSX_DEPLOYMENT_TARGET"
+    -DRAGTIME_APP=ON -DRAGTIME_TESTS=ON -DRAGTIME_WERROR=ON
+    -DRAGTIME_BUILD_WX=ON -DRAGTIME_HAMLIB=ON -DRAGTIME_BUILD_HAMLIB=ON
+    -DRAGTIME_PICTURES=ON -DRAGTIME_HEIF=ON -DRAGTIME_BUILD_IMAGE_LIBS=ON
+    -DRAGTIME_RNNOISE=ON -DRAGTIME_PIPEWIRE=OFF -DRAGTIME_BUILD_SOTTO=OFF
+    -DRAGTIME_MACOS_SOTTO_DIR="$RAGTIME_MACOS_SOTTO_DIR"
+    -DRAGTIME_SOTTO_TEST_LIB="$RAGTIME_MACOS_SOTTO_DIR/libsotto.0.dylib"
+)
+if [ -n "${RAGTIME_WX_SOURCE:-}" ]; then args+=(-DRAGTIME_WX_SOURCE="$RAGTIME_WX_SOURCE"); fi
+if [ -n "${RAGTIME_HAMLIB_SOURCE:-}" ]; then args+=(-DRAGTIME_HAMLIB_SOURCE="$RAGTIME_HAMLIB_SOURCE"); fi
+cmake -S . -B "$BUILD_DIR" "${args[@]}"
 cmake --build "$BUILD_DIR" --parallel "$JOBS"
+ctest --test-dir "$BUILD_DIR" --output-on-failure --parallel 2
 
 WORK=$(mktemp -d)
 trap 'rm -rf "$WORK"' EXIT
-mkdir "$WORK/$NAME"
-cmake --install "$BUILD_DIR" --prefix "$WORK/$NAME"
-APP="$WORK/$NAME/Ragtime.app"
-strip -x "$APP/Contents/MacOS/Ragtime"
-# Apple Silicon runs only signed code. Sign the whole bundle ad hoc, the
-# dylibs first, so its seal covers what is in it now.
-codesign --force --sign - "$APP"/Contents/Frameworks/*.dylib
-codesign --force --sign - "$APP"
-codesign --verify --deep --strict "$APP"
-"$APP/Contents/MacOS/Ragtime" --version
-cp packaging/macos/README.txt "$WORK/$NAME/README.txt"
-cp LICENSE "$WORK/$NAME/LICENSE.txt"
-# The libraries linked in, each under its own licence (README.txt says
-# where their source and Ragtime's are, to rebuild it with others).
-mkdir "$WORK/$NAME/licences"
+cmake --install "$BUILD_DIR" --prefix "$WORK"
+APP="$WORK/Ragtime.app"
+LICENCES="$APP/Contents/Resources/licences"
+mkdir -p "$LICENCES"
+cp LICENSE "$APP/Contents/Resources/LICENSE.txt"
+cp packaging/macos/README.txt "$WORK/README.txt"
+cp LICENSE "$WORK/LICENSE.txt"
+WX_SOURCE=${RAGTIME_WX_SOURCE:-$BUILD_DIR/_deps/wxwidgets-src}
 DEPS="$BUILD_DIR/_deps"
 for pair in \
-    "wxWidgets:$DEPS/wxwidgets-src/docs/licence.txt" \
+    "wxWidgets:$WX_SOURCE/docs/licence.txt" \
     "Hamlib:$DEPS/hamlib/src/hamlib_build/COPYING.LIB" \
     "OpenJPEG:$DEPS/openjpeg/src/openjpeg_build/LICENSE" \
     "libwebp:$DEPS/webp/src/webp_build/COPYING" \
     "libde265:$DEPS/de265/src/de265_build/COPYING" \
     "libheif:$DEPS/heif/src/heif_build/COPYING" \
-    "RNNoise:$DEPS/rnnoise-src/COPYING"; do
-    cp "${pair#*:}" "$WORK/$NAME/licences/${pair%%:*}.txt"
+    "RNNoise:$DEPS/rnnoise-src/COPYING" \
+    "Cool-chic:$ROOT/image/src/coolchic/LICENSE.txt"; do
+    cp "${pair#*:}" "$LICENCES/${pair%%:*}.txt"
 done
 
+# Sign nested code first; --deep is for verification, not signing.
+sign_args=(--force --sign "$IDENTITY")
+if [ "$IDENTITY" != - ]; then sign_args+=(--options runtime --timestamp); fi
+for library in "$APP/Contents/Frameworks/"*.dylib; do
+    codesign "${sign_args[@]}" "$library"
+done
+codesign "${sign_args[@]}" --entitlements packaging/macos/entitlements.plist "$APP"
+python3 packaging/macos/check-bundle.py "$APP"
+"$APP/Contents/MacOS/Ragtime" --version
+
 mkdir -p dist
-rm -f "dist/$NAME.zip"
-# ditto keeps the bundle's links and signature as Finder's own zip does.
-(cd "$WORK" && ditto -c -k --keepParent "$NAME" "$ROOT/dist/$NAME.zip")
-echo "dist/$NAME.zip"
+OUT="$ROOT/dist/Ragtime-$RAGTIME_RELEASE-macos-$ARCH.zip"
+if [ -n "${MACOS_NOTARY_PROFILE:-}" ]; then
+    ditto -c -k --keepParent "$APP" "$WORK/notarize.zip"
+    xcrun notarytool submit "$WORK/notarize.zip" \
+        --keychain-profile "$MACOS_NOTARY_PROFILE" --wait
+    xcrun stapler staple "$APP"
+    xcrun stapler validate "$APP"
+    rm "$WORK/notarize.zip"
+fi
+ditto -c -k "$WORK" "$OUT.tmp"
+mv "$OUT.tmp" "$OUT"
+(cd dist && shasum -a 256 "$(basename "$OUT")" > "$(basename "$OUT").sha256")
+if [ "$IDENTITY" = - ]; then
+    echo "Ad-hoc signed package for local testing; use Developer ID and notarization for public distribution."
+fi
+echo "Done: $OUT"

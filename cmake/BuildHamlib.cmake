@@ -1,7 +1,7 @@
 # Fetches Hamlib with git and builds it as a static library
-# (-DRAGTIME_BUILD_HAMLIB=ON), for the Windows build, where there is no
-# system Hamlib. Defines ragtime::hamlib, which the rig library links, and
-# hamlib_build, which it waits for.
+# (-DRAGTIME_BUILD_HAMLIB=ON), for macOS and Windows packages without a
+# system Hamlib dependency. Defines ragtime::hamlib, which the rig library
+# links, and hamlib_build, which it waits for.
 #
 # Hamlib builds with autotools, so this needs autoconf, automake and
 # libtool besides the cross compiler. Point RAGTIME_HAMLIB_SOURCE at a
@@ -21,22 +21,25 @@ if(CMAKE_CROSSCOMPILING)
 endif()
 
 set(prefix ${CMAKE_BINARY_DIR}/_deps/hamlib-install)
+set(cflags "-O2")
+if(APPLE)
+    string(APPEND cflags " -mmacosx-version-min=${CMAKE_OSX_DEPLOYMENT_TARGET}")
+    if(CMAKE_OSX_SYSROOT)
+        string(APPEND cflags " -isysroot ${CMAKE_OSX_SYSROOT}")
+    endif()
+    foreach(arch IN LISTS CMAKE_OSX_ARCHITECTURES)
+        string(APPEND cflags " -arch ${arch}")
+    endforeach()
+    # The app needs the library and backends, not Hamlib's command-line
+    # programs or documentation. Leave their platform assumptions out.
+    set(library_dirs "SUBDIRS=include lib security $(BACKEND_LIST) $(RIG_BACKEND_LIST) $(ROT_BACKEND_LIST) $(AMP_BACKEND_LIST) src")
+endif()
 # Only the library: no C++ binding, USB, readline, XML or sound file
 # support, which the utilities and some backends would pull in.
 set(configure <SOURCE_DIR>/configure ${host} --prefix=${prefix} --disable-shared --enable-static
     --without-cxx-binding --without-libusb --without-readline --without-xml-support --without-indi
     --without-libsndfile --disable-html-matrix --disable-winradio
-    CC=${CMAKE_C_COMPILER} "CFLAGS=-O2")
-
-# Ragtime links only the library. On the Mac the utilities in tests/ fail
-# to build (Hamlib 4.5.5's getopt.h against the macOS SDK's), so tests/
-# and doc/ get a Makefile that does nothing.
-set(skip_tools)
-if(APPLE)
-    set(skip_tools
-        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/HamlibNoTools.mk tests/Makefile
-        COMMAND ${CMAKE_COMMAND} -E copy ${CMAKE_CURRENT_LIST_DIR}/HamlibNoTools.mk doc/Makefile)
-endif()
+    CC=${CMAKE_C_COMPILER} "CFLAGS=${cflags}")
 
 if(RAGTIME_HAMLIB_SOURCE)
     set(source URL ${RAGTIME_HAMLIB_SOURCE})
@@ -49,9 +52,9 @@ ExternalProject_Add(hamlib_build
     PREFIX ${CMAKE_BINARY_DIR}/_deps/hamlib
     UPDATE_DISCONNECTED TRUE
     BUILD_IN_SOURCE TRUE
-    CONFIGURE_COMMAND ./bootstrap COMMAND ${configure} ${skip_tools}
-    BUILD_COMMAND make -j4
-    INSTALL_COMMAND make install
+    CONFIGURE_COMMAND ./bootstrap COMMAND ${configure}
+    BUILD_COMMAND make -j4 ${library_dirs}
+    INSTALL_COMMAND make install ${library_dirs}
     BUILD_BYPRODUCTS ${prefix}/lib/libhamlib.a
     LOG_CONFIGURE TRUE
     LOG_BUILD TRUE
