@@ -163,6 +163,11 @@ the first build takes a while):
 [docs/MACOS.md](docs/MACOS.md) has the rest: quicker builds, bundling
 the voice codecs, and what is different on the Mac.
 
+For Android, [android/README.md](android/README.md) has the development
+APK, its setup and the fake-host tests. The phone app has a native UI of
+its own over the same C++ core: chat, files, pictures and the gearshift,
+with voice still to come.
+
 ### Libraries
 
 These are all the libraries the build looks for. The package names are
