@@ -12,7 +12,7 @@ and on which band, each of your friends gets through, so it can tell you
 who is likely around now, and the best time of day to check in to the
 D2G net to find them.
 
-Status: 0.4.0 beta. Ragtime connects to data2g-host,
+Status: 0.4.0 beta 2. Ragtime connects to data2g-host,
 chats on the D2G broadcast group. Current features include:
 - "Globus," which plots your friend's maidenhead coordinates
    on a globe,
@@ -50,14 +50,14 @@ radio. [Data2G project README](https://github.com/arodland/Data2G#readme)
 
 ## Screenshots
 
-**Ragtime on macOS.** The Broadcast tab, Globus, the Microphone Deck, and
-the Ear waterfall following the built-in Data2G modem over TCI.
+**Ragtime on macOS.** The frequency selector menu, including per-frequency
+notes, alongside the Broadcast tab and built-in Data2G modem.
 
-![Ragtime on macOS with Globus, the Microphone Deck, and the Ear waterfall](docs/images/readme/ragtime-macos.png)
+![Ragtime on macOS with the ordered frequency selector menu](docs/images/readme/ragtime-macos.png)
 
 ## Downloads
 
-The current macOS release is 0.4.0 beta; published ZIP and DMG packages
+The current macOS release is 0.4.0 beta 2; published ZIP and DMG packages
 are listed on the release page below. The macOS app bundles Data2G v0.5.3
 and sotto v3.8 for Apple Silicon with macOS 27 or later. Packages are ad hoc
 signed and have no Apple notarization.
@@ -174,8 +174,11 @@ The band button also opens the upstream hot-frequency menu using the same
 file. Ctrl with the mouse wheel steps 1 kHz; Shift steps 10 kHz.
 CAT readings update the field while idle; an entry you are editing stays
 intact until Enter sends it or Escape restores the radio reading.
-The initial selection is **7.066 MHz**. The list starts with **3.566,
-7.066, 7.110, 14.066, and 28.066 MHz**. Ragtime remembers the selection
+The initial selection is **7.066 MHz**. New lists use upstream's defaults:
+**1.806, 3.566, 5.3465, 5.360, 5.4035, 7.066, 7.110, 10.146,
+14.066, 14.110, 18.106, and 28.066 MHz**. The 5.360 MHz entry includes
+upstream's `9.15 watts ERP Maximum` note. Untouched five-frequency lists
+upgrade automatically; custom lists are preserved. Ragtime remembers the selection
 after the radio confirms the change and restores it when reopened.
 Reopening restores the selection without automatically tuning the radio.
 
@@ -184,7 +187,8 @@ On macOS, both **File > Edit frequency list** and the frequency menu's
 Use **File > Edit frequency list** to edit
 `~/Library/Application Support/Ragtime/frequencies.txt`. Enter one
 frequency per line in MHz, with a decimal point. Lines may contain
-`# comments`. Saved changes load automatically. An invalid file leaves the
+`# comments`; comments after a frequency appear beside it in both menus.
+Saved changes load automatically. An invalid file leaves the
 last valid list available and reports the offending line in the dropdown's
 tooltip. The last-used frequency stays available if removed from the file.
 With `--config PATH`, the list is stored at `PATH.frequencies.txt`.

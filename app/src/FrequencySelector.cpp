@@ -1,7 +1,6 @@
 #include "FrequencySelector.h"
 
 #include <algorithm>
-#include <sstream>
 #include <utility>
 
 #include <wx/file.h>
@@ -11,11 +10,12 @@
 
 #include "HostConnection.h"
 #include "Prefs.h"
+#include "ragtime/radio/HotFrequencies.h"
 
 namespace
 {
 constexpr const char* LAST_FREQUENCY = "/Radio/LastSelectedFrequencyMHz";
-constexpr const char* DEFAULT_LIST =
+constexpr const char* LEGACY_DEFAULT_LIST =
     "# Radio dial frequencies in MHz, one per line. Save this file to refresh the list.\n"
     "3.566\n7.066\n7.110\n14.066\n28.066\n";
 
@@ -88,7 +88,22 @@ FrequencySelector::FrequencySelector(wxWindow* parent)
     if (!wxFileName::FileExists(path))
     {
         wxFile file;
-        if (file.Create(path, false)) file.Write(DEFAULT_LIST);
+        if (file.Create(path, false)) file.Write(wxString::FromUTF8(ragtime::radio::HOT_FREQUENCIES_SEED));
+    }
+    else
+    {
+        wxFile file(path);
+        wxString text;
+        const bool unchanged = file.IsOpened() && file.Length() <= 65536 && file.ReadAll(&text) &&
+                               text == wxString::FromUTF8(LEGACY_DEFAULT_LIST);
+        file.Close();
+        if (unchanged)
+        {
+            wxTempFile replacement(path);
+            if (replacement.IsOpened() &&
+                replacement.Write(wxString::FromUTF8(ragtime::radio::HOT_FREQUENCIES_SEED)))
+                replacement.Commit();
+        }
     }
     reload();
     Disable();
@@ -190,21 +205,21 @@ void FrequencySelector::reload()
         fileProblem_.clear();
         return;
     }
-    std::vector<uint64_t> frequencies;
-    std::istringstream input(bytes);
-    int lineNumber = 0;
-    for (std::string line; std::getline(input, line);)
+    const auto list = ragtime::radio::parseHotFrequencies(bytes);
+    if (!list.problems.empty())
     {
-        ++lineNumber;
-        const auto content = line.substr(0, line.find('#'));
-        if (content.find_first_not_of(" \t\r") == std::string::npos) continue;
-        const auto hz = parseMHz(line);
-        if (!hz)
-        {
-            fileProblem_ = wxString::Format("Invalid MHz frequency on line %d.", lineNumber);
-            return;
-        }
-        if (std::find(frequencies.begin(), frequencies.end(), *hz) == frequencies.end()) frequencies.push_back(*hz);
+        fileProblem_ = wxString::FromUTF8(list.problems.front());
+        return;
+    }
+    std::vector<uint64_t> frequencies;
+    std::vector<wxString> labels;
+    for (const auto& entry : list.entries)
+    {
+        if (std::find(frequencies.begin(), frequencies.end(), entry.hz) != frequencies.end()) continue;
+        frequencies.push_back(entry.hz);
+        auto label = mhz(entry.hz) + " MHz";
+        if (!entry.note.empty()) label += " — " + wxString::FromUTF8(entry.note);
+        labels.push_back(label);
     }
     if (frequencies.empty())
     {
@@ -213,7 +228,10 @@ void FrequencySelector::reload()
     }
     // Preserve the last-used frequency when it is removed from the editable list.
     if (std::find(frequencies.begin(), frequencies.end(), remembered_) == frequencies.end())
+    {
         frequencies.push_back(remembered_);
+        labels.push_back(mhz(remembered_) + " MHz");
+    }
     frequencies_ = std::move(frequencies);
     fileText_ = bytes;
     fileProblem_.clear();
@@ -221,7 +239,7 @@ void FrequencySelector::reload()
     const auto entry = GetValue();
     updating_ = true;
     Clear();
-    for (const auto hz : frequencies_) Append(mhz(hz) + " MHz");
+    for (const auto& label : labels) Append(label);
     if (keepEntry) ChangeValue(entry);
     else selectRemembered();
     updating_ = false;

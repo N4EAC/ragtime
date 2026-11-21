@@ -12,7 +12,7 @@ cd "$(dirname "$0")/../../app/res"
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-# The macOS fork has dedicated high-resolution Apple/pixel artwork.
+# The macOS fork has dedicated high-resolution glass Earth/binary artwork.
 if [ "$(uname -s)" = Darwin ] && [ -f ragtime-macos.png ]; then
     sips -z 256 256 ragtime-macos.png --out ragtime.png >/dev/null
     mkdir "$tmp/ragtime.iconset"

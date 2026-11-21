@@ -4,6 +4,15 @@ Changes to the Ragtime fork with bundled Data2G for macOS. Dates use
 America/New_York. Entries summarize this fork's packaged releases; the
 upstream projects retain their own histories.
 
+## 0.4.0 beta 2 — 2026-11-21
+
+- Use upstream's 12 frequency defaults and show per-frequency comments in
+  the macOS preset dropdown. Untouched legacy defaults upgrade automatically;
+  custom lists, manual entry, and CAT confirmation are preserved.
+- Replaced the macOS icon with the approved glass Earth and binary fade,
+  with Data2G and smaller Ragtime text inside one badge.
+- Updated the README screenshot to show the ordered frequency menu.
+
 ## 0.4.0 beta — 2026-11-21
 
 - Show About's developers as plain names and callsigns, with no dropdowns
