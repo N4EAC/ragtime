@@ -60,7 +60,7 @@ struct FileCard
 constexpr int FILE_MENU_IDS = 64;
 void fillFileMenu(wxMenu& menu, const FileCard& card, int firstId, std::function<void(const std::string&)> act);
 
-// The Broadcast tab (docs/STAGE1.md, package E): the messages on D2G; the
+// The Broadcast tab: the messages on D2G; the
 // line to type in, where "@W1AW" at the start addresses one station; the
 // Gear button, a speedometer over the gear's short name, which opens the
 // gearshift; and Send.
@@ -135,7 +135,7 @@ public:
     {
         onFileAction_ = std::move(fn);
     }
-    // Inline pictures (docs/STAGE1.md, "Inline pictures"): the picture
+    // Inline pictures: the picture
     // button, left of the floppy, and a picture card's picture as it
     // stands, an <img> linked to "view" ("" while nothing shows yet).
     void onBroadcastPicture(std::function<void()> fn) { onBroadcastPicture_ = std::move(fn); }
@@ -155,7 +155,7 @@ public:
         pastPictureHtml_ = std::move(html);
         onViewPast_ = std::move(view);
     }
-    // Voice cards (docs/STAGE1.md, "Voice cards"): a card's button and
+    // Voice cards: a card's button and
     // strip by its key ("b<id>" a broadcast file, "p<path>" a file line
     // from the log; "" while nothing shows), and a card's link
     // ("voice:play:0", "voice:stop:0", "voice:seek:<frame>") clicked.
@@ -210,7 +210,8 @@ private:
     void showPingMenu(const ragtime::broadcast::Message& m);
     void showRollCallMenu(const ragtime::broadcast::Message& m);
     void arrange(int width);
-    // Redraws the Gear button's speedometer and gear name, in the theme's colours.
+    // Redraws the Gear button's speedometer and gear name, in the theme's
+    // colours.
     void drawGearButton();
 
     const ragtime::broadcast::BroadcastChat& chat_;

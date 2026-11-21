@@ -15,7 +15,18 @@
 # cmake/Toolchain-mingw64.cmake and packaging/windows/make-zip.sh.
 cmake_minimum_required(VERSION 3.16)
 
+if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
+    set(CMAKE_OSX_DEPLOYMENT_TARGET 14.2 CACHE STRING "Minimum macOS version")
+endif()
+
 project(ragtime VERSION 0.3.1 LANGUAGES CXX)
+
+if(APPLE)
+    enable_language(OBJCXX)
+    set(CMAKE_OBJCXX_STANDARD 17)
+    set(CMAKE_OBJCXX_STANDARD_REQUIRED ON)
+    set(CMAKE_OBJCXX_EXTENSIONS OFF)
+endif()
 
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
@@ -30,9 +41,9 @@ option(RAGTIME_EMBED_DATA2G "Link the native Data2G modem into Ragtime (macOS)."
 set(RAGTIME_DATA2G_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../Data2G" CACHE PATH "Data2G checkout for the built-in modem")
 option(RAGTIME_TESTS "Build the unit tests and register them with ctest." ON)
 option(RAGTIME_WERROR "Treat compiler warnings as errors." ON)
-option(RAGTIME_BUILD_WX "Fetch and build wxWidgets statically instead of using the system's (the Windows build)." OFF)
+option(RAGTIME_BUILD_WX "Fetch and build wxWidgets statically instead of using the system's (macOS and Windows)." OFF)
 option(RAGTIME_HAMLIB "Rig control with Hamlib (Settings > Rig); needs libhamlib-dev." ON)
-option(RAGTIME_BUILD_HAMLIB "Fetch and build Hamlib statically instead of using the system's (the Windows build)." OFF)
+option(RAGTIME_BUILD_HAMLIB "Fetch and build Hamlib statically instead of using the system's (macOS and Windows)." OFF)
 if(WIN32 OR APPLE)
     set(RAGTIME_PIPEWIRE_DEFAULT OFF)
 else()
@@ -49,6 +60,11 @@ else()
     set(RAGTIME_BUILD_SOTTO_DEFAULT OFF)
 endif()
 option(RAGTIME_BUILD_SOTTO "Build libsotto for voice when configuring, if none is found (packaging/build-sotto.sh; Linux and macOS)." ${RAGTIME_BUILD_SOTTO_DEFAULT})
+
+if(APPLE)
+    set(RAGTIME_MACOS_SOTTO_DIR "" CACHE PATH "Prebuilt macOS voice codecs and licences to include in app bundles")
+    include(packaging/macos/SottoBundle.cmake)
+endif()
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
 include(RagtimeWarnings)

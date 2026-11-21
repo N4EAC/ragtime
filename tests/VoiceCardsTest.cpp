@@ -1,4 +1,4 @@
-// Voice cards (docs/STAGE1.md, "Voice cards"): the play queue (what plays
+// Voice cards: the play queue (what plays
 // by itself while the deck is open, play pressed, Stop, Push to talk's
 // pause), and a voice message kept by the chat logs and the Files tab's
 // log so its card is there after a restart.

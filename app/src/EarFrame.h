@@ -23,7 +23,7 @@ class EarScope;
 class wxChoice;
 class wxStaticText;
 
-// The Ear (docs/STAGE1.md, "The Ear"): a floating window with a waterfall
+// The Ear: a floating window with a waterfall
 // of what the radio hears, opened by the ear button on the connection bar.
 // It listens alongside data2g-host (audio::EarAudio) to the sound card the
 // host records from, or to a source picked in "Listen to", or with neither
@@ -33,9 +33,9 @@ class wxStaticText;
 // Under the controls it says what the rig reports of its receive filter
 // (read between bursts while the Ear is open, through rigctld or Hamlib)
 // and the edges the band's noise shows (ear::EdgeFinder), and the scope
-// draws both: step 2 of docs/STAGE1.md's "The Ear". With "Let the Ear
+// draws both. With "Let the Ear
 // change the rig's filters" ticked (Hamlib or rigctld), the filter bar
-// (EarFilterBar) and the scope's handles set it: step 3.
+// (EarFilterBar) and the scope's handles set it.
 //
 // "Listen to" and the speed are kept in wxConfig (keys::EAR_SOURCE,
 // keys::EAR_SPEED). The window tells the owner when it closes.

@@ -243,7 +243,7 @@ void ConnectionBar::setPaused(bool on)
     lightToggle(pause);
 }
 
-// Toggles that are on turn blue (docs/MOCKUPS.md, "Look").
+// Toggles that are on turn blue.
 void ConnectionBar::lightToggle(wxToggleButton* button)
 {
     if (button->GetValue())

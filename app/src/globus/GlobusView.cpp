@@ -32,7 +32,7 @@ constexpr double WHEEL_STEP = 1.25;
 // Atlantic, the Americas to one side and Europe and Africa to the other.
 const LatLon NOWHERE_YET{30.0, -40.0};
 
-// The theme (docs/MOCKUPS.md): light blue oceans, near-white land, dark
+// The theme: light blue oceans, near-white land, dark
 // blue coasts and borders, the state and province lines and the lake
 // shores the same blue at about half opacity and thinner, and a very faint
 // graticule every 30°.
@@ -160,7 +160,7 @@ GlobusView::GlobusView(wxWindow* parent, wxWindowID id)
 
 wxSize GlobusView::DoGetBestClientSize() const
 {
-    // The side panes are 280 to 340 pixels wide (docs/MOCKUPS.md).
+    // The side panes are 280 to 340 pixels wide.
     return wxSize(300, 300);
 }
 

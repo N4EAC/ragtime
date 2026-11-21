@@ -7,7 +7,10 @@
 #include <dispatch/dispatch.h>
 #include <libproc.h>
 
+#include "MicrophonePermission.h"
+
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <cstring>
 #include <map>
@@ -428,6 +431,13 @@ private:
 
     void refresh()
     {
+        if (permissionCompleted_->exchange(false))
+        {
+            permissionPending_ = false;
+            status_.microphonePermissionPending = false;
+            if (samples_ && !input_.open()) openInput();
+            if (changed_) changed_();
+        }
         auto snapshot = deviceGraph(true);
         if (snapshot.keys == graphKeys_) return;
         graphKeys_ = std::move(snapshot.keys);
@@ -463,11 +473,32 @@ private:
         status_.recording = false;
         status_.microphoneRate = 0;
         status_.microphoneProblem.clear();
+        status_.microphonePermissionPending = false;
     }
 
     void openInput()
     {
         if (!status_.available || !status_.microphone.usable()) return;
+        const auto permission = macos::microphonePermission();
+        if (permission != macos::MicrophonePermission::Authorized)
+        {
+            if (permission == macos::MicrophonePermission::Denied)
+                status_.microphoneProblem = "Microphone access is denied; enable Ragtime in System Settings > Privacy & Security > Microphone";
+            else
+            {
+                if (!permissionPending_)
+                {
+                    auto completed = permissionCompleted_;
+                    permissionPending_ = macos::requestMicrophonePermission([completed] { completed->store(true); });
+                }
+                status_.microphonePermissionPending = permissionPending_;
+                status_.microphoneProblem = permissionPending_ ? "Waiting for microphone permission"
+                    : "Microphone permission must be requested from the Ragtime app bundle";
+            }
+            return;
+        }
+        status_.microphonePermissionPending = false;
+        status_.microphoneProblem.clear();
         constexpr int rate = 48000;
         auto error = input_.start(status_.microphone.node.device, rate,
             [this](const float* data, size_t count, int sampleRate) {
@@ -601,6 +632,8 @@ private:
     std::vector<std::string> remembered_;
     std::vector<std::string> graphKeys_;
     std::string defaultInput_, defaultOutput_;
+    std::shared_ptr<std::atomic<bool>> permissionCompleted_ = std::make_shared<std::atomic<bool>>(false);
+    bool permissionPending_ = false;
     CoreAudioInput input_{queue_, callbackQueue_};
     AudioQueueRef output_ = nullptr;
     std::shared_ptr<bool> outputAlive_;

@@ -288,7 +288,7 @@ MainFrame::MainFrame()
     watch_.setCalls(loadWatchList());
     acceptWanted_ = link_.settings().acceptSessions;
     SetIcons(appIcons());
-    // Every dialog and the main window must fit Jeff's 1366x768 screen.
+    // Every dialog and the main window must fit a 1366x768 screen.
     SetMinSize(wxSize(960, 600));
 
     globusOn_ = loadBool(keys::GLOBUS, true);
@@ -402,6 +402,11 @@ MainFrame::MainFrame()
         // What is under way ends here; a part received is kept, and the
         // log keeps it for next time.
         sessionFiles_.stopAll("Ragtime was closed");
+        // Closing the client sockets does not end the modem's ARQ link.
+        // Leave it explicitly while the command port is still open, so
+        // the next Ragtime can call again and resume the kept file.
+        session_.leaveNow(HostConnection::nowMs());
+        host_->flush();
         // The deck lets go of the microphone before the audio stops.
         if (voiceDeck_) voiceDeck_->Close(true);
         // The gearshift stops asking the rig for the band's noise.
@@ -684,6 +689,8 @@ void MainFrame::buildMenus()
         info.SetDescription(description);
         info.SetLicence("MIT");
         info.SetWebSite("https://github.com/baitisj/ragtime");
+        info.AddDeveloper("Jeff Baitis, AG7EW");
+        info.AddDeveloper("Tim Vetter: the macOS port");
         wxAboutBox(info, this);
     }, wxID_ABOUT);
 }
@@ -1412,6 +1419,7 @@ void MainFrame::refreshMessages()
         noteReaction(n.from, n.code, m != nullptr ? m->text : std::string());
         if (!(tabs_->GetSelection() == TAB_BROADCAST && IsActive())) reactionsUnread_++;
     }
+    notifyBroadcast();
     broadcast_->refresh();
     broadcast_->refreshEdit();
     updateTabLabels();
@@ -1441,6 +1449,37 @@ std::string MainFrame::editInfo(uint64_t id) const
         out += buf;
     }
     return out;
+}
+
+void MainFrame::notifyBroadcast()
+{
+    const std::string& me = chat_.settings().callsign;
+    size_t heard = 0;
+    const broadcast::Message* newest = nullptr;
+    uint64_t top = notifiedMessage_;
+    for (const broadcast::Message& m : chat_.messages())
+    {
+        top = std::max(top, m.id);
+        if (m.id <= notifiedMessage_ || m.ours || m.past || m.kind != broadcast::Message::Kind::Text) continue;
+        // A line addressed to us always counts; the rest by the setting.
+        bool toMe = !me.empty() && m.to == me;
+        if (!toMe && !prefs_.notifyBroadcast) continue;
+        heard++;
+        newest = &m;
+    }
+    notifiedMessage_ = top;
+    if (newest == nullptr || IsActive()) return;
+    bool toMe = !me.empty() && newest->to == me;
+    notifyHeard(heard, newest->from, newest->text, toMe && heard == 1 ? " to you on D2G" : " on D2G");
+}
+
+void MainFrame::notifyHeard(size_t count, const std::string& from, const std::string& text, const std::string& where)
+{
+    std::string title = count == 1 ? from + where : std::to_string(count) + " messages" + (where.empty() ? " from " + from : where);
+    std::string body = count == 1 || where.empty() ? text : from + ": " + text;
+    wxNotificationMessage notice(utf8(title), utf8(body), this);
+    notice.Show();
+    RequestUserAttention(wxUSER_ATTENTION_INFO);
 }
 
 void MainFrame::refreshStations()
@@ -1768,7 +1807,7 @@ void MainFrame::callStation(const std::string& call, bool askFirst)
         if (!why.empty())
         {
             // A busy station can be waited for: Tell me when free rings at
-            // its QRV and offers the call then (docs/PLAN.md, "Busy stations").
+            // its QRV and offers the call then.
             bool busy = view.word != "No sessions";
             wxMessageDialog ask(this,
                                 utf8(why)
@@ -1873,6 +1912,9 @@ void MainFrame::onSessionEvents()
 {
     using Type = session::SessionChat::Event::Type;
     uint64_t now = HostConnection::nowMs();
+    // Lines heard with the window in the background: one notification.
+    size_t heard = 0;
+    std::string heardFrom, heardText;
     for (const session::SessionChat::Event& e : session_.takeEvents())
     {
         switch (e.type)
@@ -1911,6 +1953,12 @@ void MainFrame::onSessionEvents()
                 break;
             case Type::Heard:
                 if (!(tabs_->GetSelection() == TAB_SESSION && IsActive())) sessionUnread_++;
+                if (const session::Message* m = session_.find(e.id); m != nullptr && !IsActive())
+                {
+                    heard++;
+                    heardFrom = m->from;
+                    heardText = m->text;
+                }
                 break;
             case Type::Reacted:
             {
@@ -1921,6 +1969,7 @@ void MainFrame::onSessionEvents()
             }
         }
     }
+    if (heard > 0) notifyHeard(heard, heardFrom, heardText, "");
 }
 
 void MainFrame::refreshSession()
@@ -3495,9 +3544,9 @@ void MainFrame::updateVoices(uint64_t nowMs)
             }
         }
         if (!t.outgoing && t.state == SState::Saved) arrived.push_back(key);
-        // In a ragchew a clip can play while it comes (docs/STAGE1.md,
-        // "Voice while it arrives"): with the deck open it takes its turn
-        // as soon as its first frames are in, not once it is whole.
+        // In a ragchew a clip can play while it comes: with the deck open it
+        // takes its turn as soon as its first frames are in, not once it is
+        // whole.
         else if (!t.outgoing && t.state == SState::Receiving && autoPlayVoice())
             arrived.push_back(key);
     }
@@ -3725,7 +3774,7 @@ bool MainFrame::startArrivingVoice(const std::string& key, uint32_t fromFrame, s
 void MainFrame::voiceDone(const std::string& key, bool played)
 {
     // How it ended, for the flight recorder: the speaker's word, or the
-    // clock's (docs/STAGE1.md, "A clip's end by the clock").
+    // clock's.
     using Ending = VoicePlayer::Ending;
     const Ending how = voicePlayer_ ? voicePlayer_->ending() : Ending::Heard;
     switch (how)

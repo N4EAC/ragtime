@@ -1,11 +1,7 @@
 # Picture codecs at 1.6 and 4 kB
 
 The scripts and results of a test run on 2026-10-29: could anything beat
-the JPEG 2000 that Ragtime sends its inline pictures in (docs/STAGE1.md,
-"Inline pictures") at the sizes a picture has on HF? The write-up, with
-the pictures side by side, is the Claude Doc "Picture codecs at 1.6 and
-4 kB" (https://claude.ai/artifact/SPsYp1d99sL7QzrW1kVG3v, private to
-Jeff). Nothing here is built by CMake or run in CI. It is a record that
+the JPEG 2000 that Ragtime sends its inline pictures in at the sizes a picture has on HF? Nothing here is built by CMake or run in CI. It is a record that
 anyone can run again.
 
 ## The picture and the budgets
@@ -34,8 +30,7 @@ The scores are PSNR and SSIM against the original at 640×480
     convert SSTVAE/wonder_wheel.jpg ww.png                # ImageMagick
     convert SSTVAE/wonder_wheel.jpg ww.ppm
 
-The run used Python 3.13, torch 2.15 (from PyPI: download.pytorch.org is
-blocked in the cloud sandbox), CompressAI 1.2.8, imagecodecs 2026.10.10
+The run used Python 3.13, torch 2.15 (from PyPI), CompressAI 1.2.8, imagecodecs 2026.10.10
 (libjxl 0.12.0), OpenJPEG 2.5.0 and Cool-chic 5.0.1. Everything ran on
 four CPU cores, with no GPU.
 

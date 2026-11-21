@@ -1,10 +1,9 @@
-// Watching a clip on the speaker by the clock (docs/STAGE1.md, "A clip's
-// end by the clock"). A clip ends when the speaker says it has been heard
-// (PipeWire's drained, WASAPI's empty buffer). A speaker that never says
-// so, or stops taking sound part way, left the card showing Stop, and the
-// next clip waiting, until something else stopped it (Jeff, 2026-11-03,
-// on an xrdp speaker). The watch is fed how many samples the speaker has
-// taken, each voice tick, and says when to give up waiting:
+// Watching a clip on the speaker by the clock. A clip ends when the speaker
+// says it has been heard (PipeWire's drained, WASAPI's empty buffer). A
+// speaker that never says so, or stops taking sound part way, left the card
+// showing Stop, and the next clip waiting, until something else stopped it
+// (Jeff, 2026-11-03, on an xrdp speaker). The watch is fed how many samples
+// the speaker has taken, each voice tick, and says when to give up waiting:
 //
 // - Ended: every sample has been taken, and END_GRACE_MS have passed
 //   with no word from the speaker. The clip counts as heard; its sound

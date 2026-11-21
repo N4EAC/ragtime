@@ -16,7 +16,7 @@ class wxDataViewListCtrl;
 class wxMenu;
 class wxStaticText;
 
-// The Files tab (docs/PLAN.md, "The Files tab"): two panes, newest first.
+// The Files tab: two panes, newest first.
 // "In progress and parts" holds every transfer not finished, session files
 // and broadcast files alike, with a two-shade bar (acknowledged, and sent
 // but not yet acknowledged; a broadcast file's pieces each in turn), the
@@ -56,7 +56,7 @@ public:
         onFinishedMenu_ = std::move(fn);
     }
     void onOpenFolder(std::function<void()> fn) { onOpenFolder_ = std::move(fn); }
-    // Voice messages (docs/STAGE1.md, "Voice cards"): a finished one shows
+    // Voice messages: a finished one shows
     // a play sign before its name (a stop sign while it plays), and a
     // double click or Play on its menu plays it, or stops it.
     void onPlayVoice(std::function<void(const ragtime::files::FinishedFile&)> play,

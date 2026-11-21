@@ -1,6 +1,6 @@
 // The watch list: a bell on any callsign, heard before or not, that rings
 // when the station is heard on D2G or sends QRV, for skeds across time
-// zones. "Tell me when free" (docs/PLAN.md, "Busy stations") is its
+// zones. "Tell me when free" is its
 // one-shot case: a bell on a busy station that rings once at its QRV, so
 // Ragtime can offer to call it, and then comes off.
 //

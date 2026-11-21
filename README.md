@@ -89,11 +89,12 @@ On Fedora 44:
 
 ### macOS
 
-The integrated modem uses Data2G v0.5.3 at commit
-`ede34e7c15627b09a55c3f6bbae71511cfbb6882`. Use a separate checkout for
+The integrated modem uses Data2G v0.5.3 plus upstream settings fixes at commit
+`759ea35f3877910c18e1edf1ab2ec72303592fe9`. Use a separate checkout for
 this build. [Data2G v0.5.3](https://github.com/arodland/Data2G/releases/tag/v0.5.3)
 
-    git clone --branch v0.5.3 https://github.com/arodland/Data2G.git ../Data2G-ragtime
+    git clone https://github.com/arodland/Data2G.git ../Data2G-ragtime
+    git -C ../Data2G-ragtime checkout 759ea35f3877910c18e1edf1ab2ec72303592fe9
 
 Install the build dependencies with Homebrew:
 
@@ -358,8 +359,7 @@ How these were picked (2026-10-26):
   segment, or less than 3 kHz inside its edge, and says so in the
   connection bar.
 - Unattended stations (automatic control) must stay in the narrower
-  segments of 97.221(b); see "Frequencies and band plans" in
-  [docs/PLAN.md](docs/PLAN.md#frequencies-and-band-plans).
+  segments of 97.221(b).
 
 Sources: [ARRL band plan](https://www.arrl.org/band-plan),
 [IARU Region 2 band plan](https://www.iaru.org/wp-content/uploads/2020/10/IARU-Region-2-Band-plan.pdf),
@@ -390,12 +390,8 @@ Messages are signed, never encrypted, as Part 97 requires.
 
 | Document | What |
 | --- | --- |
-| [docs/PLAN.md](docs/PLAN.md) | The full design: the net, ragchews, broadcast mode, files, signing, store and forward, frequencies, decisions and open questions |
-| [docs/STAGE1.md](docs/STAGE1.md) | Stage 1, parity with Glissando's Data2G mode, split into work packages |
 | [docs/HOW_SEALS_WORK.md](docs/HOW_SEALS_WORK.md) | Seals in plain words, with pictures: what is inside one, how repairs work, and what a late joiner asks for |
 | [docs/GEARBOX.md](docs/GEARBOX.md) | The gearshift: how a Data2G mode is picked from the Submode Map |
-| [docs/MOCKUPS.md](docs/MOCKUPS.md) | The screens, colours, Globus and seal icons |
-| [docs/PICTURES_AND_VOICE.md](docs/PICTURES_AND_VOICE.md) | Draft spec for analogue SSTVAE pictures in chat, with the US band segments and Part 97 notes (not built; waits on Data2G). Its RADE voice clips are retired in favour of sotto voice messages |
 | [CLAUDE.md](CLAUDE.md) | Working notes and ground rules for contributors |
 
 ## Licence
@@ -403,6 +399,9 @@ Messages are signed, never encrypted, as Part 97 requires.
 MIT. See [LICENSE](LICENSE).
 
 ## Credits
+
+Original Ragtime by Jeff Baitis (AG7EW). Upstream macOS port by Tim Vetter.
+This fork adds the built-in Data2G modem and its macOS integration.
 
 The packaged sotto library is pinned to commit
 `598f1bce87c22ebada2b9d0d1fcfd89107b33a09`. It retains the v3.8 frame

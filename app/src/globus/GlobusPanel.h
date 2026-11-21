@@ -16,11 +16,12 @@ class PathStripView;
 class GlobusView;
 class wxStaticText;
 
-// The Globus pane (docs/MOCKUPS.md): a header with the Globus toggle and
+// The Globus pane: a header with the Globus toggle and
 // the time the globe is lit for, "22:36 UTC / 15:36 PDT"; the globe; and
 // under it the caption, "W1AW · FN31 · 3,951 km · 81°", then the station's
-// details, with its 24-hour strip by band from the path log. The toggle sends wxEVT_TOGGLEBUTTON up to the window that holds
-// the pane, which shows or hides it (package E).
+// details, with its 24-hour strip by band from the path log. The toggle sends
+// wxEVT_TOGGLEBUTTON up to the window that holds the pane, which shows or
+// hides it (package E).
 class GlobusPanel : public wxPanel
 {
 public:

@@ -4,7 +4,11 @@
 if(RAGTIME_BUILD_WX)
     include(BuildWxWidgets)
 else()
-    find_package(wxWidgets 3.2 REQUIRED COMPONENTS html net core base)
+    if(APPLE)
+        find_package(wxWidgets 3.2.10 REQUIRED COMPONENTS html net core base)
+    else()
+        find_package(wxWidgets 3.2 REQUIRED COMPONENTS html net core base)
+    endif()
     set(RAGTIME_WX_LIBS ${wxWidgets_LIBRARIES})
 endif()
 
@@ -74,6 +78,10 @@ add_executable(ragtime WIN32 MACOSX_BUNDLE
 )
 target_include_directories(ragtime PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated ${RAGTIME_RESOURCE_DIR})
 
+if(APPLE AND NOT RAGTIME_EMBED_DATA2G)
+    include(${PROJECT_SOURCE_DIR}/packaging/macos/Bundle.cmake)
+endif()
+
 # The ham phrase highlight in the entry lines talks to GTK itself
 # (PhraseHighlight.cpp): a GtkEntry takes no wx text styles.
 if(UNIX AND NOT APPLE AND NOT RAGTIME_BUILD_WX)
@@ -103,20 +111,24 @@ if(APPLE)
     enable_language(OBJCXX)
     target_sources(ragtime PRIVATE src/AppIconMac.mm src/FrequencySelector.cpp)
 
-    set_source_files_properties(res/ragtime.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-    target_sources(ragtime PRIVATE res/ragtime.icns)
+    if(RAGTIME_EMBED_DATA2G)
+        set_source_files_properties(res/ragtime.icns PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+        target_sources(ragtime PRIVATE res/ragtime.icns)
+    endif()
     set(ragtimeNotice "${CMAKE_CURRENT_BINARY_DIR}/generated/Ragtime-LICENSE.txt")
     configure_file("${PROJECT_SOURCE_DIR}/LICENSE" "${ragtimeNotice}" COPYONLY)
     set_source_files_properties("${ragtimeNotice}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources/Licenses)
     target_sources(ragtime PRIVATE "${ragtimeNotice}")
-    set_target_properties(ragtime PROPERTIES
-        MACOSX_BUNDLE_ICON_FILE ragtime.icns
-        OUTPUT_NAME Ragtime
-        MACOSX_BUNDLE_BUNDLE_NAME Ragtime
-        MACOSX_BUNDLE_GUI_IDENTIFIER org.baitisj.ragtime
-        MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
-        MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
-        MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/res/RagtimeInfo.plist.in)
+    if(RAGTIME_EMBED_DATA2G)
+        set_target_properties(ragtime PROPERTIES
+            MACOSX_BUNDLE_ICON_FILE ragtime.icns
+            OUTPUT_NAME Ragtime
+            MACOSX_BUNDLE_BUNDLE_NAME Ragtime
+            MACOSX_BUNDLE_GUI_IDENTIFIER org.baitisj.ragtime
+            MACOSX_BUNDLE_BUNDLE_VERSION ${PROJECT_VERSION}
+            MACOSX_BUNDLE_SHORT_VERSION_STRING ${PROJECT_VERSION}
+            MACOSX_BUNDLE_INFO_PLIST ${CMAKE_CURRENT_SOURCE_DIR}/res/RagtimeInfo.plist.in)
+    endif()
     target_link_options(ragtime PRIVATE "LINKER:-headerpad_max_install_names")
     if(RAGTIME_BUILD_SOTTO AND EXISTS "${RAGTIME_SOTTO_LIBRARY}")
         set(sottoLibraries "${RAGTIME_SOTTO_LIBRARY}" "${RAGTIME_SOTTO_OUT}/libcodec2.1.2.dylib")
@@ -196,30 +208,46 @@ if(RAGTIME_TESTS AND NOT WIN32)
         PASS_REGULAR_EXPRESSION "^Ragtime ${PROJECT_VERSION}")
 endif()
 
-# The chat list's scrolling, on a real window: skipped (77) with no display.
+# Widget checks on real windows: skipped (77) with no display.
 if(RAGTIME_TESTS AND NOT WIN32)
-    add_executable(ragtime_chat_list_test ${PROJECT_SOURCE_DIR}/tests/ChatListTest.cpp src/ChatList.cpp)
-    target_include_directories(ragtime_chat_list_test PRIVATE src ${PROJECT_SOURCE_DIR}/tests)
-    if(RAGTIME_BUILD_WX)
-        foreach(lib ${RAGTIME_WX_LIBS})
-            get_target_property(dirs ${lib} INTERFACE_INCLUDE_DIRECTORIES)
-            target_include_directories(ragtime_chat_list_test SYSTEM PRIVATE ${dirs})
-        endforeach()
-    else()
-        target_include_directories(ragtime_chat_list_test SYSTEM PRIVATE ${wxWidgets_INCLUDE_DIRS})
-        target_compile_definitions(ragtime_chat_list_test PRIVATE ${wxWidgets_DEFINITIONS})
-        if(wxWidgets_CXX_FLAGS)
-            target_compile_options(ragtime_chat_list_test PRIVATE ${RAGTIME_WX_CXX_FLAGS})
+    function(ragtime_widget_test target)
+        add_executable(${target} ${ARGN})
+        target_include_directories(${target} PRIVATE src ${PROJECT_SOURCE_DIR}/tests)
+        if(RAGTIME_BUILD_WX)
+            foreach(lib ${RAGTIME_WX_LIBS})
+                get_target_property(dirs ${lib} INTERFACE_INCLUDE_DIRECTORIES)
+                target_include_directories(${target} SYSTEM PRIVATE ${dirs})
+            endforeach()
+        else()
+            target_include_directories(${target} SYSTEM PRIVATE ${wxWidgets_INCLUDE_DIRS})
+            target_compile_definitions(${target} PRIVATE ${wxWidgets_DEFINITIONS})
+            if(wxWidgets_CXX_FLAGS)
+                target_compile_options(${target} PRIVATE ${RAGTIME_WX_CXX_FLAGS})
+            endif()
+        endif()
+        target_link_libraries(${target} PRIVATE ragtime_core ${RAGTIME_WX_LIBS})
+        if(GTK3_FOUND)
+            target_include_directories(${target} SYSTEM PRIVATE ${GTK3_INCLUDE_DIRS})
+            target_link_libraries(${target} PRIVATE ${GTK3_LIBRARIES})
+        endif()
+        ragtime_warnings(${target})
+        add_test(NAME ${target} COMMAND ${target})
+        set_tests_properties(${target} PROPERTIES SKIP_RETURN_CODE 77)
+    endfunction()
+
+    ragtime_widget_test(ragtime_chat_list_test ${PROJECT_SOURCE_DIR}/tests/ChatListTest.cpp src/ChatList.cpp)
+    ragtime_widget_test(ragtime_recent_work_pane_test ${PROJECT_SOURCE_DIR}/tests/RecentWorkPaneTest.cpp
+        src/RecentWorkPane.cpp src/DrawnIcon.cpp src/Html.cpp src/Theme.cpp src/UnpickClick.cpp)
+    set_tests_properties(ragtime_chat_list_test ragtime_recent_work_pane_test PROPERTIES TIMEOUT 30)
+    if(APPLE)
+        find_package(Python3 QUIET COMPONENTS Interpreter)
+        if(Python3_Interpreter_FOUND)
+            add_test(NAME ragtime_app_shutdown_test COMMAND ${Python3_EXECUTABLE}
+                ${PROJECT_SOURCE_DIR}/tests/macos/AppShutdownTest.py
+                --app $<TARGET_FILE:ragtime> --bench $<TARGET_FILE:ragtime_fake_air>)
+            set_tests_properties(ragtime_app_shutdown_test PROPERTIES TIMEOUT 75 SKIP_RETURN_CODE 77)
         endif()
     endif()
-    target_link_libraries(ragtime_chat_list_test PRIVATE ragtime_core ${RAGTIME_WX_LIBS})
-    if(GTK3_FOUND)
-        target_include_directories(ragtime_chat_list_test SYSTEM PRIVATE ${GTK3_INCLUDE_DIRS})
-        target_link_libraries(ragtime_chat_list_test PRIVATE ${GTK3_LIBRARIES})
-    endif()
-    ragtime_warnings(ragtime_chat_list_test)
-    add_test(NAME ragtime_chat_list_test COMMAND ragtime_chat_list_test)
-    set_tests_properties(ragtime_chat_list_test PROPERTIES SKIP_RETURN_CODE 77)
 endif()
 
 if(RAGTIME_TESTS AND RAGTIME_EMBED_DATA2G)

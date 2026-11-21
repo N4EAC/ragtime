@@ -241,8 +241,7 @@ an older host doesn't, and the gearshift falls back on the file.
 ## Hands
 
 Data2G PR #146 (merged at e09e19d, 2026-11-11) adds the Hand, the D2G
-net's show of hands (docs/PLAN.md, "On a multiplex link: the Hand
-burst"). Ragtime's check-in uses it to call the roll (PROTOCOL.md, "Roll
+net's show of hands. Ragtime's check-in uses it to call the roll (PROTOCOL.md, "Roll
 calls"). Its
 design is in Data2G's `docs/hand-burst.md`, the commands in `docs/arq.md`
 §9, the KISS side in `docs/broadcast.md` §5, the waveform in

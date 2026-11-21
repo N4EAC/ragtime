@@ -67,7 +67,7 @@ struct VoiceDeckHooks
     std::function<void()> onClosed;
 };
 
-// The microphone processor deck (docs/STAGE1.md, "The microphone deck"):
+// The microphone processor deck:
 // a floating window, a rack front panel read left to right in the order
 // the sound flows. Input (the microphone, two meters, Gain, Clip),
 // Clean-up (High-pass, Noise), Leveller (Target, push-pull, and the gain

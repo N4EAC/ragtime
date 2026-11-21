@@ -1,7 +1,7 @@
 // EarAudio: the Ear's ears. It listens to the sound card data2g-host
 // records from, alongside it, and hands the samples to the Ear's spectrum
-// (docs/STAGE1.md, "The Ear"; Jeff's call, 2026-10-26). PipeWire on Linux,
-// WASAPI on Windows, and Core Audio or the built-in modem tap on macOS.
+// (Jeff's call, 2026-10-26). PipeWire on Linux,
+// WASAPI on Windows (2026-10-27), Core Audio on macOS.
 //
 // It follows data2g-host by default: it watches for the host's capture
 // (ear::findHostCapture) and records the source feeding it, moving when
@@ -31,6 +31,13 @@
 // input the host records from is read from the audio sessions on each
 // input, by their process ids; a 100 ms buffer at the card's own format.
 //
+// On macOS it uses a separate Core Audio input queue, pinned by device UID,
+// with 100 ms buffers at the input's nominal rate. Native audio process
+// objects identify the local host's inputs. Ambiguous captures require an
+// explicit source; missing explicit selections never fall back. The queue
+// keeps its input active until it closes and never changes hardware rate,
+// buffer size or exclusive ownership.
+//
 // The callbacks come on PipeWire's thread, or the Ear's own on Windows.
 #ifndef RAGTIME_AUDIO_EAR_AUDIO_H
 #define RAGTIME_AUDIO_EAR_AUDIO_H
@@ -52,7 +59,7 @@ namespace audio
 
 struct EarStatus
 {
-    // Connected to PipeWire (or WASAPI); when not, problem says why.
+    // Native audio discovery available; when not, problem says why.
     bool available = false;
     std::string problem;
     // The sources the dropdown offers.
@@ -83,7 +90,7 @@ public:
 
     virtual ~EarAudio() = default;
 
-    // Connects to PipeWire (or WASAPI) and starts following. samples gets mono floats;
+    // Connects to native audio and starts following. samples gets mono floats;
     // changed is called when status() changes.
     virtual void start(Samples samples, Changed changed) = 0;
     // Disconnects; no callbacks after it returns.
@@ -100,7 +107,8 @@ public:
     virtual EarStatus status() const = 0;
 };
 
-// PipeWire on Linux, WASAPI on Windows and Core Audio on macOS.
+// PipeWire on Linux, WASAPI on Windows, Core Audio on macOS; a stand-in
+// that says why not elsewhere.
 std::unique_ptr<EarAudio> makeEarAudio();
 
 // The process listening on a TCP port on this machine, if any we may see:

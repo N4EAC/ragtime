@@ -49,7 +49,7 @@ bool isCpmMode(const link::ModeInfo& mode);
 double oneCodewordSeconds(const link::ModeInfo& mode);
 
 // The listening window after a seal: 3 one-codeword bursts, plus 4 s for
-// the channel to turn round (docs/PLAN.md, "Windows in Data2G terms").
+// the channel to turn round.
 constexpr double WINDOW_BURSTS = 3.0;
 constexpr uint64_t WINDOW_TURNAROUND_MS = 4000;
 uint64_t listeningWindowMs(const link::ModeInfo& mode);

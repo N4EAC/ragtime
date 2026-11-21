@@ -1,4 +1,4 @@
-// Inline pictures (docs/STAGE1.md, "Inline pictures"): a picture picked
+// Inline pictures: a picture picked
 // from disk is shrunk to fit a size, coded as progressive JPEG 2000 to fit
 // an airtime, and sent as a file the far end shows among the messages as
 // it comes. This is the part with no codec in it: the image in memory, the

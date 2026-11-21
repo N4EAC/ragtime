@@ -1,5 +1,5 @@
 // The microphone deck's meters and its push to talk, with no drawing in
-// them (docs/STAGE1.md, "The microphone deck"); app/src/VoiceDeck draws
+// them; app/src/VoiceDeck draws
 // them.
 //
 // Two meters side by side (Jeff, 2026-10-31):

@@ -39,7 +39,7 @@ GraphNode node(uint32_t id, const std::string& name, const std::string& descript
     return n;
 }
 
-// Jeff's radio PC, more or less: the radio's codec, the built-in card and
+// A typical station PC: the radio's codec, the built-in card and
 // a headset, and data2g-gui recording from the codec and playing to it.
 Graph station()
 {
@@ -147,7 +147,7 @@ void byTargetAndProgram()
 
 void twoHosts()
 {
-    // The two-host bench: both cards are radios, whichever host Ragtime
+    // Two hosts on one machine: both cards are radios, whichever host Ragtime
     // talks to.
     Graph g = station();
     GraphNode capture = node(140, "data2g-host", "", "Stream/Input/Audio", "");

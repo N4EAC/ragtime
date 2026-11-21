@@ -21,9 +21,10 @@
 #include <dlfcn.h>
 #include <limits.h>
 #include <unistd.h>
-#ifdef __APPLE__
-#include <mach-o/dyld.h>
 #endif
+
+#ifdef __APPLE__
+#include "SottoPaths.h"
 #endif
 
 namespace ragtime
@@ -128,28 +129,21 @@ void closeLibrary(void* lib)
     FreeLibrary((HMODULE)lib);
 }
 #else
-#ifdef __APPLE__
-constexpr const char* LIBRARY_NAME = "libsotto.0.dylib";
-#else
+#ifndef __APPLE__
 constexpr const char* LIBRARY_NAME = "libsotto.so.0";
-#endif
 
 std::string programFolder()
 {
     char path[PATH_MAX];
-#ifdef __APPLE__
-    uint32_t size = sizeof(path);
-    if (_NSGetExecutablePath(path, &size) != 0) return {};
-#else
     ssize_t n = readlink("/proc/self/exe", path, sizeof(path) - 1);
-    if (n <= 0) return {};
+    if (n <= 0) return std::string();
     path[n] = '\0';
-#endif
     std::string s(path);
     size_t slash = s.rfind('/');
     if (slash != std::string::npos) s.resize(slash + 1);
     return s;
 }
+#endif
 
 void* openLibrary(const std::string& file, std::string& error)
 {
@@ -214,14 +208,15 @@ std::vector<std::string> sottoCandidates()
     {
         if (*env) out.push_back(env);
     }
+#ifdef __APPLE__
+    const auto native = macosSottoCandidates();
+    out.insert(out.end(), native.begin(), native.end());
+#else
     std::string here = programFolder();
     if (!here.empty())
     {
         out.push_back(here + LIBRARY_NAME);
 #ifndef _WIN32
-#ifdef __APPLE__
-        out.push_back(here + "../Frameworks/" + LIBRARY_NAME);
-#endif
         // The AppImage keeps its libraries in usr/lib beside usr/bin.
         out.push_back(here + "../lib/" + LIBRARY_NAME);
         // Built from source: packaging/build-sotto.sh leaves it in the
@@ -239,6 +234,7 @@ std::vector<std::string> sottoCandidates()
 #endif
     }
     out.push_back(LIBRARY_NAME);    // the system's search path
+#endif
     return out;
 }
 
@@ -275,9 +271,12 @@ Sotto::Sotto(const std::string& path)
     else
 #ifdef _WIN32
         info_.why = "sotto.dll isn't installed: put it beside ragtime.exe, or set RAGTIME_SOTTO to its path";
+#elif defined(__APPLE__)
+        info_.why = "libsotto isn't installed: put libsotto.0.dylib in Ragtime.app/Contents/Frameworks, "
+                    "or set RAGTIME_SOTTO to its path";
 #else
         info_.why = "libsotto isn't installed: build it with packaging/build-sotto.sh in Ragtime's checkout, "
-                    "or set RAGTIME_SOTTO to the library's path";
+                    "or set RAGTIME_SOTTO to libsotto.so.0's path";
 #endif
 }
 

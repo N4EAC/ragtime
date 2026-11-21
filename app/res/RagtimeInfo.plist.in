@@ -20,6 +20,8 @@
     <string>${MACOSX_BUNDLE_BUNDLE_VERSION}</string>
     <key>NSMicrophoneUsageDescription</key>
     <string>Ragtime uses your selected audio input for voice messages and Data2G radio reception.</string>
+    <key>LSMinimumSystemVersion</key>
+    <string>${CMAKE_OSX_DEPLOYMENT_TARGET}</string>
     <key>NSHighResolutionCapable</key>
     <true/>
 </dict>

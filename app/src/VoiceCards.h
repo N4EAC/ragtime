@@ -25,7 +25,7 @@ class VoiceAudio;
 }
 } // namespace ragtime
 
-// Voice cards (docs/STAGE1.md, "Voice cards"): a voice message among the
+// Voice cards: a voice message among the
 // messages, on both tabs, as a play button and a pitch strip. The strip is
 // the clip's melody (pitch as height, loudness as thickness, silence as a
 // gap) drawn straight from the frames' bits with no decoding, so a hundred
@@ -82,7 +82,7 @@ public:
         double playheadFrame = -1.0;    // < 0: none
         // Playing as it arrives, but waiting for the bytes to keep ahead:
         // about how long until it starts, in seconds (0: any moment), or
-        // < 0 if not (docs/STAGE1.md, "Voice while it arrives").
+        // < 0 if not.
         double startsIn = -1.0;     // infinite: can't tell yet
         // A session clip coming to us: the stop sign after the strip,
         // linked here (FileCancel 0x84, keeping what came).
@@ -153,11 +153,11 @@ public:
     // if it can't (no libsotto, an empty clip).
     bool play(ragtime::audio::VoiceAudio& audio, const std::string& key, const ragtime::voice::Clip& clip,
               uint32_t fromFrame, uint64_t nowMs, std::string& why);
-    // A session clip still arriving (docs/STAGE1.md, "Voice while it
-    // arrives"): plays from its bytes as they stand, starting once they
-    // will keep ahead of the speech, and fed more by arriving(). The
-    // session's mode gives a first guess at the rate (bytes a second) and
-    // the gap between its bursts (seconds), until arrivals show them.
+    // A session clip still arriving: plays from its bytes as they stand,
+    // starting once they will keep ahead of the speech, and fed more by
+    // arriving(). The session's mode gives a first guess at the rate (bytes a
+    // second) and the gap between its bursts (seconds), until arrivals show
+    // them.
     bool playArriving(ragtime::audio::VoiceAudio& audio, const std::string& key, const std::vector<uint8_t>& bytes,
                       uint64_t size, uint32_t fromFrame, double expectedRate, double expectedGap, uint64_t nowMs,
                       std::string& why);

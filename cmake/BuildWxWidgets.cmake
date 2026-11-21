@@ -1,11 +1,17 @@
 # Fetches wxWidgets with git and builds it statically as part of Ragtime
-# (-DRAGTIME_BUILD_WX=ON), for the Windows build, where there is no system
+# (-DRAGTIME_BUILD_WX=ON), for macOS and Windows builds without a system
 # wxWidgets. Sets RAGTIME_WX_LIBS to the targets ragtime links.
 #
 # Point RAGTIME_WX_SOURCE at a wxWidgets checkout (with its submodules) to
 # build that instead of cloning one.
 
-set(RAGTIME_WX_VERSION 3.2.9)
+if(APPLE)
+    # 3.2.9 asserts in native Save dialogs with a single file filter
+    # (wxWidgets #26148, fixed in 3.2.10).
+    set(RAGTIME_WX_VERSION 3.2.11)
+else()
+    set(RAGTIME_WX_VERSION 3.2.9)
+endif()
 set(RAGTIME_WX_SOURCE "" CACHE PATH "A wxWidgets source tree to build instead of cloning v${RAGTIME_WX_VERSION}.")
 
 set(wxBUILD_SHARED OFF CACHE BOOL "" FORCE)
@@ -15,6 +21,10 @@ set(wxBUILD_SAMPLES OFF CACHE STRING "" FORCE)
 set(wxBUILD_TESTS OFF CACHE STRING "" FORCE)
 set(wxBUILD_DEMOS OFF CACHE BOOL "" FORCE)
 set(wxBUILD_INSTALL OFF CACHE BOOL "" FORCE)
+
+if(APPLE)
+    set(wxBUILD_TOOLKIT osx_cocoa CACHE STRING "" FORCE)
+endif()
 
 # Everything third-party wx needs comes from its own tree.
 set(wxUSE_REGEX builtin CACHE STRING "" FORCE)
@@ -50,6 +60,11 @@ else()
         FetchContent_Populate(wxWidgets)
         add_subdirectory(${wxwidgets_SOURCE_DIR} ${wxwidgets_BINARY_DIR} EXCLUDE_FROM_ALL)
     endif()
+endif()
+
+if(APPLE AND wxVERSION VERSION_LESS 3.2.10)
+    message(FATAL_ERROR "macOS needs wxWidgets 3.2.10 or newer: 3.2.9 has a native Save dialog regression. "
+                        "Update RAGTIME_WX_SOURCE or use the pinned fetched source.")
 endif()
 
 set(RAGTIME_WX_LIBS wx::html wx::net wx::core wx::base)

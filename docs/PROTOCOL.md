@@ -405,8 +405,7 @@ host giving up the link. Nothing else opens or closes one.
    for a second after a session ends without one. Leave now (`ABORT`)
    writes no farewell.
 7. **On the group,** each end sends a Status QRL naming its partner when
-   a session starts, and a Status QRV when it ends (`docs/PLAN.md`, "Busy
-   stations"). The host holds the QRL until the session goes idle; a QRL
+   a session starts, and a Status QRV when it ends. The host holds the QRL until the session goes idle; a QRL
    still unsent when the session ends is taken back, with no QRV after
    it.
 
@@ -570,8 +569,8 @@ by Hand on its own: it answers someone's roll call.
   until the host has shown it does Hands (a REF for any burst), and while
   a roll call of ours is still under way.
 - **Answering.** A station that hears a RollCall answers with `HAND SEND`
-  on the burst's reference, `delay` after it, unless it is in a ragchew
-  (docs/PLAN.md, "Who stays quiet"), its operator has turned answering
+  on the burst's reference, `delay` after it, unless it is in a ragchew,
+  its operator has turned answering
   off (Settings > Station, on by default), it has answered that round
   already (heard twice), a Hand of its own for another roll call still
   waits to go (the host sends one at a time), or its host gave the frame
@@ -581,8 +580,7 @@ by Hand on its own: it answers someone's roll call.
 - **The channel** is the first 4 bytes of SHA-256 over the answering
   station's callsign, a zero byte and the round, big-endian, modulo the
   smaller of `channels` and its own channel count. With no channel map,
-  each round reshuffles who shares a channel (docs/PLAN.md, "Stranger
-  hands"). Two Hands in one channel usually both fail; with 40 channels
+  each round reshuffles who shares a channel. Two Hands in one channel usually both fail; with 40 channels
   and 10 answering, 8 in 10 have their channel to themselves.
 - **Net control** takes each Hand that unpacks (below), drops one whose
   call isn't in the channel that call would pick at 8, 20 or 40 channels
@@ -751,8 +749,8 @@ fix.
 
 ### Seals and repair
 
-`docs/PLAN.md` ("Seals, receipts and repairs") has the reasoning, and
-`docs/HOW_SEALS_WORK.md` explains it in plain words with pictures; this
+`docs/HOW_SEALS_WORK.md` explains the reasoning in plain words with
+pictures; this
 is what version 0 does. Every timing is in airtimes of Data2G modes, as
 the host's `MODES` lists them.
 
@@ -1278,8 +1276,7 @@ less where a silence run lets the link catch up. When to start is the
 receiver's own business and puts nothing on the air: Ragtime also waits
 out one gap between bursts, since a session's bytes come a burst at a
 time, and if it runs dry anyway it covers the gap as a lost frame and
-carries on from where it stopped (docs/STAGE1.md, "Voice while it
-arrives"). The stop sign (FileCancel `0x84`) works as for pictures: the
+carries on from where it stopped. The stop sign (FileCancel `0x84`) works as for pictures: the
 receiver keeps what came, and plays it to the end.
 
 **On D2G** a voice message is sealed and repaired as any file. A

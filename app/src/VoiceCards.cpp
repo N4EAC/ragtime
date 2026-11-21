@@ -491,8 +491,7 @@ void VoicePlayer::tick(audio::VoiceAudio& audio, uint64_t nowMs)
     if (playing_.empty()) return;
     feed(audio, nowMs);
     // The speaker by the clock: a clip it never says it has played ends,
-    // and one it has stopped taking stops (docs/STAGE1.md, "A clip's end
-    // by the clock").
+    // and one it has stopped taking stops.
     const uint64_t taken = (uint64_t)std::llround(std::max(0.0, audio.playPosition()) * voice::SOTTO_RATE);
     switch (watch_.check(nowMs, taken, arrival_ ? appended_ : total_))
     {

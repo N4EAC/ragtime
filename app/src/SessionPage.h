@@ -22,7 +22,7 @@ class wxStaticText;
 class wxTextCtrl;
 class SessionMessages;
 
-// The Session tab (docs/PLAN.md, "Sometimes we ragchew"): the status strip
+// The Session tab: the status strip
 // across the top with the one button the moment needs (Cancel while
 // calling, Leave in a session, Leave now while leaving, Call again once it
 // has ended); the session's messages, each of ours Sent, then Delivered
@@ -66,7 +66,7 @@ public:
     void onReact(std::function<void(uint64_t id, uint8_t code)> fn) { onReact_ = std::move(fn); }
     // Send file... pressed.
     void onSendFile(std::function<void()> fn) { onSendFile_ = std::move(fn); }
-    // Inline pictures (docs/STAGE1.md, "Inline pictures"): the picture
+    // Inline pictures: the picture
     // button, left of the floppy; a picture card's picture as it stands, an
     // <img> linked to href ("" while nothing shows yet), with the stop
     // button linked to stopHref when that isn't empty; and a word that a
@@ -90,7 +90,7 @@ public:
         pastPictureHtml_ = std::move(html);
         onViewPast_ = std::move(view);
     }
-    // Voice cards (docs/STAGE1.md, "Voice cards"): a card's button and
+    // Voice cards: a card's button and
     // strip by its key ("s<id>" a transfer, "p<path>" an earlier
     // session's, from its file; "" while nothing shows), and a card's link
     // ("voice:play:0", "voice:stop:0", "voice:seek:<frame>") clicked.

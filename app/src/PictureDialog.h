@@ -51,7 +51,7 @@ struct PictureTarget
     std::vector<PictureGear> gears; // empty when the host has listed none
 };
 
-// Send a picture (docs/STAGE1.md, "Inline pictures"): the picture picked,
+// Send a picture: the picture picked,
 // shrunk with the detail-preserving downscaler to fit the longest side
 // asked for and coded to fit the airtime asked for, shown as the far end
 // will see it, whole or as it comes. On a broadcast the seal after it is

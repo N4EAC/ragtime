@@ -11,8 +11,7 @@
 // and washed with navy. A smoothstep between the two is the greyline, the
 // band of dawn and dusk that HF operators watch. Last, the globe darkens a
 // little towards its rim, 0.88 + 0.12 × depth, so it looks round.
-// docs/MOCKUPS.md has the figures and tools/globe/render_sunlit_globe.py
-// the reference renderer.
+// tools/globe/render_sunlit_globe.py is the reference renderer.
 #ifndef RAGTIME_GLOBUS_SUN_H
 #define RAGTIME_GLOBUS_SUN_H
 

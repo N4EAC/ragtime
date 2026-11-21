@@ -275,6 +275,30 @@ bool isType(const protocol::Record& r, protocol::RecordType type)
     return r.type() == (uint8_t)type;
 }
 
+// These scenarios require a particular request order. mt19937's sequence
+// is portable, but uniform_int_distribution's mapping is not (libc++ and
+// libstdc++ differ). Pick seeds for well-separated waits on this library
+// rather than baking in the ordering of two arbitrary seeds.
+void orderRequests(Station& first, Station& last)
+{
+    const auto mode = broadcast::findMode(first.link.modes(), "qpsk-r1/3");
+    const uint64_t window = broadcast::listeningWindowMs(mode);
+    const uint64_t own = (uint64_t)(broadcast::oneCodewordSeconds(mode) * 1000.0) + 2000;
+    const uint64_t spread = window > own + 1000 ? window - own : 1000;
+    uint64_t earliest = spread, latest = 0;
+    uint32_t earlySeed = 0, lateSeed = 0;
+    for (uint32_t seed = 1; seed <= 100; seed++)
+    {
+        std::mt19937 random(seed);
+        const uint64_t wait = std::uniform_int_distribution<uint64_t>(0, spread)(random);
+        if (wait < earliest) { earliest = wait; earlySeed = seed; }
+        if (wait > latest) { latest = wait; lateSeed = seed; }
+    }
+    CHECK(latest > earliest + 1000);
+    first.seals.setRandomSeed(earlySeed);
+    last.seals.setRandomSeed(lateSeed);
+}
+
 // A file of n bytes of a pattern, in a scratch folder.
 std::filesystem::path scratch()
 {
@@ -331,7 +355,7 @@ void testAirtime()
     CHECK(!broadcast::findMode({}, "no-such-mode").valid());
     CHECK(broadcast::findMode({}, "", "qpsk-r1/3").valid());
 
-    // docs/PLAN.md's table: fsk16r25-r1/3 about 16 s a one-codeword
+    // From Data2G's modes: fsk16r25-r1/3 about 16 s a one-codeword
     // burst and a 52 s window; qpsk-r1/3 about 3 s and 13 s.
     CHECK(broadcast::oneCodewordSeconds(fsk) > 15.0 && broadcast::oneCodewordSeconds(fsk) < 16.5);
     uint64_t wf = broadcast::listeningWindowMs(fsk);
@@ -1061,18 +1085,6 @@ void testGiveUpAndAskAgain()
 // requests under the seal didn't ask for it; Sealed when nobody has said.
 // Theirs: Sealed when the seal's digest matches what we hold, Mismatch
 // when it doesn't, until a good copy comes.
-// The mapping from mt19937 to a uniform interval differs across C++
-// standard libraries. Order the two test seeds by their first repair delay.
-std::pair<uint32_t, uint32_t> repairSeedOrder(const Station& station)
-{
-    auto mode = broadcast::findMode(station.link.modes(), "qpsk-r1/3");
-    auto window = broadcast::listeningWindowMs(mode);
-    auto own = (uint64_t)(broadcast::oneCodewordSeconds(mode) * 1000.0) + 2000;
-    std::uniform_int_distribution<uint64_t> delay(0, window > own + 1000 ? window - own : 1000);
-    std::mt19937 first(2), second(3);
-    return delay(first) < delay(second) ? std::make_pair(2u, 3u) : std::make_pair(3u, 2u);
-}
-
 void testSealMarks()
 {
     using Mark = Seals::Mark;
@@ -1096,9 +1108,7 @@ void testSealMarks()
         return false;
     };
     air.run(2000);
-    const auto [early, late] = repairSeedOrder(b);
-    b.seals.setRandomSeed(early);
-    c.seals.setRandomSeed(late);
+    orderRequests(b, c);
     a.chat.send("one", "", now);
     a.chat.send("two", "", now);
     a.chat.send("three", "", now);
@@ -1705,9 +1715,8 @@ void testSuppressionByGear(const std::string& firstAsker)
     b.lose = loseOnce("two");
     c.lose = loseOnce("two");
     air.run(2000);
-    const auto [early, late] = repairSeedOrder(b);
-    b.seals.setRandomSeed(firstAsker == "KC2G" ? early : late);
-    c.seals.setRandomSeed(firstAsker == "W1AW" ? early : late);
+    if (firstAsker == "KC2G") orderRequests(b, c);
+    else orderRequests(c, b);
     a.chat.send("one", "", now);
     a.chat.send("two", "", now);
     air.run(Seals::QUIET_MS + 120000);

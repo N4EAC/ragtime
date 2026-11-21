@@ -327,6 +327,12 @@ wxWindow* SettingsDialog::stationPage(wxNotebook* book, const StationPrefs& pref
                                  "sessions, all stations at once. Not while you ragchew. Requires a modem with "
                                  "Hand support, included in the built-in Data2G modem.");
     broadcast->Add(answerRollCalls_, 0, wxLEFT | wxRIGHT | wxBOTTOM, 6);
+    notifyBroadcast_ = new wxCheckBox(box, wxID_ANY, "A notification for each message heard on D2G");
+    notifyBroadcast_->SetValue(prefs.notifyBroadcast);
+    notifyBroadcast_->SetToolTip("While Ragtime is in the background, a desktop notification says who sent a message "
+                                 "on D2G and what it says. Unticked, only messages addressed to you (@ your callsign) "
+                                 "make one. Messages in a session always do.");
+    broadcast->Add(notifyBroadcast_, 0, wxLEFT | wxRIGHT | wxBOTTOM, 6);
     slowRepair_ = new wxSpinCtrl(box, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS,
                                  SLOW_REPAIR_MIN_MINUTES, SLOW_REPAIR_MAX_MINUTES, prefs.slowRepairMinutes);
     const char* slowTip = "A station that asks for repairs says how well it hears you, and what it lacks goes again "
@@ -1080,6 +1086,15 @@ void SettingsDialog::onVoiceTimer()
 
     if (voiceTest_ == VoiceTest::Recording)
     {
+        if (status.microphonePermissionPending)
+        {
+            // The OS prompt can stay open indefinitely. Count the test
+            // from approval rather than expiring while the user reads it.
+            voiceTestMs_ = steadyMs();
+            microphoneTest_->SetLabel("Waiting for permission");
+            microphoneStatus_->SetLabel("Allow microphone access in the macOS prompt to begin the test");
+            return;
+        }
         // The meter: the loudest 10 ms since it last looked.
         double loudest = -120.0;
         bool done = steadyMs() - voiceTestMs_ >= MIC_TEST_MS;
@@ -1310,6 +1325,7 @@ StationPrefs SettingsDialog::prefs() const
     }
     p.sealChat = sealChat_->GetValue();
     p.answerRollCalls = answerRollCalls_->GetValue();
+    p.notifyBroadcast = notifyBroadcast_->GetValue();
     p.picturesAsTheyCome = pictures_->GetValue();
     p.slowRepairMinutes = slowRepair_->GetValue();
     int floor = repairFloor_->GetSelection();

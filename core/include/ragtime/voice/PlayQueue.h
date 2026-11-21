@@ -1,10 +1,9 @@
-// Which voice message plays, and which wait (docs/STAGE1.md, "Voice
-// cards"). One clip plays at a time. Pressing play on a card plays it at
-// once, stopping the one playing; while the microphone deck is open, voice
-// that arrives plays by itself, in the order it came, each clip once.
-// Holding Push to talk pauses whatever plays, and letting go carries it on
-// from where it paused. Stop on the card playing stops it and empties the
-// queue: the operator wants quiet.
+// Which voice message plays, and which wait. One clip plays at a time.
+// Pressing play on a card plays it at once, stopping the one playing; while
+// the microphone deck is open, voice that arrives plays by itself, in the
+// order it came, each clip once. Holding Push to talk pauses whatever plays,
+// and letting go carries it on from where it paused. Stop on the card playing
+// stops it and empties the queue: the operator wants quiet.
 //
 // Clips are named by key, as the window's shelves name them ("b<id>" a
 // broadcast file, "s<id>" a session transfer, "p<path>" one on disk). The

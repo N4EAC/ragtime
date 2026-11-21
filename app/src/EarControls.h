@@ -6,7 +6,7 @@
 #include <wx/control.h>
 #include <wx/timer.h>
 
-// The Ear's small controls (docs/STAGE1.md, "The Ear", step 3).
+// The Ear's small controls.
 
 // A kitchen timer: a dial whose wedge is the time left, as Jeff asked for
 // beside Undo (2026-10-26). It only draws; the owner says how much is left.

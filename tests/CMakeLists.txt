@@ -92,6 +92,60 @@ ragtime_test(ragtime_deck_test DeckTest.cpp)
 ragtime_test(ragtime_sotto_test SottoTest.cpp)
 target_link_libraries(ragtime_sotto_test PRIVATE ragtime_audio)
 target_compile_definitions(ragtime_sotto_test PRIVATE RAGTIME_SOURCE_DIR="${PROJECT_SOURCE_DIR}")
+add_library(ragtime_not_sotto SHARED fixtures/NotSotto.cpp)
+set_target_properties(ragtime_not_sotto PROPERTIES WINDOWS_EXPORT_ALL_SYMBOLS ON)
+target_compile_definitions(ragtime_sotto_test PRIVATE RAGTIME_NOT_SOTTO="$<TARGET_FILE_NAME:ragtime_not_sotto>")
+add_dependencies(ragtime_sotto_test ragtime_not_sotto)
+set_tests_properties(ragtime_sotto_test PROPERTIES WORKING_DIRECTORY "$<TARGET_FILE_DIR:ragtime_not_sotto>")
+if(APPLE)
+    find_package(Threads REQUIRED)
+    ragtime_test(ragtime_core_audio_devices_test macos/CoreAudioDevicesTest.cpp)
+    target_include_directories(ragtime_core_audio_devices_test PRIVATE ${PROJECT_SOURCE_DIR}/platform/macos)
+    target_link_libraries(ragtime_core_audio_devices_test PRIVATE ragtime_audio)
+    ragtime_test(ragtime_voice_buffer_test macos/VoiceBufferTest.cpp)
+    target_include_directories(ragtime_voice_buffer_test PRIVATE ${PROJECT_SOURCE_DIR}/platform/macos)
+    target_link_libraries(ragtime_voice_buffer_test PRIVATE Threads::Threads)
+    ragtime_test(ragtime_core_audio_voice_test macos/CoreAudioVoiceTest.cpp
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioVoice.mm
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioCapture.cpp
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioGraph.cpp)
+    target_include_directories(ragtime_core_audio_voice_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/platform/macos ${PROJECT_SOURCE_DIR}/audio/include)
+    target_link_libraries(ragtime_core_audio_voice_test PRIVATE Threads::Threads
+        "-framework CoreAudio" "-framework CoreFoundation" "-framework AudioToolbox"
+        "-framework AVFoundation" "-framework Foundation")
+    ragtime_test(ragtime_core_audio_ear_test macos/CoreAudioEarTest.cpp
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioEar.mm
+        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioGraph.cpp)
+    target_include_directories(ragtime_core_audio_ear_test PRIVATE
+        ${PROJECT_SOURCE_DIR}/platform/macos ${PROJECT_SOURCE_DIR}/audio/include)
+    target_link_libraries(ragtime_core_audio_ear_test PRIVATE Threads::Threads "-framework Foundation")
+    # Exercise dyld paths with a real executable inside a bundle, launched
+    # through a symlink from a different working directory.
+    add_test(NAME ragtime_sotto_bundle_test COMMAND ${CMAKE_COMMAND}
+        "-DPROGRAM=$<TARGET_FILE:ragtime_sotto_test>"
+        "-DWRONG_LIBRARY=$<TARGET_FILE:ragtime_not_sotto>"
+        "-DBUNDLE_DIR=${CMAKE_CURRENT_BINARY_DIR}/sotto-bundle-test/Codec.app"
+        -P "${CMAKE_CURRENT_SOURCE_DIR}/macos/SottoBundleTest.cmake")
+    if(RAGTIME_MACOS_SOTTO_DIR)
+        add_executable(ragtime_sotto_bundle_roundtrip MACOSX_BUNDLE SottoTest.cpp Check.h)
+        target_include_directories(ragtime_sotto_bundle_roundtrip PRIVATE ${CMAKE_CURRENT_SOURCE_DIR})
+        ragtime_warnings(ragtime_sotto_bundle_roundtrip)
+        target_link_libraries(ragtime_sotto_bundle_roundtrip PRIVATE ragtime_audio)
+        target_compile_definitions(ragtime_sotto_bundle_roundtrip PRIVATE
+            RAGTIME_SOURCE_DIR="${PROJECT_SOURCE_DIR}"
+            RAGTIME_NOT_SOTTO="$<TARGET_FILE_NAME:ragtime_not_sotto>")
+        add_dependencies(ragtime_sotto_bundle_roundtrip ragtime_not_sotto)
+        set_target_properties(ragtime_sotto_bundle_roundtrip PROPERTIES MACOSX_BUNDLE YES
+            MACOSX_BUNDLE_GUI_IDENTIFIER io.github.baitisj.ragtime.codec-test)
+        ragtime_macos_sotto(ragtime_sotto_bundle_roundtrip)
+        add_test(NAME ragtime_packaged_sotto_test COMMAND ${CMAKE_COMMAND}
+            "-DBUNDLE=$<TARGET_BUNDLE_DIR:ragtime_sotto_bundle_roundtrip>"
+            "-DSTAGE=${CMAKE_CURRENT_BINARY_DIR}/relocated-codec/Voice Round Trip.app"
+            "-DWRONG_LIBRARY=$<TARGET_FILE:ragtime_not_sotto>"
+            -P "${CMAKE_CURRENT_SOURCE_DIR}/macos/PackagedSottoTest.cmake")
+    endif()
+endif()
 set(RAGTIME_SOTTO_TEST_LIB "" CACHE FILEPATH "A libsotto for ragtime_sotto_test's round trip")
 if(RAGTIME_SOTTO_TEST_LIB)
     set_tests_properties(ragtime_sotto_test PROPERTIES ENVIRONMENT "RAGTIME_SOTTO=${RAGTIME_SOTTO_TEST_LIB}")
@@ -100,9 +154,9 @@ endif()
 # Voice cards: the play queue, voice through the file machinery and the
 # chat logs.
 ragtime_test(ragtime_voice_cards_test VoiceCardsTest.cpp)
-if(APPLE)
-    ragtime_test(ragtime_core_audio_ear_test CoreAudioEarTest.cpp)
-    target_link_libraries(ragtime_core_audio_ear_test PRIVATE ragtime_audio)
+if(APPLE AND RAGTIME_EMBED_DATA2G)
+    ragtime_test(ragtime_embedded_ear_test CoreAudioEarTest.cpp)
+    target_link_libraries(ragtime_embedded_ear_test PRIVATE ragtime_audio)
 endif()
 # The Ear without its window, for the bench and checking a station by hand
 # (it only records). Run with a working audio input.
@@ -140,3 +194,12 @@ target_link_libraries(ragtime_denoise_test PRIVATE ragtime_denoise)
 add_executable(ragtime_voice_chain VoiceChainMain.cpp)
 target_link_libraries(ragtime_voice_chain PRIVATE ragtime_denoise)
 ragtime_warnings(ragtime_voice_chain)
+
+if(RAGTIME_EMBED_DATA2G AND TARGET data2g_station)
+    ragtime_test(ragtime_embedded_settings_test EmbeddedModemSettingsTest.cpp)
+    target_compile_features(ragtime_embedded_settings_test PRIVATE cxx_std_20)
+    target_link_libraries(ragtime_embedded_settings_test PRIVATE data2g_station Qt6::Core)
+    set_target_properties(ragtime_embedded_settings_test PROPERTIES
+        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/settings-probe")
+    set_tests_properties(ragtime_embedded_settings_test PROPERTIES SKIP_RETURN_CODE 77)
+endif()

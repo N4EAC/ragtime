@@ -878,7 +878,7 @@ GearshiftDialog::GearshiftDialog(wxWindow* owner, bool onTop, Gearshift& shift, 
     auto* whole = new wxBoxSizer(wxVERTICAL);
     whole->Add(panel, 1, wxEXPAND);
     SetSizerAndFit(whole);
-    // Fits Jeff's 1366x768 screen with room for the panel and title bar.
+    // Fits a 1366x768 screen with room for the panel and title bar.
     // Bigger desktop text can ask for more, up to the screen.
     const wxSize fitted = GetSize();
     const int display = wxDisplay::GetFromWindow(owner ? owner : this);
