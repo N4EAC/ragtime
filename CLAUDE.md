@@ -112,6 +112,10 @@ port: building, testing, the release zip and what differs there.
   fixes after it: Cool-chic pictures, voice messages, Hands and roll
   calls, and the thresholds from `MODES`. It chats with 0.2 (new
   records are skipped, pictures and voice arrive as plain files).
+  0.4.0-beta adds the Mac zips, voice on Windows (`sotto.dll`), edits,
+  repairs by Hand, repair gear per station, desktop notifications and
+  the hot-frequency dial. It chats and repairs with 0.3.1 (SealRound is
+  skipped there, and 0.3.1 asks for repairs by burst).
 - The macOS port (2026-11-20) is Tim Vetter's (GitHub `finitor`), brought
   in with his commits as he wrote them: the Cocoa build (wxWidgets
   3.2.11 on the Mac, `-DRAGTIME_BUILD_WX=ON`), the app bundle

@@ -12,7 +12,7 @@ and on which band, each of your friends gets through, so it can tell you
 who is likely around now, and the best time of day to check in to the
 D2G net to find them.
 
-Status: 0.3.1-beta. Ragtime connects to data2g-host,
+Status: 0.4.0-beta. Ragtime connects to data2g-host,
 chats on the D2G broadcast group. Current features include:
 - "Globus," which plots your friend's maidenhead coordinates
    on a globe,
@@ -118,10 +118,10 @@ can't show.
 ## Downloads
 
 Releases carry a Linux AppImage (x86_64, glibc 2.39 or newer, as on
-Ubuntu 24.04) and a portable Windows zip (64-bit); releases after
-0.3.1-beta add macOS zips for Apple Silicon and Intel (macOS 14.2 or
-newer; the app isn't signed by an Apple developer, and its `README.txt`
-says how to open it the first time). Ragtime needs a
+Ubuntu 24.04) and a portable Windows zip (64-bit); from 0.4.0-beta on
+they add macOS zips for Apple Silicon and Intel (macOS 14.2 or newer;
+the app isn't signed by an Apple developer, and its `README.txt` says
+how to open it the first time). Ragtime needs a
 [data2g-host](https://github.com/arodland/Data2G) running on your
 computer or your network; it never bundles or starts one. Give its
 address and ports in Settings > Station.
