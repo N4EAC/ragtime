@@ -312,6 +312,12 @@ wxWindow* SettingsDialog::stationPage(wxNotebook* book, const StationPrefs& pref
                                  "sessions, all stations at once. Not while you ragchew. Needs data2g-host with "
                                  "Hands (Data2G PR #146).");
     broadcast->Add(answerRollCalls_, 0, wxLEFT | wxRIGHT | wxBOTTOM, 6);
+    notifyBroadcast_ = new wxCheckBox(box, wxID_ANY, "A notification for each message heard on D2G");
+    notifyBroadcast_->SetValue(prefs.notifyBroadcast);
+    notifyBroadcast_->SetToolTip("While Ragtime is in the background, a desktop notification says who sent a message "
+                                 "on D2G and what it says. Unticked, only messages addressed to you (@ your callsign) "
+                                 "make one. Messages in a session always do.");
+    broadcast->Add(notifyBroadcast_, 0, wxLEFT | wxRIGHT | wxBOTTOM, 6);
     slowRepair_ = new wxSpinCtrl(box, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS,
                                  SLOW_REPAIR_MIN_MINUTES, SLOW_REPAIR_MAX_MINUTES, prefs.slowRepairMinutes);
     const char* slowTip = "A station that asks for repairs says how well it hears you, and what it lacks goes again "
@@ -1256,6 +1262,7 @@ StationPrefs SettingsDialog::prefs() const
     }
     p.sealChat = sealChat_->GetValue();
     p.answerRollCalls = answerRollCalls_->GetValue();
+    p.notifyBroadcast = notifyBroadcast_->GetValue();
     p.picturesAsTheyCome = pictures_->GetValue();
     p.slowRepairMinutes = slowRepair_->GetValue();
     int floor = repairFloor_->GetSelection();

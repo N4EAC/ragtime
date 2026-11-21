@@ -1288,6 +1288,7 @@ void MainFrame::refreshMessages()
         noteReaction(n.from, n.code, m != nullptr ? m->text : std::string());
         if (!(tabs_->GetSelection() == TAB_BROADCAST && IsActive())) reactionsUnread_++;
     }
+    notifyBroadcast();
     broadcast_->refresh();
     broadcast_->refreshEdit();
     updateTabLabels();
@@ -1317,6 +1318,37 @@ std::string MainFrame::editInfo(uint64_t id) const
         out += buf;
     }
     return out;
+}
+
+void MainFrame::notifyBroadcast()
+{
+    const std::string& me = chat_.settings().callsign;
+    size_t heard = 0;
+    const broadcast::Message* newest = nullptr;
+    uint64_t top = notifiedMessage_;
+    for (const broadcast::Message& m : chat_.messages())
+    {
+        top = std::max(top, m.id);
+        if (m.id <= notifiedMessage_ || m.ours || m.past || m.kind != broadcast::Message::Kind::Text) continue;
+        // A line addressed to us always counts; the rest by the setting.
+        bool toMe = !me.empty() && m.to == me;
+        if (!toMe && !prefs_.notifyBroadcast) continue;
+        heard++;
+        newest = &m;
+    }
+    notifiedMessage_ = top;
+    if (newest == nullptr || IsActive()) return;
+    bool toMe = !me.empty() && newest->to == me;
+    notifyHeard(heard, newest->from, newest->text, toMe && heard == 1 ? " to you on D2G" : " on D2G");
+}
+
+void MainFrame::notifyHeard(size_t count, const std::string& from, const std::string& text, const std::string& where)
+{
+    std::string title = count == 1 ? from + where : std::to_string(count) + " messages" + (where.empty() ? " from " + from : where);
+    std::string body = count == 1 || where.empty() ? text : from + ": " + text;
+    wxNotificationMessage notice(utf8(title), utf8(body), this);
+    notice.Show();
+    RequestUserAttention(wxUSER_ATTENTION_INFO);
 }
 
 void MainFrame::refreshStations()
@@ -1749,6 +1781,9 @@ void MainFrame::onSessionEvents()
 {
     using Type = session::SessionChat::Event::Type;
     uint64_t now = HostConnection::nowMs();
+    // Lines heard with the window in the background: one notification.
+    size_t heard = 0;
+    std::string heardFrom, heardText;
     for (const session::SessionChat::Event& e : session_.takeEvents())
     {
         switch (e.type)
@@ -1787,6 +1822,12 @@ void MainFrame::onSessionEvents()
                 break;
             case Type::Heard:
                 if (!(tabs_->GetSelection() == TAB_SESSION && IsActive())) sessionUnread_++;
+                if (const session::Message* m = session_.find(e.id); m != nullptr && !IsActive())
+                {
+                    heard++;
+                    heardFrom = m->from;
+                    heardText = m->text;
+                }
                 break;
             case Type::Reacted:
             {
@@ -1797,6 +1838,7 @@ void MainFrame::onSessionEvents()
             }
         }
     }
+    if (heard > 0) notifyHeard(heard, heardFrom, heardText, "");
 }
 
 void MainFrame::refreshSession()
