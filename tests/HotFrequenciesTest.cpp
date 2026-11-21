@@ -123,14 +123,16 @@ void editors()
     ls = editorLaunches(Desktop::Linux, path, "", "st", "", true);
     CHECK(ls[0].argv == (std::vector<std::string>{"st", "-e", "nano", path}));
 
-    // Mac: Terminal through osascript, the path quoted for the shell and
-    // the whole for AppleScript; then TextEdit.
-    ls = editorLaunches(Desktop::Mac, "/Users/op/It's \"here\"/f.txt", "", "", "", false);
-    CHECK_EQ(ls.size(), (size_t)2);
-    CHECK_EQ(ls[0].program, std::string("osascript"));
-    CHECK(ls[0].nextIfFails);
-    CHECK_EQ(ls[0].argv[6], std::string("do script \"${EDITOR:-nano} '/Users/op/It'\\\\''s \\\"here\\\"/f.txt'; exit\""));
-    CHECK(ls[1].argv == (std::vector<std::string>{"open", "-t", "/Users/op/It's \"here\"/f.txt"}));
+    // Mac: a graphical text editor, with the path passed literally.
+    const std::string macPath = "/Users/op/It's \"here\"/f.txt";
+    ls = editorLaunches(Desktop::Mac, macPath, "", "", "", false);
+    CHECK_EQ(ls.size(), (size_t)1);
+    CHECK_EQ(ls[0].program, std::string("/usr/bin/open"));
+    CHECK(ls[0].argv == (std::vector<std::string>{"/usr/bin/open", "-t", macPath}));
+    CHECK(!ls[0].console && !ls[0].nextIfFails);
+    ls = editorLaunches(Desktop::Mac, macPath, "nano", "Terminal", "", true);
+    CHECK_EQ(ls.size(), (size_t)1);
+    CHECK(ls[0].argv == (std::vector<std::string>{"/usr/bin/open", "-t", macPath}));
 
     // Windows: $EDITOR in a console, else Notepad.
     ls = editorLaunches(Desktop::Windows, "C:\\Users\\op\\f.txt", "", "", "", false);

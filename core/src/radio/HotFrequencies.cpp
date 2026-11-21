@@ -174,32 +174,6 @@ std::vector<std::string> editorWords(const std::string& editorEnv, bool haveNano
 namespace
 {
 
-// 'it', for a POSIX shell.
-std::string shellQuoted(const std::string& s)
-{
-    std::string out = "'";
-    for (char c : s)
-    {
-        if (c == '\'')
-            out += "'\\''";
-        else
-            out += c;
-    }
-    return out + "'";
-}
-
-// "it", for AppleScript.
-std::string appleQuoted(const std::string& s)
-{
-    std::string out = "\"";
-    for (char c : s)
-    {
-        if (c == '\\' || c == '"') out += '\\';
-        out += c;
-    }
-    return out + "\"";
-}
-
 struct Terminal
 {
     const char* program;
@@ -233,20 +207,10 @@ std::vector<EditorLaunch> editorLaunches(Desktop desktop, const std::string& pat
     }
     if (desktop == Desktop::Mac)
     {
-        // A program started from the Dock has no $EDITOR: Terminal's own
-        // shell reads the operator's profile, so the editor is picked
-        // there.
-        const std::string command = "${EDITOR:-nano} " + shellQuoted(path) + "; exit";
-        EditorLaunch terminal;
-        terminal.program = "osascript";
-        terminal.argv = {"osascript", "-e", "tell application \"Terminal\"", "-e", "activate",
-                         "-e",        "do script " + appleQuoted(command),  "-e", "end tell"};
-        terminal.nextIfFails = true;
-        out.push_back(terminal);
-        EditorLaunch textEdit;
-        textEdit.program = "open";
-        textEdit.argv = {"open", "-t", path};
-        out.push_back(textEdit);
+        EditorLaunch editor;
+        editor.program = "/usr/bin/open";
+        editor.argv = {"/usr/bin/open", "-t", path};
+        out.push_back(editor);
         return out;
     }
 

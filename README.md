@@ -179,6 +179,8 @@ The initial selection is **7.066 MHz**. The list starts with **3.566,
 after the radio confirms the change and restores it when reopened.
 Reopening restores the selection without automatically tuning the radio.
 
+On macOS, both **File > Edit frequency list** and the frequency menu's
+**Edit** action open a graphical text editor (normally TextEdit).
 Use **File > Edit frequency list** to edit
 `~/Library/Application Support/Ragtime/frequencies.txt`. Enter one
 frequency per line in MHz, with a decimal point. Lines may contain

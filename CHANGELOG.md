@@ -6,6 +6,9 @@ upstream projects retain their own histories.
 
 ## 0.4.0 — Unreleased
 
+- Open frequency-list editing in the default graphical macOS text editor
+  instead of launching nano in Terminal.
+
 - Integrated upstream Ragtime 0.4.0, retaining the bundled Data2G modem
   and editable Enter-to-tune frequency field.
 - Added the upstream hot-frequency menu and wheel tuning. On macOS it

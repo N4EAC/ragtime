@@ -89,8 +89,8 @@ std::vector<std::string> editorWords(const std::string& editorEnv, bool haveNano
 //    x-terminal-emulator, GNOME Terminal, Ptyxis, Console, Konsole, Xfce,
 //    MATE, kitty, Alacritty, foot, WezTerm and xterm; failing every one,
 //    xdg-open (the desktop's text editor).
-//  - Mac: Terminal.app through osascript, running $EDITOR (nano without
-//    one) in the operator's own shell; failing that, open -t (TextEdit).
+//  - Mac: the default graphical text editor through open -t. Shell editor
+//    and terminal preferences do not change this desktop action.
 //  - Windows: with $EDITOR set, it in a console window; else Notepad.
 std::vector<EditorLaunch> editorLaunches(Desktop desktop, const std::string& path, const std::string& editorEnv,
                                          const std::string& terminalEnv, const std::string& currentDesktop,

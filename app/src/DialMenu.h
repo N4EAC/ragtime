@@ -20,7 +20,7 @@ class wxMouseEvent;
 // The dial's dropdown beside the ear (Eduardo N4EAC's idea, Jeff
 // 2026-11-20): a click lists the operator's hot frequencies and tunes the
 // rig to the one picked; a right-click offers Edit... (the list's file, in
-// $EDITOR in a terminal) and Custom... (a frequency typed); Ctrl with the
+// the default graphical text editor on macOS) and Custom... (a frequency typed); Ctrl with the
 // mouse wheel steps the rig 1 kHz, Shift 10 kHz. Tuning needs the rig
 // through rigctld or Hamlib, which is when the dial shows at all.
 //
