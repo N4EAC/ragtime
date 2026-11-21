@@ -44,6 +44,7 @@ add_executable(ragtime WIN32
     src/HostConnection.cpp
     src/PathStripView.cpp
     src/PathsDialog.cpp
+    src/DialMenu.cpp
     src/RigConnection.cpp
     src/RigControl.cpp
     src/Html.cpp

@@ -171,6 +171,10 @@ std::string sentPicturesDir();
 // again: beside the --config file (<config>.sent-voice), or
 // appDataDir()/sent-voice; each in a folder of its own, as pictures are.
 std::string sentVoiceDir();
+// The hot frequencies the dial's dropdown lists, the operator's to edit
+// (radio::parseHotFrequencies): beside the --config file
+// (<config>.frequencies.txt), or appDataDir()/frequencies.txt.
+std::string hotFrequenciesPath();
 
 namespace keys
 {

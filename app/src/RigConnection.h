@@ -18,8 +18,10 @@
 // The socket to rigctld, carrying bytes to and from the socket-free
 // DialReader, which only ever asks the radio's frequency (and whether
 // rigctld wants VFOs named); tried again 2, 4, 8, 15 and then every 30 s
-// while rigctld isn't there. Ragtime never starts rigctld, and never sets
-// the radio: the operator's rigctld is often shared with other programs.
+// while rigctld isn't there. Ragtime never starts rigctld, and sets the
+// radio only when the operator asks (a frequency picked on the dial, the
+// Ear's filter): the operator's rigctld is often shared with other
+// programs.
 //
 // rigctld may listen on IPv4 or IPv6 alone (rigctld -T ::1, or a
 // "localhost" that means ::1), so each try goes through every address the
@@ -79,6 +81,9 @@ public:
     // bursts; only with its box ticked (RigControl checks).
     void setFilter(const ragtime::radio::RigFilter& filter);
     const std::string& filterProblem() const { return reader_.filterProblem(); }
+    // Tunes the rig ("F"), between bursts: the operator picked it.
+    void setFrequency(uint64_t hz);
+    const std::string& tuneProblem() const { return reader_.tuneProblem(); }
     std::optional<ragtime::radio::RigFilter> filter() const
     {
         return up_ ? reader_.filter() : std::optional<ragtime::radio::RigFilter>();

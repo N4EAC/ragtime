@@ -82,6 +82,12 @@ void RigConnection::setFilter(const ragtime::radio::RigFilter& filter)
     write();
 }
 
+void RigConnection::setFrequency(uint64_t hz)
+{
+    reader_.setFrequency(hz, HostConnection::nowMs());
+    write();
+}
+
 std::optional<uint64_t> RigConnection::dialHz() const
 {
     return reader_.dialHz(HostConnection::nowMs());

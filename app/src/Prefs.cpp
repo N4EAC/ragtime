@@ -523,6 +523,13 @@ std::string sentVoiceDir()
     return std::string(dir.GetPath().utf8_str());
 }
 
+std::string hotFrequenciesPath()
+{
+    if (!configPath.empty()) return configPath + ".frequencies.txt";
+    wxFileName file(wxString::FromUTF8(appDataDir()), "frequencies.txt");
+    return std::string(file.GetFullPath().utf8_str());
+}
+
 std::string flightRecorderDir()
 {
     if (!configPath.empty()) return configPath + ".flight";

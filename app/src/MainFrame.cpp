@@ -43,6 +43,7 @@
 #include "BroadcastPage.h"
 #include "ConnectionBar.h"
 #include "SwrBar.h"
+#include "DialMenu.h"
 #include "DrawnIcon.h"
 #include "EarFrame.h"
 #include "FilesPage.h"
@@ -310,6 +311,13 @@ MainFrame::MainFrame()
     rig_ = std::make_unique<RigControl>([this]() { onDial(); }, [this]() { onMeters(); },
                                         [this](const std::string& what) { onSwrTrip(what); });
     rig_->setNote([this](const std::string& line) { host_->recorder().note(line, HostConnection::nowMs()); });
+    // The dial's dropdown: the hot frequencies, tuned to when picked
+    // (Eduardo N4EAC's idea).
+    DialMenu::Rig dialRig;
+    dialRig.dialHz = [this]() { return rig_ ? rig_->dialHz() : std::nullopt; };
+    dialRig.canTune = [this]() { return rig_ && rig_->canTune(); };
+    dialRig.tune = [this](uint64_t hz, const std::string& how) { tuneRig(hz, how); };
+    dialMenu_ = std::make_unique<DialMenu>(bar_->dial, hotFrequenciesPath(), std::move(dialRig));
 
     // Every broadcast item of ours is sealed once it has gone.
     chat_.onItems([this](const std::vector<protocol::Record>& items, uint64_t burst, const std::string& mode,
@@ -412,6 +420,7 @@ MainFrame::~MainFrame()
     voiceTimer_.Stop();
     // No callback from the audio thread after this.
     if (voiceAudio_) voiceAudio_->stop();
+    dialMenu_.reset();
     rig_.reset();
     host_.reset();
     // The panes go now, while the engines their callbacks read are still
@@ -605,6 +614,7 @@ void MainFrame::buildMenus()
         info.SetWebSite("https://github.com/baitisj/ragtime");
         info.AddDeveloper("Jeff Baitis, AG7EW");
         info.AddDeveloper("Tim Vetter: the macOS port");
+        info.AddDeveloper("Eduardo, N4EAC: hot frequencies on the dial");
         wxAboutBox(info, this);
     }, wxID_ABOUT);
 }
@@ -1163,6 +1173,8 @@ void MainFrame::onClock()
     }
     // Never keyed with no host to say PTT OFF.
     if (host_->state() != HostConnection::State::Connected) rig_->hostLost();
+    // The hot frequencies' file, read again when the operator has edited it.
+    dialMenu_->poll();
     applySendGuard();
     if (now > trimmedMs_ + 60 * 60 * 1000)
     {
@@ -4346,11 +4358,14 @@ void MainFrame::showDial()
         return;
     }
     std::optional<uint64_t> hz = rig_->dialHz();
+    // A frequency just picked shows until the rig reads it back.
+    const std::optional<uint64_t> tuning = dialMenu_ ? dialMenu_->pending(hz) : std::nullopt;
+    const std::optional<uint64_t> shown = tuning ? tuning : hz;
     std::string text;
-    if (hz)
+    if (shown)
     {
-        std::string band = radio::bandOf(*hz);
-        text = radio::formatMHz(*hz) + DOT + (band.empty() ? std::string("outside the bands") : band);
+        std::string band = radio::bandOf(*shown);
+        text = radio::formatMHz(*shown) + DOT + (band.empty() ? std::string("outside the bands") : band);
     }
     else
     {
@@ -4358,12 +4373,24 @@ void MainFrame::showDial()
     }
     if (held_) text = "Receive only" + std::string(DOT) + text;
     std::string tip = rig_->describe();
+    if (tuning) tip += "\nTuning to " + radio::formatMHz(*tuning) + (bar_->tx->isOn() ? " once this burst ends" : "");
+    if (const std::string problem = rig_->tuneProblem(); !problem.empty()) tip += "\n" + problem;
     if (held_)
         tip += "\n\nReceive only: " + heldWhy_;
     else if (prefs_.usSegmentsOnly && !radio::usDataPlace(hz.value_or(0)).empty())
         tip += "\n\n" + radio::usDataPlace(hz.value_or(0));
-    tip += "\n\nRagtime only reads the dial; it never tunes the radio.";
+    tip += "\n\n" + (dialMenu_ ? dialMenu_->tip() : std::string());
     bar_->setDial(utf8(text), utf8(tip), held_);
+}
+
+void MainFrame::tuneRig(uint64_t hz, const std::string& how)
+{
+    // The operator asked: the radio stays the source of truth, and the dial
+    // shows what it reads back. Never while transmitting: the rig's side
+    // holds it until the burst ends.
+    rig_->tune(hz);
+    host_->recorder().note("rig tune " + std::to_string(hz) + " Hz (" + how + ")", HostConnection::nowMs());
+    showDial();
 }
 
 std::string MainFrame::sendRefusal() const

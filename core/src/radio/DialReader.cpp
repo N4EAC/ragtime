@@ -106,6 +106,7 @@ void DialReader::connected(uint64_t nowMs)
     reading_.reset();
     setLines_.clear();
     setLine_.clear();
+    tuneLine_.clear();
     version_++;
     // First: was rigctld started with --vfo? Asked even while keyed, as
     // it touches nothing but rigctld itself.
@@ -126,6 +127,7 @@ void DialReader::disconnected()
     filter_.reset();
     sent_.reset();
     reading_.reset();
+    tuneWrite_.reset();
     inMode_ = false;
     for (int m = 0; m < METERS; m++) state_[m] = State::Unknown;
     version_++;
@@ -191,6 +193,17 @@ void DialReader::askNext(uint64_t nowMs)
             askMeter(meter, nowMs);
             return;
         }
+    }
+    // A frequency the operator picked, never while keyed (above).
+    if (tuneWrite_)
+    {
+        tuneLine_ = std::string("F ") + (vfo_ == Vfo::Yes ? "currVFO " : "") + std::to_string(*tuneWrite_);
+        tuneWrite_.reset();
+        out_ += tuneLine_ + "\n";
+        asking_ = Ask::Tune;
+        askedMs_ = nowMs;
+        tunes_++;
+        return;
     }
     // A filter setting from the Ear, never while keyed (above).
     if (writeFilter(nowMs)) return;
@@ -266,6 +279,12 @@ void DialReader::publishFilter()
     // A whole reading begun after the last write: the rig's word again.
     if (reading_) sent_.reset();
     reading_.reset();
+}
+
+void DialReader::setFrequency(uint64_t hz, uint64_t nowMs)
+{
+    tuneWrite_ = hz;
+    askNext(nowMs);
 }
 
 void DialReader::setFilter(const RigFilter& filter, uint64_t nowMs)
@@ -614,6 +633,20 @@ void DialReader::onLine(const std::string& line, uint64_t nowMs)
             if (code != 0) meterFailed(askedMeter_, code);
             answered(nowMs);
         }
+        return;
+    }
+
+    // A tune's answer: the dial read again at once, whatever it said.
+    if (asking_ == Ask::Tune && rprt(line, code))
+    {
+        std::string problem = code != 0 ? "rigctld refused " + tuneLine_ + ": " + line : std::string();
+        if (problem != tuneProblem_)
+        {
+            tuneProblem_ = problem;
+            version_++;
+        }
+        freqAsked_ = false;
+        answered(nowMs);
         return;
     }
 

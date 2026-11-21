@@ -1,9 +1,9 @@
 // DialReader: Ragtime's side of a conversation with rigctld (Hamlib's rig
 // daemon, localhost:4532 by default), with no sockets. It reads the
 // radio's dial frequency once a second, and while data2g-host transmits
-// the rig's transmit meters, and that is all it ever asks: the radio is
-// the source of truth, and the operator's rigctld is often shared with
-// other programs (fldigi), so Ragtime never sets anything.
+// the rig's transmit meters, and that is all it asks on its own: the radio
+// is the source of truth, and the operator's rigctld is often shared with
+// other programs (fldigi), so Ragtime sets nothing unasked.
 //
 // Every line it writes is a question, one at a time. On connecting it asks
 // "\chk_vfo", as Hamlib's own rigctl -m 2 does: a rigctld started with
@@ -31,7 +31,13 @@
 // width), then "+l PBT_IN" and "+l PBT_OUT" (radio::RigFilter). Jeff
 // agreed to these reads on his shared rigctld (2026-10-26).
 //
-// The one thing it ever sets: the receive filter, when the Ear asks
+// It tunes the rig only when the operator picks a frequency (the dial's
+// dropdown, Custom..., or Ctrl or Shift with the mouse wheel over it;
+// Eduardo N4EAC's idea, Jeff 2026-11-20): "F 7066000" (or "F currVFO
+// 7066000"), never while keyed, answered by an RPRT; then the dial is read
+// again at once. A newer frequency replaces one not yet sent.
+//
+// The only other thing it sets: the receive filter, when the Ear asks
 // (setFilter) with "Let the Ear change the rig's filters" ticked (Jeff,
 // 2026-10-26, for his rig held by a shared rigctld). Never while keyed:
 // "M USB 2400" when the mode or width differs from the last reading, then
@@ -133,6 +139,14 @@ public:
     void flushFilter();
     uint64_t filterWrites() const { return filterWrites_; }
 
+    // Tune the rig to hz, between bursts: the operator picked it. A newer
+    // frequency replaces one not yet sent.
+    void setFrequency(uint64_t hz, uint64_t nowMs);
+    // Why the last tune was refused ("rigctld refused F 7066000: RPRT
+    // -9"), or empty; tunes sent.
+    const std::string& tuneProblem() const { return tuneProblem_; }
+    uint64_t tunes() const { return tunes_; }
+
     // The dial in Hz; none until rigctld has answered, or once a reading
     // has gone stale.
     std::optional<uint64_t> dialHz(uint64_t nowMs) const;
@@ -170,6 +184,7 @@ private:
         Meter,
         Mode,
         Set,        // a filter setting, answered by an RPRT
+        Tune,       // "F", answered by an RPRT
     };
     enum class State
     {
@@ -234,6 +249,10 @@ private:
     std::string setLine_;                   // the one out
     std::string filterProblem_;
     uint64_t filterWrites_ = 0;
+    std::optional<uint64_t> tuneWrite_;     // the frequency to send
+    std::string tuneLine_;                  // the "F" out
+    std::string tuneProblem_;
+    uint64_t tunes_ = 0;
     std::string partial_;
     std::string out_;
     std::string problem_;

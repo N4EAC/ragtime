@@ -20,8 +20,10 @@
 // tried again 2, 4, 8, 15 and then every 30 s (link::Reconnect). Stopping
 // unkeys the rig, if keyed, before closing it.
 //
-// It never tunes the rig: the radio is the source of truth for frequency.
-// PTT is the only thing it sets when told to (PttFollower, with "Key the
+// It tunes the rig only when the operator picks a frequency on the dial
+// (setFrequency), never while the rig transmits, then reads the dial back
+// at once: the radio stays the source of truth for frequency.
+// PTT is the only other thing it sets when told to (PttFollower, with "Key the
 // rig when data2g-host keys" ticked), the SWR trip the only thing that sets
 // the power, and the Ear the only thing that sets the receive filter
 // (setFilter: the mode's passband width and the twin PBT, with "Let the
@@ -128,6 +130,10 @@ public:
         uint64_t filterWrites = 0;
         std::string filterProblem;
 
+        // Goes up with each tune, and why the last failed.
+        uint64_t tunes = 0;
+        std::string tuneProblem;
+
         // The SWR trip, from the trip until clearSwrTrip().
         bool swrTripped = false;
         // What was done: "SWR 3.6: Ragtime unkeyed the rig and set its
@@ -164,6 +170,9 @@ public:
     // Writes the receive filter (its width with its mode, and the knobs it
     // has) as soon as the rig isn't transmitting, then reads it back.
     void setFilter(const radio::RigFilter& filter);
+    // Tunes the rig to hz as soon as it isn't transmitting, then reads the
+    // dial back. A newer frequency replaces one not yet set.
+    void setFrequency(uint64_t hz);
     // Settings > Rig's SWR trip, on or off, from now.
     void setSwrTrip(bool on);
     // The operator cleared a trip: the rig may be keyed again. Its power

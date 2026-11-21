@@ -3,7 +3,8 @@
 // from rigctld (radio::DialReader); this names its band for the path log,
 // and says whether a Data2G burst may go out there.
 //
-// Ragtime never tunes the radio. The data segment check is the operator's
+// Ragtime tunes the radio only when the operator picks a frequency on the
+// dial (radio::HotFrequencies). The data segment check is the operator's
 // choice ("Send only inside the US data segments", off by default); it
 // knows nothing of licence classes, so staying inside one's own
 // privileges is still the operator's business.
