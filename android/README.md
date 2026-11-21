@@ -137,7 +137,7 @@ Then, with a device or an ARM64 API 35 emulator attached:
 
 The script builds and installs both debug APKs on **only the named device**,
 forwards the six loopback fake-host ports, runs the tests, removes those
-forwards and puts the app's saved Settings settings back. The second
+forwards and puts the app's saved settings back. The second
 argument moves the bench's ports on the device (18100, 18300 and so on):
 use it on a phone whose own Data2G TNC holds 8100/8300, so no test meets
 the real modem. It grants the notification permission, which Connect
