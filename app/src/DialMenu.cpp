@@ -197,13 +197,16 @@ void DialMenu::showMenu(bool full)
         int id = ID_FIRST;
         for (const radio::HotFrequency& f : list_.entries)
         {
-            std::string label = radio::formatMHz(f.hz);
+            // Plain items, the one the rig is on marked with a tick: a
+            // check item would put an empty box beside every other one.
+            // The rest are indented by a figure space and a space, about
+            // the tick's width, so the frequencies line up.
+            const bool current = dial && *dial == f.hz;
+            std::string label = (current ? "\xe2\x9c\x93 " : "\xe2\x80\x87\xe2\x80\x82") + radio::formatMHz(f.hz);
             if (!f.note.empty()) label += " \xc2\xb7 " + f.note;
             wxString text = utf8(label);
             text.Replace("&", "&&");
-            wxMenuItem* item = menu.AppendCheckItem(id++, text);
-            item->Check(dial && *dial == f.hz);
-            item->Enable(can);
+            menu.Append(id++, text)->Enable(can);
         }
         if (list_.entries.empty()) menu.Append(wxID_ANY, "No frequencies in the list: Edit... to add some")->Enable(false);
         menu.AppendSeparator();
