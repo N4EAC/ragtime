@@ -328,6 +328,7 @@ struct HamlibRig::Shared
     bool filterWatch = false;
     std::optional<radio::RigFilter> filterWrite;
     std::optional<uint64_t> frequencyWrite;
+    bool frequencyQueued = false;
     bool clearTrip = false;
     std::vector<std::pair<std::string, double>> pokes;   // tests on the dummy rig
     int pollSeconds = 1;
@@ -433,6 +434,22 @@ bool HamlibRig::setFrequency(uint64_t hz)
         if (!shared_->status.open || shared_->transmitting || shared_->wantPtt || shared_->status.keyed) return false;
         shared_->status.frequencyProblem.clear();
         shared_->frequencyWrite = hz;
+        shared_->frequencyQueued = false;
+    }
+    shared_->wake.notify_all();
+    return true;
+}
+
+bool HamlibRig::queueFrequency(uint64_t hz)
+{
+    if (!shared_ || hz < 1000 || hz >= 1000000000000ULL) return false;
+    {
+        std::lock_guard<std::mutex> lock(shared_->mutex);
+        if (!shared_->status.open) return false;
+        shared_->status.frequencyProblem.clear();
+        shared_->status.tuneProblem.clear();
+        shared_->frequencyWrite = hz;
+        shared_->frequencyQueued = true;
     }
     shared_->wake.notify_all();
     return true;
@@ -649,12 +666,12 @@ void HamlibRig::run()
             clear = shared->clearTrip;
             shared->clearTrip = false;
             watch = shared->filterWatch;
-            if (shared->frequencyWrite && (tx || want || rig == nullptr))
+            if (shared->frequencyWrite && (rig == nullptr || ((tx || want) && !shared->frequencyQueued)))
             {
                 shared->frequencyWrite.reset();
                 shared->status.frequencyProblem = "Frequency change cancelled because the radio is unavailable or transmitting";
             }
-            frequency.swap(shared->frequencyWrite);
+            if (rig != nullptr && !tx && !want) frequency.swap(shared->frequencyWrite);
             // Written only while the rig doesn't transmit.
             if (rig != nullptr && !(shared->transmitting || keyed) && want == keyed) write.swap(shared->filterWrite);
             pokes.swap(shared->pokes);
@@ -667,6 +684,8 @@ void HamlibRig::run()
             const int result = transmitting ? -RIG_ERJCTED : rig_set_freq(rig, RIG_VFO_CURR, *frequency);
             shared->update([&](Status& s) {
                 s.frequencyProblem = result == RIG_OK ? "" : "Frequency change failed: " + errorText(result);
+                s.tuneProblem = s.frequencyProblem;
+                if (!transmitting) ++s.tunes;
             });
             nextPoll = now;
             continue;
@@ -941,7 +960,7 @@ void HamlibRig::run()
             return shared->stopping || (rig != nullptr && (shared->wantPtt && !trip.tripped()) != keyed)
                    || (shared->transmitting || keyed) != tx || shared->clearTrip || !shared->pokes.empty()
                    || shared->filterWatch != filterWatch
-                   || shared->frequencyWrite
+                   || (shared->frequencyWrite && rig != nullptr && !shared->transmitting && !keyed && !shared->wantPtt)
                    || (rig != nullptr && shared->filterWrite && !(shared->transmitting || keyed));
         });
     }

@@ -2,7 +2,8 @@
 // settings, and HamlibRig opening Hamlib's dummy rig (model 1, no port, no
 // radio) on its thread, reading the dial, keying and unkeying, reading
 // the transmit meters while transmitting and the S-meter between bursts,
-// the receive filter while the Ear watches it, and saying why when a rig
+// the receive filter while the Ear watches it, tuning to a frequency
+// picked on the dial, and saying why when a rig
 // can't be opened.
 #include <chrono>
 #include <functional>
@@ -211,6 +212,28 @@ void filterWatch()
     r.stop();
 }
 
+// A frequency picked on the dial: set, read back, and held while the rig
+// transmits.
+void tune()
+{
+    HamlibRig r;
+    r.start(dummy());
+    CHECK(waitFor(r, [](const HamlibRig::Status& st) { return st.open && st.hz; }));
+    r.queueFrequency(7066000);
+    CHECK(waitFor(r, [](const HamlibRig::Status& st) { return st.tunes == 1 && st.hz && *st.hz == 7066000; }));
+    CHECK(r.status().tuneProblem.empty());
+    r.setTransmitting(true);
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    r.queueFrequency(14066000);
+    r.queueFrequency(14110000);
+    std::this_thread::sleep_for(std::chrono::milliseconds(300));
+    CHECK_EQ(r.status().tunes, (uint64_t)1);
+    // The newest pick goes once the burst ends.
+    r.setTransmitting(false);
+    CHECK(waitFor(r, [](const HamlibRig::Status& st) { return st.tunes == 2 && st.hz && *st.hz == 14110000; }));
+    r.stop();
+}
+
 void cantOpen()
 {
     HamlibRig r;
@@ -250,6 +273,7 @@ int main()
     list();
     dummyRig();
     filterWatch();
+    tune();
     cantOpen();
     return ragtime_test::finish();
 }

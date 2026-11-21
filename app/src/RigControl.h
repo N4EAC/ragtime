@@ -54,6 +54,9 @@ public:
 
     std::optional<uint64_t> dialHz() const;
     bool setFrequency(uint64_t hz);
+    bool canTune() const { return dialHz().has_value(); }
+    void tune(uint64_t hz);
+    std::string tuneProblem() const { return frequencyProblem(); }
     void cancelFrequency();
     std::string frequencyProblem() const;
     // "Hamlib, Icom IC-7100 on /dev/ttyUSB0: reading the dial every 1 s",

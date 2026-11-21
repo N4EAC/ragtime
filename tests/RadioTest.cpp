@@ -885,6 +885,71 @@ void filterSetTwice()
 // Every line Ragtime could ever write to rigctld is a question: whether
 // rigctld wants VFOs named, the frequency, and the meters. (The Ear's
 // filter settings, above, go only when it asks.)
+// The operator picks a frequency: "F", between bursts only, a newer one
+// replacing one not yet sent, then the dial read again at once.
+void tune()
+{
+    DialReader dial;
+    uint64_t t = T0;
+    dial.connected(t);
+    dial.takeOutput();
+    dial.bytes("0\n", 2, t);
+    CHECK_EQ(probe(dial, t), std::string("f\n"));
+    dial.bytes("14105000\n", 9, t + 100);
+
+    // Keyed: held until the burst ends; the newest pick wins.
+    dial.setKeyed(true, t + 200);
+    dial.queueFrequency(7066000, t + 300);
+    dial.queueFrequency(7110000, t + 400);
+    CHECK_EQ(dial.takeOutput(), std::string(""));
+    dial.setKeyed(false, t + 5000);
+    CHECK_EQ(dial.takeOutput(), std::string("+t\n"));
+    say(dial, "get_ptt:\nPTT: 0\nRPRT 0\n", t + 5000);
+    CHECK_EQ(dial.takeOutput(), std::string("F 7110000\n"));
+    CHECK_EQ(dial.tunes(), (uint64_t)1);
+    dial.bytes("RPRT 0\n", 7, t + 5100);
+    CHECK(dial.tuneProblem().empty());
+    // Read back at once.
+    CHECK_EQ(dial.takeOutput(), std::string("f\n"));
+    dial.bytes("7110000\n", 8, t + 5200);
+    CHECK(dial.dialHz(t + 5200) == std::optional<uint64_t>(7110000));
+
+    // Refused: said, and the dial read again.
+    dial.tick(t + 6300);
+    dial.takeOutput();
+    dial.bytes("7110000\n", 8, t + 6300);
+    dial.queueFrequency(99000, t + 6400);
+    CHECK_EQ(dial.takeOutput(), std::string("+t\n"));
+    say(dial, "get_ptt:\nPTT: 0\nRPRT 0\n", t + 6400);
+    CHECK_EQ(dial.takeOutput(), std::string("F 99000\n"));
+    dial.bytes("RPRT -9\n", 8, t + 6500);
+    CHECK(dial.tuneProblem().find("RPRT -9") != std::string::npos);
+    CHECK_EQ(dial.takeOutput(), std::string("f\n"));
+
+    // A --vfo rigctld names the VFO.
+    DialReader vfo;
+    vfo.connected(t);
+    vfo.takeOutput();
+    vfo.bytes("1\n", 2, t);
+    CHECK_EQ(probe(vfo, t), std::string("f currVFO\n"));
+    vfo.bytes("14105000\n", 9, t + 100);
+    vfo.queueFrequency(5346500, t + 200);
+    CHECK_EQ(vfo.takeOutput(), std::string("+v\n"));
+    say(vfo, "get_vfo:\nVFO: VFOB\nRPRT 0\n", t + 200);
+    CHECK_EQ(vfo.takeOutput(), std::string("+t VFOB\n"));
+    say(vfo, "get_ptt:\nPTT: 0\nRPRT 0\n", t + 200);
+    CHECK_EQ(vfo.takeOutput(), std::string("F VFOB 5346500\n"));
+
+    // A pick made while disconnected is forgotten, not sent on connecting.
+    DialReader gone;
+    gone.queueFrequency(7066000, t);
+    gone.disconnected();
+    gone.connected(t + 100);
+    CHECK_EQ(gone.takeOutput(), std::string("\\chk_vfo\n"));
+    gone.bytes("0\n", 2, t + 100);
+    CHECK_EQ(probe(gone, t + 100), std::string("f\n"));
+}
+
 void onlyAsks()
 {
     const std::vector<std::string> allowed = {"\\chk_vfo", "f", "+l ALC", "+l SWR", "+l RFPOWER_METER_WATTS",
@@ -1219,6 +1284,7 @@ int main()
     filter();
     filterSet();
     filterSetTwice();
+    tune();
     onlyAsks();
     lines();
     strip();

@@ -61,6 +61,7 @@ struct PictureGear;
 struct PictureTarget;
 class RecentWorkPane;
 class RigControl;
+class DialMenu;
 class SessionPage;
 class StationList;
 class wxBitmapButton;
@@ -277,12 +278,15 @@ private:
     void updatePathSnr(uint64_t nowMs);
     void setNarrow(bool narrow);
 
-    // The radio: its dial read from rigctld (never set), sending held
-    // outside the US data segments when the operator asks, a line in the
-    // path log for every burst heard, and the watch list's bells.
+    // The radio: its dial read through rigctld or Hamlib (set only when the
+    // operator picks a frequency on it), sending held outside the US data
+    // segments when the operator asks, a line in the path log for every
+    // burst heard, and the watch list's bells.
     void applyRadioPrefs();
     void onDial();
     void showDial();
+    // The operator picked hz on the dial (how: "list", "custom", "wheel").
+    void tuneRig(uint64_t hz, const std::string& how);
     // The rig's transmit meters (Hamlib only) on the Auto ALC meter, and
     // a line in the flight recorder for each burst.
     void onMeters();
@@ -366,6 +370,7 @@ private:
     class ModemMonitor* modemMonitor_ = nullptr;
 #endif
     std::unique_ptr<RigControl> rig_;
+    std::unique_ptr<DialMenu> dialMenu_;
     ragtime::radio::PathLog pathLog_;
     ragtime::broadcast::WatchList watch_;
     // Session files: the engine, the log of finished transfers (the Files

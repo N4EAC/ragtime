@@ -67,7 +67,8 @@
 // middle (0.5), "+u MN" (the manual notch, off) and "+l NOTCHF_RAW"
 // (0.5), and takes the Ear's settings, "M USB 1800", "L PBT_IN 0.6510",
 // "U MN 1" and "L NOTCHF_RAW 0.25", printing each and answering with them
-// after. It
+// after. It takes a tune from the dial's dropdown, "F 7066000", the same
+// way, and the dial reads it after (until --dial-hop hops). It
 // prints anything else it is sent (Ragtime should only ever ask those).
 // --rig-vfo plays one started with --vfo: \chk_vfo is 1, and it answers
 // "f currVFO" and "+l currVFO ALC", but not a bare "f".
@@ -181,7 +182,7 @@ void readSome(int fd, std::vector<uint8_t>& out)
 // A rigctld that knows the questions Ragtime asks: "\chk_vfo", "f", the
 // dial frequency ("f currVFO" when it plays --vfo), the levels and "+m";
 // and takes the Ear's filter settings, "M", "L PBT_IN", "L PBT_OUT",
-// "U MN" and "L NOTCHF_RAW".
+// "U MN" and "L NOTCHF_RAW", and a tune, "F".
 class FakeRig
 {
 public:
@@ -297,7 +298,8 @@ private:
         std::string partial;
     };
 
-    // "M USB 1800", "L PBT_IN 0.6510" (with currVFO for --vfo): taken.
+    // "M USB 1800", "L PBT_IN 0.6510", "F 7066000" (with currVFO for
+    // --vfo): taken.
     bool filterSetting(const std::string& line)
     {
         std::istringstream in(line);
@@ -305,6 +307,13 @@ private:
         std::string command, vfo;
         in >> command;
         if (vfo_ && !(in >> vfo && vfo == "currVFO")) return false;
+        if (command == "F")
+        {
+            unsigned long long hz = 0;
+            if (!(in >> hz) || hz < 10000) return false;
+            dialHz_ = hz;
+            return true;
+        }
         if (command == "M")
         {
             std::string mode;

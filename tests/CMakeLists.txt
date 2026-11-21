@@ -73,6 +73,7 @@ if(TARGET ragtime::webp)
 endif()
 
 ragtime_test(ragtime_radio_test RadioTest.cpp)
+ragtime_test(ragtime_hot_frequencies_test HotFrequenciesTest.cpp)
 ragtime_test(ragtime_recent_work_test RecentWorkTest.cpp)
 ragtime_test(ragtime_rig_test RigTest.cpp)
 # Hamlib's dummy rig (model 1), opened on the rig library's thread.

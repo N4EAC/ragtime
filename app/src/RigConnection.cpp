@@ -87,6 +87,13 @@ std::optional<uint64_t> RigConnection::dialHz() const
     return reader_.dialHz(HostConnection::nowMs());
 }
 
+bool RigConnection::queueFrequency(uint64_t hz)
+{
+    const bool queued = reader_.queueFrequency(hz, HostConnection::nowMs());
+    write();
+    return queued;
+}
+
 bool RigConnection::setFrequency(uint64_t hz)
 {
     if (!up_ || !reader_.setFrequency(hz, HostConnection::nowMs())) return false;

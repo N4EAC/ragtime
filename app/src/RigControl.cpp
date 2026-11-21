@@ -123,6 +123,12 @@ std::optional<uint64_t> RigControl::dialHz() const
     return std::nullopt;
 }
 
+void RigControl::tune(uint64_t hz)
+{
+    if (settings_.source == radio::RigSource::Hamlib) hamlib_.queueFrequency(hz);
+    if (settings_.source == radio::RigSource::Rigctld) rigctld_->queueFrequency(hz);
+}
+
 bool RigControl::setFrequency(uint64_t hz)
 {
     if (hostPtt_ || !dialHz()) return false;

@@ -27,6 +27,7 @@ public:
     ~FrequencySelector() override;
     void cancel();
     void reset();
+    void tune(uint64_t hz) { submit(hz); }
 
 private:
     void reload();

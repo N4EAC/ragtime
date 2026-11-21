@@ -19,7 +19,7 @@ if(CMAKE_HOST_APPLE AND NOT DEFINED CMAKE_OSX_DEPLOYMENT_TARGET)
     set(CMAKE_OSX_DEPLOYMENT_TARGET 14.2 CACHE STRING "Minimum macOS version")
 endif()
 
-project(ragtime VERSION 0.3.1 LANGUAGES CXX)
+project(ragtime VERSION 0.4.0 LANGUAGES CXX)
 
 if(APPLE)
     enable_language(OBJCXX)

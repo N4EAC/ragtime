@@ -135,6 +135,9 @@ public:
     uint64_t filterWrites() const { return filterWrites_; }
 
     bool setFrequency(uint64_t hz, uint64_t nowMs);
+    bool queueFrequency(uint64_t hz, uint64_t nowMs);
+    uint64_t tunes() const { return tunes_; }
+    const std::string& tuneProblem() const { return frequencyProblem_; }
     void cancelFrequency() { frequencyWrite_.reset(); }
     const std::string& frequencyProblem() const { return frequencyProblem_; }
 
@@ -219,6 +222,7 @@ private:
     uint64_t readMs_ = 0;           // the last answer (or the end of keying)
     std::optional<uint64_t> hz_;
     std::optional<uint64_t> frequencyWrite_;
+    bool frequencyQueued_ = false;
     std::string tuneVfo_;
     bool tunePttChecked_ = false;
     bool tunePttOn_ = false;
@@ -253,6 +257,7 @@ private:
     std::string partial_;
     std::string out_;
     std::string problem_;
+    uint64_t tunes_ = 0;
     uint64_t version_ = 0;
 };
 

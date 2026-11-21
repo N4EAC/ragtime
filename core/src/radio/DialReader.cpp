@@ -215,6 +215,7 @@ void DialReader::askNext(uint64_t nowMs)
         out_ += "F " + vfo + std::to_string(*frequencyWrite_) + "\n";
         frequencyWrite_.reset();
         asking_ = Ask::SetFrequency;
+        ++tunes_;
         askedMs_ = nowMs;
         return;
     }
@@ -304,10 +305,19 @@ void DialReader::setFilter(const RigFilter& filter, uint64_t nowMs)
 bool DialReader::setFrequency(uint64_t hz, uint64_t nowMs)
 {
     if (!connected_ || vfo_ == Vfo::Asking || keyed_ || hz < 1000 || hz >= 1000000000000ULL) return false;
+    const bool accepted = queueFrequency(hz, nowMs);
+    if (accepted) frequencyQueued_ = false;
+    return accepted;
+}
+
+bool DialReader::queueFrequency(uint64_t hz, uint64_t nowMs)
+{
+    if (!connected_ || vfo_ == Vfo::Asking || hz < 1000 || hz >= 1000000000000ULL) return false;
     frequencyProblem_.clear();
     tuneVfo_.clear();
     tunePttChecked_ = false;
     frequencyWrite_ = hz;
+    frequencyQueued_ = true;
     askNext(nowMs);
     return true;
 }
@@ -477,7 +487,7 @@ void DialReader::setKeyed(bool keyed, uint64_t nowMs)
 {
     if (keyed_ == keyed) return;
     keyed_ = keyed;
-    if (keyed_ && frequencyWrite_)
+    if (keyed_ && frequencyWrite_ && !frequencyQueued_)
     {
         frequencyWrite_.reset();
         frequencyProblem_ = "Frequency change cancelled because transmission started";

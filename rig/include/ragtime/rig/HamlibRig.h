@@ -129,6 +129,8 @@ public:
         uint64_t filterWrites = 0;
         std::string filterProblem;
         std::string frequencyProblem;
+        uint64_t tunes = 0;
+        std::string tuneProblem;
 
         // The SWR trip, from the trip until clearSwrTrip().
         bool swrTripped = false;
@@ -156,6 +158,7 @@ public:
     // Reads the dial this often, from now.
     void setPollSeconds(int seconds);
     bool setFrequency(uint64_t hz);
+    bool queueFrequency(uint64_t hz);
     void cancelFrequency();
 
     // Keys or unkeys the rig, as soon as the thread gets to it.

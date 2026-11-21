@@ -112,6 +112,10 @@ port: building, testing, the release zip and what differs there.
   fixes after it: Cool-chic pictures, voice messages, Hands and roll
   calls, and the thresholds from `MODES`. It chats with 0.2 (new
   records are skipped, pictures and voice arrive as plain files).
+  0.4.0-beta adds the Mac zips, voice on Windows (`sotto.dll`), edits,
+  repairs by Hand, repair gear per station, desktop notifications and
+  the hot-frequency dial. It chats and repairs with 0.3.1 (SealRound is
+  skipped there, and 0.3.1 asks for repairs by burst).
 - The macOS port (2026-11-20) is Tim Vetter's (GitHub `finitor`), brought
   in with his commits as he wrote them: the Cocoa build (wxWidgets
   3.2.11 on the Mac, `-DRAGTIME_BUILD_WX=ON`), the app bundle
@@ -177,11 +181,22 @@ port: building, testing, the release zip and what differs there.
   OK 2026-10-26), naming
   `currVFO` for a `--vfo` one, and sets only the Ear's filter (`M`,
   `L PBT_IN`, `L PBT_OUT`, `L NOTCHF_RAW`, `U MN`, each only when it
-  differs, with its box ticked); `Bands`, the US data segments, and 60 m's channels (the dial exactly 1.5 kHz below a channel's centre, Jeff 2026-10-27) and band segment; `PathLog`, a line a
+  differs, with its box ticked) and a frequency the operator picks
+  (`F`); `Bands`, the US data segments, and 60 m's channels (the dial exactly 1.5 kHz below a channel's centre, Jeff 2026-10-27) and band segment; `PathLog`, a line a
   burst heard, appended, and each station's 24-hour strip by band),
   `broadcast::WatchList` (bells, and Tell me when free), and in the app
   `RigConnection`, `PathStripView`, `PathsDialog` and `WatchDialog`.
   Outside the US data segments Ragtime only receives.
+- Hot frequencies (2026-11-20, Eduardo N4EAC's idea, Jeff's ask): the
+  dial beside the ear is a dropdown (`app/src/DialMenu`) of the
+  operator's own list, `frequencies.txt` in `appDataDir()`
+  (`hotFrequenciesPath()`; one MHz per line, `#` comments, seeded with
+  Jeff's list, read again when it changes; `radio::HotFrequencies`).
+  A pick tunes the rig (`RigControl::tune`: `F` through rigctld,
+  `rig_set_freq` through Hamlib, held while transmitting, then read
+  back); right-click gives Edit... (`$EDITOR` in a terminal, per
+  platform: `radio::editorLaunches`) and Custom... (a typed frequency);
+  Ctrl with the wheel steps 1 kHz, Shift 10 kHz.
 - Recent work (2026-10-25): `radio::RecentWork` ranks
   the path log's stations, by default by (1 + days worked) × (1 + days
   heard at this hour on this band); contacts (a session, an `@` message
@@ -452,17 +467,20 @@ port: building, testing, the release zip and what differs there.
   welcome. "Curmudgeons" and "lids" are flavour words for the docs and UI
   copy, never defined terms in the spec.
 - The radio is the source of truth for frequency: retune only when the
-  operator asks. Ragtime reads the dial and the transmit meters from
+  operator asks, by picking a frequency on the dial (the hot frequencies,
+  Custom..., or Ctrl or Shift with the wheel), through rigctld (`F`) or
+  Hamlib, never while transmitting. Ragtime reads the dial and the
+  transmit meters from
   rigctld (`\chk_vfo`, `f`, `+m`, `+l` levels and `+u MN` only: the operator's
   rigctld is shared), or from the rig it
-  opens with Hamlib, where PTT is the only thing it sets, the SWR
+  opens with Hamlib, where PTT is the only thing it sets unasked, the SWR
   trip (off by default) the only thing that sets the power, to 0. The
   Ear, with its own box ticked (off by default), is the only thing that
   sets the receive filter's width, PBT and manual notch, never while
   data2g-host transmits,
   through Hamlib or rigctld (`M`, `L PBT_IN`, `L PBT_OUT`,
-  `L NOTCHF_RAW` and `U MN`, Jeff's OK 2026-10-26); it is the only set
-  command Ragtime ever sends rigctld. It
+  `L NOTCHF_RAW` and `U MN`, Jeff's OK 2026-10-26); it and a picked
+  frequency are the only set commands Ragtime ever sends rigctld. It
   never keys through rigctld (NET rigctl is left out of the Hamlib
   list).
 
@@ -470,7 +488,7 @@ port: building, testing, the release zip and what differs there.
 
 | Path | What |
 | --- | --- |
-| `core/` | `ragtime_core`, the socket-free library: no wx, no sockets in the engines, all unit-tested. Headers in `core/include/ragtime/`, sources in `core/src/`, one subfolder per area: `protocol/`, `link/`, `text/`, `files/` (package B; G adds `FileRows`, `FileTraffic`), `globus/` (C), `gearbox/` (D), `broadcast/` (E, with `BroadcastLog`; H adds `Airtime`, `Seals`, `BroadcastFiles`), `session/` (F, and `SessionLog`; `StreamLog` for cuts), `radio/` (the dial from rigctld, the US data segments, the path log, Recent work, the rig settings and the PTT follower), `picture/` (inline pictures with no codec: the image, DPID downscaling, EXIF orientation, what fits a number of seconds), `ear/` (the Ear's spectrum, finding data2g-host's sound card in PipeWire's graph, the host's process by its port, Data2G's passbands, the filter's edges from the noise, the filter model, its trials and Calibrate), `voice/` (the `.sot` voice file, the pitch strip, voice airtime; and the voice chain from the microphone to sotto: high-pass, leveller, limiter, resampler, P.56 and the Level check, with the noise reducer handed in; the microphones and speakers with the radio's card left out, and the microphone Test's verdict; no codec). Add sources to `core/CMakeLists.txt` |
+| `core/` | `ragtime_core`, the socket-free library: no wx, no sockets in the engines, all unit-tested. Headers in `core/include/ragtime/`, sources in `core/src/`, one subfolder per area: `protocol/`, `link/`, `text/`, `files/` (package B; G adds `FileRows`, `FileTraffic`), `globus/` (C), `gearbox/` (D), `broadcast/` (E, with `BroadcastLog`; H adds `Airtime`, `Seals`, `BroadcastFiles`), `session/` (F, and `SessionLog`; `StreamLog` for cuts), `radio/` (the dial from rigctld, the US data segments, the path log, Recent work, the rig settings, the PTT follower and the hot frequencies), `picture/` (inline pictures with no codec: the image, DPID downscaling, EXIF orientation, what fits a number of seconds), `ear/` (the Ear's spectrum, finding data2g-host's sound card in PipeWire's graph, the host's process by its port, Data2G's passbands, the filter's edges from the noise, the filter model, its trials and Calibrate), `voice/` (the `.sot` voice file, the pitch strip, voice airtime; and the voice chain from the microphone to sotto: high-pass, leveller, limiter, resampler, P.56 and the Level check, with the noise reducer handed in; the microphones and speakers with the radio's card left out, and the microphone Test's verdict; no codec). Add sources to `core/CMakeLists.txt` |
 | `denoise/` | `ragtime_denoise`: RNNoise as the voice chain's `voice::Denoiser` (`denoise::makeRnNoise`). RNNoise 0.1.1 (BSD-3) is fetched with git at configure time and its C built here without our warning flags; `-DFETCHCONTENT_SOURCE_DIR_RNNOISE=<checkout>` builds offline, and `-DRAGTIME_RNNOISE=OFF` gives a stand-in that makes none |
 | `audio/` | `ragtime_audio`: `audio::VoiceAudio`, voice's microphone and speaker (PipeWire or WASAPI, never the radio's card); `audio::EarAudio`, the Ear's listener, PipeWire loaded with `dlopen` (never linked) on its own thread, or on Windows WASAPI in shared mode (`WasapiEar.cpp`) on a thread of its own; `processListeningOn` (the host's process by its port: /proc, or Windows' TCP table); on macOS Core Audio, from `platform/macos/`; with `-DRAGTIME_PIPEWIRE=OFF` stand-ins that say the Ear can't listen and voice can't record |
 | `platform/macos/` | The Mac's own code (Tim Vetter's port): Core Audio voice and Ear (`CoreAudioVoice.mm`, `CoreAudioEar.mm`, devices, the radio's devices left out by the modem processes using them), the microphone permission, `/dev/cu.*` serial ports and where sotto's dylib is looked for. The audio and rig libraries pick these sources only on Apple (`docs/MACOS.md`) |
@@ -569,7 +587,8 @@ sent but `\chk_vfo`, `f`, the levels, `+m`, `+u MN` and the Ear's
 settings (it starts at USB, a 2400 Hz filter, PBT centred and the notch
 off at 0.5, whatever the pretend radio's filter is, takes `M`,
 `L PBT_IN`, `L PBT_OUT`, `L NOTCHF_RAW` and `U MN`, prints each
-as `fake rigctld set: ...`, and answers with them after). For Hamlib with no
+as `fake rigctld set: ...`, and answers with them after; a tune, `F`,
+the same, and the dial reads it after). For Hamlib with no
 radio, pick maker Hamlib, model Dummy in Settings > Rig: a pretend rig
 at 145 MHz, which "Key the rig" keys at the fake hosts' PTT. Headless:
 `Xvfb :91 &`, `DISPLAY=:91 ragtime ...`, `xdotool` to click and type,

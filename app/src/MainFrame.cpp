@@ -46,6 +46,7 @@
 #include "FrequencySelector.h"
 #endif
 #include "SwrBar.h"
+#include "DialMenu.h"
 #include "DrawnIcon.h"
 #include "EarFrame.h"
 #ifdef RAGTIME_EMBED_DATA2G
@@ -341,6 +342,23 @@ MainFrame::MainFrame()
     });
 #endif
 
+    DialMenu::Rig dialRig;
+    dialRig.dialHz = [this] { return rig_ ? rig_->dialHz() : std::nullopt; };
+    dialRig.canTune = [this] {
+#ifdef __WXOSX__
+        return rig_ && rig_->canTune() && bar_->frequency->IsEnabled();
+#else
+        return rig_ && rig_->canTune();
+#endif
+    };
+    dialRig.tune = [this](uint64_t hz, const std::string& how) { tuneRig(hz, how); };
+#ifdef __WXOSX__
+    const auto dialPath = frequencyListPath();
+#else
+    const auto dialPath = hotFrequenciesPath();
+#endif
+    dialMenu_ = std::make_unique<DialMenu>(bar_->dial, dialPath, std::move(dialRig));
+
     // Every broadcast item of ours is sealed once it has gone.
     chat_.onItems([this](const std::vector<protocol::Record>& items, uint64_t burst, const std::string& mode,
                          uint64_t now) { seals_.going(items, burst, mode, now); });
@@ -456,6 +474,7 @@ MainFrame::~MainFrame()
     voiceTimer_.Stop();
     // No callback from the audio thread after this.
     if (voiceAudio_) voiceAudio_->stop();
+    dialMenu_.reset();
     rig_.reset();
     host_.reset();
 #ifdef RAGTIME_EMBED_DATA2G
@@ -686,11 +705,12 @@ void MainFrame::buildMenus()
         description += "\nBundled sotto revision " + wxString(RAGTIME_SOTTO_REVISION).Left(7);
 #endif
         if (ragtime::image::available()) description += "\n\nPictures: " + utf8(ragtime::image::versions());
+        description += "\n\nLicense: MIT";
         info.SetDescription(description);
-        info.SetLicence("MIT");
         info.SetWebSite("https://github.com/baitisj/ragtime");
         info.AddDeveloper("Jeff Baitis, AG7EW");
         info.AddDeveloper("Tim Vetter: the macOS port");
+        info.AddDeveloper("Eduardo, N4EAC: hot frequencies on the dial");
         wxAboutBox(info, this);
     }, wxID_ABOUT);
 }
@@ -1284,6 +1304,8 @@ void MainFrame::onClock()
     }
     // Never keyed with no host to say PTT OFF.
     if (host_->state() != HostConnection::State::Connected) rig_->hostLost();
+    // The hot frequencies' file, read again when the operator has edited it.
+    dialMenu_->poll();
     applySendGuard();
     if (now > trimmedMs_ + 60 * 60 * 1000)
     {
@@ -4519,14 +4541,17 @@ void MainFrame::showDial()
         return;
     }
     std::optional<uint64_t> hz = rig_->dialHz();
+    // A frequency just picked shows until the rig reads it back.
+    const std::optional<uint64_t> tuning = dialMenu_ ? dialMenu_->pending(hz) : std::nullopt;
+    const std::optional<uint64_t> shown = tuning ? tuning : hz;
     std::string text;
-    if (hz)
+    if (shown)
     {
-        std::string band = radio::bandOf(*hz);
+        std::string band = radio::bandOf(*shown);
 #ifdef __WXOSX__
         text = band.empty() ? std::string("outside the bands") : band;
 #else
-        text = radio::formatMHz(*hz) + DOT + (band.empty() ? std::string("outside the bands") : band);
+        text = radio::formatMHz(*shown) + DOT + (band.empty() ? std::string("outside the bands") : band);
 #endif
     }
     else
@@ -4535,16 +4560,33 @@ void MainFrame::showDial()
     }
     if (held_) text = "Receive only" + std::string(DOT) + text;
     std::string tip = rig_->describe();
+    if (tuning) tip += "\nTuning to " + radio::formatMHz(*tuning) + (bar_->tx->isOn() ? " once this burst ends" : "");
+    if (const std::string problem = rig_->tuneProblem(); !problem.empty()) tip += "\n" + problem;
     if (held_)
         tip += "\n\nReceive only: " + heldWhy_;
     else if (prefs_.usSegmentsOnly && !radio::usDataPlace(hz.value_or(0)).empty())
         tip += "\n\n" + radio::usDataPlace(hz.value_or(0));
 #ifdef __WXOSX__
     tip += "\n\nEnter a frequency in the frequency field and press Enter to tune the radio.";
+    if (dialMenu_) tip += "\n" + dialMenu_->tip();
 #else
-    tip += "\n\nRagtime only reads the dial; it never tunes the radio.";
+    tip += "\n\n" + (dialMenu_ ? dialMenu_->tip() : std::string());
 #endif
     bar_->setDial(utf8(text), utf8(tip), held_);
+}
+
+void MainFrame::tuneRig(uint64_t hz, const std::string& how)
+{
+    // The operator asked: the radio stays the source of truth, and the dial
+    // shows what it reads back. Never while transmitting: the rig's side
+    // holds it until the burst ends.
+#ifdef __WXOSX__
+    bar_->frequency->tune(hz);
+#else
+    rig_->tune(hz);
+#endif
+    host_->recorder().note("rig tune " + std::to_string(hz) + " Hz (" + how + ")", HostConnection::nowMs());
+    showDial();
 }
 
 std::string MainFrame::sendRefusal() const

@@ -4,6 +4,18 @@ Changes to the Ragtime fork with bundled Data2G for macOS. Dates use
 America/New_York. Entries summarize this fork's packaged releases; the
 upstream projects retain their own histories.
 
+## 0.4.0 — Unreleased
+
+- Integrated upstream Ragtime 0.4.0, retaining the bundled Data2G modem
+  and editable Enter-to-tune frequency field.
+- Added the upstream hot-frequency menu and wheel tuning. On macOS it
+  shares the existing frequency file and confirmation path; CAT VFO/PTT
+  checks remain in place.
+- Replaced About's licence expander with a plain `License: MIT` line.
+  Ragtime's upstream MIT licence is unchanged.
+- Replaced the maple-leaf icon with an Apple silhouette using the same
+  teal pixel treatment, dark background, and Data2G badge.
+
 ## 0.3.1 beta 6 — 2026-11-21
 
 - Integrated upstream Ragtime through `6cde44e`, including macOS desktop

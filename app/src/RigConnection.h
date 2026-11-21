@@ -42,6 +42,7 @@ public:
 
     std::optional<uint64_t> dialHz() const;
     bool setFrequency(uint64_t hz);
+    bool queueFrequency(uint64_t hz);
     void cancelFrequency() { reader_.cancelFrequency(); }
     const std::string& frequencyProblem() const { return reader_.frequencyProblem(); }
     // "rigctld localhost:4532: connected", "... reconnecting in 8 s", and

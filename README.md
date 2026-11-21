@@ -12,7 +12,7 @@ and on which band, each of your friends gets through, so it can tell you
 who is likely around now, and the best time of day to check in to the
 D2G net to find them.
 
-Status: 0.3.1-beta. Ragtime connects to data2g-host,
+Status: 0.4.0 development build. Ragtime connects to data2g-host,
 chats on the D2G broadcast group. Current features include:
 - "Globus," which plots your friend's maidenhead coordinates
    on a globe,
@@ -57,9 +57,10 @@ the Ear waterfall following the built-in Data2G modem over TCI.
 
 ## Downloads
 
-Ragtime 0.3.1 beta 6 bundles Data2G v0.5.3 and the updated sotto v3.8
-voice library. It is available as a DMG or ZIP for Apple Silicon with macOS 27 or
-later. The app is ad hoc signed and has no Apple notarization.
+The current development version is 0.4.0; published ZIP and DMG packages
+are listed on the release page below. The macOS app bundles Data2G v0.5.3
+and sotto v3.8 for Apple Silicon with macOS 27 or later. Packages are ad hoc
+signed and have no Apple notarization.
 [Ragtime macOS releases](https://github.com/N4EAC/ragtime-data2g/releases) · [Changelog](CHANGELOG.md)
 
 Linux and Windows source builds connect to an external `data2g-host`.
@@ -169,6 +170,8 @@ The macOS connection bar includes an editable frequency field with presets.
 Enter **7100** (kHz) and press **Enter** to tune to **7.100 MHz** through the
 rig connection configured in **Settings > Rig**. Explicit units also work:
 **7100000 Hz** or **7.100 MHz**. Selecting a preset tunes immediately.
+The band button also opens the upstream hot-frequency menu using the same
+file. Ctrl with the mouse wheel steps 1 kHz; Shift steps 10 kHz.
 CAT readings update the field while idle; an entry you are editing stays
 intact until Enter sends it or Escape restores the radio reading.
 The initial selection is **7.066 MHz**. The list starts with **3.566,
