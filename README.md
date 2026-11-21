@@ -57,10 +57,10 @@ the Ear waterfall following the built-in Data2G modem over TCI.
 
 ## Downloads
 
-Ragtime 0.3.1 beta 5 bundles Data2G v0.5.3 and the updated sotto v3.8
+Ragtime 0.3.1 beta 6 bundles Data2G v0.5.3 and the updated sotto v3.8
 voice library. It is available as a DMG or ZIP for Apple Silicon with macOS 27 or
 later. The app is ad hoc signed and has no Apple notarization.
-[Ragtime macOS releases](https://github.com/N4EAC/ragtime-data2g/releases)
+[Ragtime macOS releases](https://github.com/N4EAC/ragtime-data2g/releases) · [Changelog](CHANGELOG.md)
 
 Linux and Windows source builds connect to an external `data2g-host`.
 Enter its address and ports under **Settings > Station**.

@@ -1,0 +1,81 @@
+# Changelog
+
+Changes to the Ragtime fork with bundled Data2G for macOS. Dates use
+America/New_York. Entries summarize this fork's packaged releases; the
+upstream projects retain their own histories.
+
+## 0.3.1 beta 6 — 2026-11-21
+
+- Integrated upstream Ragtime through `6cde44e`, including macOS desktop
+  fixes, background-message notifications, and explicit session disconnect
+  when the app quits.
+- Updated bundled Data2G to `759ea35` (v0.5.3 plus configuration-discovery
+  fixes). Added a regression check that standalone configuration files
+  cannot override the embedded modem's explicit arguments.
+- Kept sotto v3.8 at `598f1bc` and preserved the built-in modem, audio-device
+  reservations, RX/TX Ear tap, frequency entry, modem monitor, logs,
+  persistent Clear controls, roll-call fix, custom icon, and rigctl tools.
+- Integrated upstream macOS audio and codec tests, while retaining the
+  bundled modem's audio bridge. The external-modem build uses upstream's
+  native Core Audio backend.
+- Improved codec lookup after relocation and normalized copied libraries'
+  install names to keep the macOS bundle self-contained.
+- Validation: 53 integrated regression tests, 11 targeted external-profile
+  checks, and an application GUI smoke test passed. Verified the packaged
+  signature, codec round trip, icon, rig tools, and library dependencies.
+
+## 0.3.1 beta 5 — 2026-11-20
+
+- Enabled roll calls immediately after the built-in modem connects,
+  without first requiring reception of another station.
+- Preserved capability detection and ordinary check-in fallback for
+  external modems.
+- Removed the developer-specific Hand-support warning and tooltip text;
+  clear stale fallback notices after a successful roll-call check-in.
+
+## 0.3.1 beta 4 — 2026-11-20
+
+- Updated sotto v3.8 to `598f1bc`, retaining desktop encoder/decoder and
+  frame compatibility. The upstream revision adds a slim encoder and table
+  hooks for embedded hardware.
+- Made the macOS frequency control editable: entering `7100` in kHz and
+  pressing Enter tunes to 7.100 MHz. Explicit Hz, kHz, and MHz units work.
+- Kept CAT readback active without overwriting an unfinished entry;
+  Escape restores the radio reading. Preset selection remains available.
+
+## 0.3.1 beta 3 — 2026-11-19
+
+- Added receive/decode history to the modem monitor, showing UTC time,
+  mode/codewords, SNR, and Data2G's OK, Lost, Undecoded, or Incomplete result.
+- Retained every burst returned in a poll, with the newest 500 rows and a
+  Clear button. Automatically fit the columns when the window resizes.
+
+## 0.3.1 beta 2 — 2026-11-19
+
+- Updated upstream Ragtime, bundled Data2G to v0.5.3 (`ede34e7`), and sotto
+  v3.8 to `6686fe4`.
+- Added editable macOS frequency presets, confirmed-frequency persistence,
+  and active-VFO handling for Hamlib and rigctld-compatible servers.
+- Added persistent Recent Work clearing without deleting archived logs.
+- Matched the built-in modem's transmit-audio and Auto ALC limit to
+  Data2G's 0 dB maximum.
+- Listed the Ragtime, Data2G, and sotto versions in About.
+
+## 0.3.1 beta — 2026-11-15
+
+- Integrated upstream Ragtime 0.3.1 and upstream picture-preview and
+  broadcast-repair fixes, preserving the bundled macOS modem integration.
+
+## 0.2.0 beta 2 — 2026-11-15
+
+- Updated Data2G's Hand timing and handling of expired roll-call windows.
+- Moved the Data2G constellation and modem telemetry into a separate
+  monitor window to keep the main window uncluttered.
+
+## 0.2.0 beta — 2026-11-14
+
+- Initial Apple Silicon macOS app with built-in Data2G and sotto voice.
+- Added Core Audio/TCI integration, macOS voice devices and Ear support,
+  Hamlib/rigctld control, and packaged rigctl tools.
+- Added the macOS app icon, chat/session logging, broadcast clearing,
+  and ZIP/DMG downloads.
