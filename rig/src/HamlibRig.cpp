@@ -327,6 +327,7 @@ struct HamlibRig::Shared
     bool swrTrip = false;
     bool filterWatch = false;
     std::optional<radio::RigFilter> filterWrite;
+    std::optional<uint64_t> tuneWrite;
     bool clearTrip = false;
     std::vector<std::pair<std::string, double>> pokes;   // tests on the dummy rig
     int pollSeconds = 1;
@@ -420,6 +421,16 @@ void HamlibRig::setFilter(const radio::RigFilter& filter)
     {
         std::lock_guard<std::mutex> lock(shared_->mutex);
         shared_->filterWrite = filter;
+    }
+    shared_->wake.notify_all();
+}
+
+void HamlibRig::setFrequency(uint64_t hz)
+{
+    if (!shared_) return;
+    {
+        std::lock_guard<std::mutex> lock(shared_->mutex);
+        shared_->tuneWrite = hz;
     }
     shared_->wake.notify_all();
 }
@@ -614,6 +625,7 @@ void HamlibRig::run()
     {
         bool want, tx, clear, watch;
         std::optional<radio::RigFilter> write;
+        std::optional<uint64_t> tune;
         int poll;
         std::vector<std::pair<std::string, double>> pokes;
         {
@@ -628,10 +640,28 @@ void HamlibRig::run()
             shared->clearTrip = false;
             watch = shared->filterWatch;
             // Written only while the rig doesn't transmit.
-            if (rig != nullptr && !(shared->transmitting || keyed) && want == keyed) write.swap(shared->filterWrite);
+            if (rig != nullptr && !(shared->transmitting || keyed) && want == keyed)
+            {
+                tune.swap(shared->tuneWrite);
+                if (!tune) write.swap(shared->filterWrite);
+            }
             pokes.swap(shared->pokes);
         }
         uint64_t now = nowMs();
+        if (tune)
+        {
+            // The operator picked it on the dial: set, then read back at
+            // once.
+            int r = rig_set_freq(rig, RIG_VFO_CURR, (freq_t)*tune);
+            std::string problem = r == RIG_OK ? std::string() : "Tuning to " + std::to_string(*tune) +
+                                                                    " Hz failed: " + errorText(r);
+            shared->update([&](Status& s) {
+                s.tunes++;
+                s.tuneProblem = problem;
+            });
+            nextPoll = now;
+            continue;
+        }
         if (write)
         {
             writeFilter(*write);

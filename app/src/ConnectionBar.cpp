@@ -35,8 +35,8 @@ ConnectionBar::ConnectionBar(wxWindow* parent)
     callsign_->SetToolTip("Your callsign: Settings > Station");
     auto* group = new wxStaticText(this, wxID_ANY, "Group D2G");
     group->SetToolTip("The broadcast group Ragtime opens on data2g-host");
-    dial_ = new wxStaticText(this, wxID_ANY, "");
-    dial_->Hide();
+    dial = new wxButton(this, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
+    dial->Hide();
     ear = new wxBitmapToggleButton(this, wxID_ANY, earIcon(wxSystemSettings::GetColour(wxSYS_COLOUR_BTNTEXT)),
                                    wxDefaultPosition, wxDefaultSize, wxBU_EXACTFIT);
     ear->SetToolTip("The Ear: a waterfall of what the radio hears, from the sound card data2g-host records from "
@@ -84,7 +84,7 @@ ConnectionBar::ConnectionBar(wxWindow* parent)
     };
     add(left_, callsign_, 8);
     add(left_, group, 12);
-    add(left_, dial_, 12);
+    add(left_, dial, 12);
     add(left_, ear, 8);
     left_->Add(divider(this), 0, wxEXPAND | wxLEFT | wxTOP | wxBOTTOM, FromDIP(8));
     add(left_, narrow, 8);
@@ -208,18 +208,20 @@ void ConnectionBar::setDial(const wxString& text, const wxString& tip, bool held
 {
     if (text.empty())
     {
-        if (!dial_->IsShown()) return;
-        dial_->Hide();
+        if (!dial->IsShown()) return;
+        dial->Hide();
         Layout();
         arrange(GetSize().x);
         return;
     }
-    if (dial_->GetToolTipText() != tip) dial_->SetToolTip(tip);
-    if (dial_->IsShown() && dial_->GetLabel() == text && held_ == held) return;
+    if (dial->GetToolTipText() != tip) dial->SetToolTip(tip);
+    // A small down arrow: it drops down.
+    const wxString label = text + wxString::FromUTF8("  \xe2\x96\xbe");
+    if (dial->IsShown() && dial->GetLabel() == label && held_ == held) return;
     held_ = held;
-    dial_->SetLabel(text);
-    dial_->SetForegroundColour(held ? badText() : wxNullColour);
-    dial_->Show();
+    dial->SetLabel(label);
+    dial->SetForegroundColour(held ? badText() : wxNullColour);
+    dial->Show();
     Layout();
     arrange(GetSize().x);
     GetParent()->Layout();

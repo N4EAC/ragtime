@@ -92,6 +92,18 @@ filter's edges, or the notch out of its bay, right on the scope.
 
 ![The Ear, three Data2G bursts on the waterfall](docs/images/readme/ear.png)
 
+**Hot frequencies.** With the rig read through rigctld or Hamlib, the
+dial beside the ear is a dropdown: click it for your own short list of
+frequencies and the rig tunes to the one you pick. Right-click it for
+Edit... (the list, opened in your `$EDITOR` in a terminal) or Custom...
+(type a frequency). Ctrl with the mouse wheel over it steps the rig
+1 kHz, Shift 10 kHz. The list is a plain text file, one frequency in MHz
+per line, `#` for comments (a comment after a frequency shows beside
+it), `frequencies.txt` beside Ragtime's other files
+(`~/.local/share/ragtime` on Linux, `%APPDATA%\Ragtime` on Windows,
+`~/Library/Application Support/Ragtime` on a Mac). Ragtime reads it
+again whenever it changes. A tune waits until a burst has gone.
+
 **The gearshift.** Data2G's modes as gears, plotted by speed and the
 S/N each needs. The black dashed line is the path: the weakest station
 heard in the last 15 minutes, since a broadcast must reach them all.
@@ -366,7 +378,8 @@ Linux, WASAPI on Windows or Core Audio on macOS. Voice uses your own
 microphone and speaker, never the radio's card (Settings > Voice).
 It reads the radio's dial from rigctld, or opens the rig itself with
 Hamlib (Settings > Rig), and can key it when data2g-host does, for rigs
-whose drivers can't be opened twice (off by default). Through Hamlib or
+whose drivers can't be opened twice (off by default). It tunes the rig
+only when you pick a frequency on the dial. Through Hamlib or
 rigctld, the Ear can also set the rig's receive filter: drag the edges
 on the waterfall, or the notch out of its bay, and the change goes back
 after 15 s unless you keep it (off by default).
@@ -400,6 +413,9 @@ MIT. See [LICENSE](LICENSE).
   ([docs/MACOS.md](docs/MACOS.md)).
 - Andrew Rodland (KC2G, [@arodland](https://github.com/arodland)): Data2G,
   the modem Ragtime talks to, and much advice on using it well.
+- Eduardo (N4EAC, [@N4EAC](https://github.com/N4EAC)): the hot
+  frequencies dropdown on the dial, and the Apple Clang fix for the
+  picture preview.
 
 ### Voice
 

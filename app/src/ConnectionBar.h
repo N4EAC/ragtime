@@ -9,6 +9,7 @@ class SwrBar;
 class TxLamp;
 class ToggleSwitch;
 class wxBoxSizer;
+class wxButton;
 class wxCheckBox;
 class wxGauge;
 class wxStaticText;
@@ -16,7 +17,8 @@ class wxToggleButton;
 class wxBitmapToggleButton;
 
 // The bar across the top of the window, left to right: my callsign, the group
-// D2G, the radio's dial (while Ragtime reads it from rigctld), the ear that
+// D2G, the radio's dial (while Ragtime reads it through rigctld or Hamlib:
+// a dropdown of hot frequencies, DialMenu, that tunes the rig), the ear that
 // opens the Ear, the 500 Hz switch, Accept sessions, Pause sending, Auto ALC
 // with its level meter (the rig's ALC, read through Hamlib while
 // transmitting) with the SWR bar under it, and the TX light. The window wires
@@ -30,7 +32,7 @@ public:
     void setNarrow(bool narrow);
     void setPaused(bool paused);
     // The dial, "14.105 MHz · 20 m", in red with "Receive only" when
-    // sending is held; empty hides it.
+    // sending is held; empty hides it. Its arrow says it drops down.
     void setDial(const wxString& text, const wxString& tip, bool held);
     // The rig's ALC: the meter at percent (0 between bursts), the reading
     // beside it, red when warn, and their tooltip. Not readable greys them.
@@ -42,6 +44,7 @@ public:
     void setSwr(bool readable, std::optional<double> swr, const wxString& text, const wxString& tip, bool warn,
                 bool tripped);
 
+    wxButton* dial = nullptr;              // the dial: DialMenu's
     wxBitmapToggleButton* ear = nullptr;   // opens and closes the Ear
     ToggleSwitch* narrow = nullptr;  // on: 500 Hz modes only (BW500)
     wxCheckBox* acceptSessions = nullptr;
@@ -64,7 +67,6 @@ private:
     bool twoRows_ = false;
 
     wxStaticText* callsign_ = nullptr;
-    wxStaticText* dial_ = nullptr;
     bool held_ = false;
     bool alcWarn_ = false;
     bool swrWarn_ = false;

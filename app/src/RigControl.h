@@ -53,6 +53,14 @@ public:
     void hostLost();
 
     std::optional<uint64_t> dialHz() const;
+    // The rig can be tuned now: rigctld answering, or the Hamlib rig open.
+    bool canTune() const;
+    // Tunes the rig to hz, between bursts (never while it transmits): the
+    // operator picked it on the dial. The radio stays the source of truth;
+    // the dial shows what it reads back.
+    void tune(uint64_t hz);
+    // Why the last tune failed, if it did.
+    std::string tuneProblem() const;
     // "Hamlib, Icom IC-7100 on /dev/ttyUSB0: reading the dial every 1 s",
     // and why not, for the dial's tooltip.
     std::string describe() const;

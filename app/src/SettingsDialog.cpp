@@ -411,9 +411,9 @@ wxWindow* SettingsDialog::rigPage(wxNotebook* book, const StationPrefs& prefs)
                                wxDefaultSize, wxRB_GROUP);
     useRigctld_ = new wxRadioButton(page, wxID_ANY, "Read the dial from rigctld, already running");
     useRigctld_->SetToolTip("Once a second Ragtime asks rigctld the radio's frequency, and while data2g-host "
-                            "transmits the rig's ALC, SWR and power, and nothing else: it never tunes the radio, "
-                            "keys it or sets anything, since rigctld is often shared (fldigi). Ragtime never "
-                            "starts rigctld: you run it.");
+                            "transmits the rig's ALC, SWR and power. It never keys the radio, and tunes it only "
+                            "when you pick a frequency on the dial, since rigctld is often shared (fldigi). "
+                            "Ragtime never starts rigctld: you run it.");
     rigctldHost_ = new wxTextCtrl(page, wxID_ANY, utf8(r.rigctldHost), wxDefaultPosition, wxSize(FromDIP(120), -1));
     rigctldHost_->SetToolTip("The computer rigctld runs on");
     rigctldPort_ = new wxSpinCtrl(page, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 65535,
