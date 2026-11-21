@@ -116,14 +116,14 @@ Not licence matters, but they stop a submission or should be settled:
   the operator's own act, which the form exempts. The privacy text
   already says the same in plain words.
 
-## Outside the APK, in this repository
+## Outside the APK
 
-`tools/bench/data2g-android-network-audio.patch` is a diff against
-Data2G's source, with Data2G's lines in it, and the test TNC built from
-it is a modified Data2G. Data2G is under the Artistic License 2.0, and
-this project's own rule is that no Data2G code is copied in. Neither is
-in the Ragtime APK. The patch belongs in a Data2G fork or with Andrew,
-and the modified TNC should not be handed round as plain "Data2G".
+The real-modem bench used a test build of Data2G's Android TNC, which is
+a modified Data2G. Data2G is under the Artistic License 2.0, and this
+project's own rule is that no Data2G code is copied in, so neither that
+build nor its patch is in this repository or in the Ragtime APK. The
+patch belongs in a Data2G fork or with Andrew, and the modified TNC
+should not be handed round as plain "Data2G".
 
 ## Sources
 

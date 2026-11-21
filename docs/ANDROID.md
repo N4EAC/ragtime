@@ -171,12 +171,11 @@ What has been checked, and where:
   connection service while the activity is stopped, and Disconnect
   ending the ragchew at the far end). The phone's own Data2G TNC stayed
   up on 8100/8300 throughout: the bench was forwarded on ports 10000
-  higher (`tools/android-smoke.sh SERIAL 10000`), and the saved MYCALL-1
+  higher (`tools/android-smoke.sh SERIAL 10000`), and the phone's saved
   settings were put back after.
 - The same phone over real modems, see
-  [0.2.0 over real modems](#020-over-real-modems-2026-11-21) and
-  [0.1.0](#010-over-real-modems-2026-11-20) before it: the addressed
-  Unicode message and its ACK, a session file and a broadcast file.
+  [Over real modems](#over-real-modems): the addressed Unicode message
+  and its ACK, a session file and a broadcast file.
 - The chat-only build earlier passed its tests on an ARM64/API 35
   emulator. 0.1.0 has not run on an emulator: a new google_apis AVD at
   the default 1.5 GB killed the app for slow startup while its first
@@ -276,238 +275,79 @@ hand, and a demo left running for hours.
    recreation, and network loss. Keep media codecs, audio, and local USB
    radio access as separately validated follow-up work.
 
-## No-radio acceptance pilot
+## Over real modems
 
-The intended acceptance setup is a real Data2G Android TNC alongside
-Ragtime on the S26, with a second Data2G/Ragtime station on the Mac.
-Synthetic callsigns, messages and illustrative UI data are acceptable;
-delivery and acknowledgement results must come from actual modem decoding.
+Fake hosts prove the protocol; whether a line gets through is for real
+modems to say. The bench for that has no radio: two Data2G modems whose
+audio is carried between them as samples (crossed FIFOs with
+`--audio-io pipe:IN,OUT`, or TCP between two machines), with a Ragtime
+on each. Callsigns and messages are made up; delivery and
+acknowledgements come from real modem decoding. The opt-in tests and
+what they need are in
+[android/README.md](../android/README.md#real-modem-tests).
 
-Each Ragtime connects to its own local Data2G KISS, command and session
-ports. A virtual audio cable carries samples between the two Data2G
-instances over TCP. Thus the phone's modem is exercised as well as its
-client. The proposed audio transport carries continuous 8 kHz mono
-float32 samples (32 kB/s each direction, including silence), with bounded
-buffering and explicit transport/counter diagnostics. No microphone,
-speaker, CAT or radio is needed for this path. Transport disconnects and
-sample loss must be reported rather than silently counted as successful
-delivery.
+Two set-ups were used, both with Data2G 0.5.3 (`ede34e7`) and an S26:
 
-On 2026-11-20, a single-use fixed-token TCP exchange succeeded from the
-S26's Wi-Fi address to the Mac's Wi-Fi address, without ADB reverse. This
-checks network reachability from Android's shell; Ragtime/Data2G app-level
-LAN access remains a separate check. The temporary listener was closed.
+1. **Both modems on the Mac.** The phone's Ragtime reaches one host over
+   Wi-Fi and a desktop Ragtime has the other. This proves the app
+   against a real host across the LAN, not a phone's modem.
+2. **The phone's own modem.** Data2G's Android TNC runs behind Ragtime
+   on the phone (localhost, 8100/8300/8301), and its audio goes over the
+   LAN to the Mac's modem and desktop Ragtime. For this the TNC was a
+   test build that takes its audio from TCP instead of the microphone
+   (8 kHz mono float32, with no jitter or clock-drift handling). That
+   build and the scripts that start the Mac's side are not in this
+   repository.
 
-Existing building blocks found in the local Data2G project:
+### Results
 
-- `tests/test_native_host_e2e.py`: two real host processes, crossed named
-  audio pipes, command/data/KISS traffic, exact payload checks, and audio
-  error detection. Ragtime also has `tools/bench/real_modem_smoke.py` for
-  an isolated release-host session check.
-- `native/core/audio/pipe.{hpp,cpp}` and `app::Station`: an existing
-  device-free `--audio-io pipe:IN,OUT` path, paced continuously in real
-  time. FIFO input follows the sender's clock.
-- `native/android-app/`: the actual Android TNC, reusing `app::Station`,
-  the real host listeners, and a foreground service. Its current UI/start
-  path does not expose the pipe-audio option. Selecting test audio and
-  connecting that audio to TCP are new integration work, not existing
-  working Android features.
-- `native/lab/`: actual paired-engine audio with clean and seeded noisy/
-  fading channels, byte checks and recording/replay. The current Lab runner
-  has no external host sockets; its Android activity cancels a run when
-  stopped. It cannot serve Ragtime unchanged while hidden behind it.
+- **2026-11-20, set-up 1, the chat-only build.** An addressed broadcast
+  with `café 🚀` reached Acknowledged about 9 s after Send, and the
+  desktop's log has the exact text.
+- **2026-11-20, set-up 2.** The same check with Data2G running behind
+  Ragtime on the phone: acknowledged in 9.4 s.
+- **0.1.0 build 2, 2026-11-20, set-up 2.** `RealModemPilotTest`:
+  acknowledged 7.4 s after Send. `RealModemFileTest`: connected 4.5 s
+  after the call; a 1,200-byte session file Sent and checked 32 s later;
+  after Leave, a 1,200-byte broadcast file's pieces had gone in 89 s,
+  the Mac asked for a repair ("Repairing, 1 station asked" on the phone)
+  and saved it whole. Both files on the Mac have the SHA-256 the phone
+  recorded.
+- **0.2.0 build 3, 2026-11-21, set-up 2**, with the gearshift picking
+  the mode from the thresholds the real modem gives. The pilot:
+  acknowledged 7.5 s after Send. The file test, staying on the air
+  5 minutes (`-e pilotSettle 300`): connected in 4.3 s, the session file
+  Sent and checked at 34 s, and the broadcast file saved on the Mac
+  within a minute of the ragchew ending. Both copies match.
 
-Recommended stages:
-
-1. Run two pinned release Data2G hosts on the Mac using crossed audio
-   FIFOs. Attach the phone's Ragtime to one over LAN and a separate desktop
-   Ragtime/profile to the other. Reuse the existing pipe-host bench and
-   allow real waveform/session deadlines rather than the fake host's
-   15-second test assumptions. This proves Ragtime/real-modem protocol and
-   LAN interoperability; it does not yet test an Android modem.
-2. Add an explicitly selected virtual-audio test mode to the Android TNC.
-   Reuse the existing pipe/FIFO boundary and bridge samples over TCP to
-   the Mac's modem. Keep the TNC's service and ports alive when Ragtime is
-   foreground. Review the service/permission path for a mode that does not
-   capture or play device audio. No ordinary radio settings should be
-   changed by selecting the bench.
-3. Verify exact UTF-8 messages both ways, addressed acknowledgements,
-   explicit Call/Leave, host reconnect, history and app switching. Retain
-   source/APK identities, transcripts, audio recordings and transport/audio
-   counters. Add file acceptance once Android file transfer exists.
-4. After a clean channel passes, adapt the Lab's existing channel model
-   for bounded, seeded impairment cases. Keep these correctness cases
-   separate from profiling, training, reliability campaigns and RF/audio-
-   hardware qualification.
-
-The repeatable first-stage bench is `tools/bench/android_air_bench.py`;
-setup and opt-in phone test commands are in [android/README.md](../android/README.md#no-radio-real-modem-pilot).
-It launches existing release binaries without modifying Data2G source,
-and keeps an isolated desktop Ragtime profile and recordings. The pinned
-local Data2G 0.5.3 source is `ede34e7c15627b09a55c3f6bbae71511cfbb6882`;
-the binary's SHA-256 is recorded per run. Only Ragtime is installed on the
-S26; the phone's own modem is not exercised in this stage.
-
-### Remote collaborator over Tailscale
-
-The same virtual-audio design can span two hosts over Tailscale, with a
-network bridge in place of the local crossed FIFOs. That bridge is new
-work: use one bidirectional connection, bounded buffering, explicit
-disconnect/sample counters, and handling of jitter and independent clocks.
-Raw 8 kHz float32 mono audio needs 256 kbit/s in each direction before
-transport overhead. Both Ragtime clients can stay local to their own modems.
-
-Separate tailnets work through machine sharing: the collaborator shares
-his modem host with your account, and your bridge initiates the connection
-to that shared host. Tailscale's default shared-device quarantine permits
-replies on an incoming connection but prevents that shared host initiating
-connections back into the recipient's tailnet. Access remains subject to
-both tailnets' policies. See [Tailscale machine sharing](https://tailscale.com/docs/features/sharing)
-and [connection types](https://tailscale.com/docs/reference/connection-types).
-An initial Mac-only raw FIFO/TCP relay is now implemented as
-`tools/bench/tcp_audio_bridge.py`, launched by the bench helper's
-`--remote-audio HOST:PORT` option. It preserves bytes, bounds its queues,
-reports counters and stops on disconnect; it does not yet handle jitter
-or clock drift. Its local fragmented bidirectional byte/EOF check passes.
-The Android implementation is described below. See the
-[Mac trial commands](../android/README.md#mac-to-remote-audio-trial).
-
-### First-stage result, 2026-11-20
-
-The S26 opt-in `RealModemPilotTest` passed against the pinned release
-hosts and desktop Ragtime. With no ADB reverse, the app connected from
-the phone's Wi-Fi address to the Mac's, sent an addressed Broadcast
-containing `café 🚀`, and reached Acknowledged about nine seconds after
-Send. Desktop Ragtime's isolated broadcast log contains the exact marker
-and text. Both modem recordings contain the corresponding TX/RX bursts.
-An initial attempt was interrupted by the phone app moving into the
-background before the ACK arrived; the foreground repeat passed.
-
-Local evidence is under `build-android-air-bench/run-bz62jpzi/`, including
-`phone-result.json`, `desktop.conf.broadcast.log`, `status.json` and both
-recording trees. Instrumentation output is
-`build-android-results/s26-real-modem-pilot-repeat.log` (one test passed).
-This verifies the app-level LAN path, desktop receipt and returned ACK;
-session Call/Leave and phone-side Data2G remain separate acceptance steps.
-
-### S26 modem integration, 2026-11-20
-
-Data2G 0.5.3 now has an isolated development worktree at
-`build-data2g-android-source`, branch `codex/android-network-audio`, adding
-an explicitly selected TCP test-audio transport and Android configuration.
-It uses the same station and modem core, opens no rig or device audio,
-shows transport byte counters and stops on transport failure. Network mode
-runs with a special-use foreground service; microphone permission remains
-ungranted. Ordinary radio settings are retained. The transport has no
-jitter correction or clock-drift compensation yet.
-
-The ARM64 TNC APK builds with Qt 6.11.1, NDK 27.2.12479018, JDK 21 and
-target SDK 36. The S26 runs both actual applications as MYCALL-1, with
-Ragtime's locator MYGRID and local ports 8100/8300/8301. A temporary Mac
-peer TESTMAC on LAN audio port 19977 decoded the phone's addressed Unicode
-message, and the phone received its real-modem ACK in 9.377 seconds while
-Data2G ran behind Ragtime. The opt-in phone test passed in 10.799 seconds.
-
-Evidence is in `build-phone-modem-bench/run-vdifq5q6/phone-result.json`,
-the peer broadcast log and recordings, plus
-`build-android-results/s26-own-modem-pilot.log`. The targeted native
-fragmentation/disconnect check and source include check also pass. Session
-Call/Leave, files, process death, screen-off behavior and impaired-network
-acceptance remain separate work.
-
-The subsequent phone connection to the remote collaborator's host (over Tailscale, TCP 9977) was refused.
-The Mac relay's previous audio connection also closed at the remote side.
-The phone retains MYCALL-1 / MYGRID, local Ragtime host 127.0.0.1 and the
-remote audio endpoint at that stage; external phone delivery awaits a reopened listener.
-The development APK and portable Data2G patch are linked in the
-[phone setup guide](../android/README.md#data2g-and-ragtime-together-on-the-s26).
-
-After the remote operator went offline, the active manual setup was changed to Mac
-MYCALL and phone MYCALL-1 / MYGRID over LAN audio at MAC_LAN_IPV4:19977.
-The opt-in addressed Unicode/ACK check passed between these actual station
-identities, and normal Android Ragtime was left connected for manual use.
-Mac Ragtime uses an isolated profile in
-`build-phone-local-bench/run-6no_hj0v/`; evidence includes its broadcast log,
-audio recordings and the phone result. Android Ragtime continues to use
-its local modem at 127.0.0.1:8100/8300/8301. This setup does not require
-the remote host or Tailscale.
-
-### 0.1.0 over real modems, 2026-11-20
-
-The S26 ran Ragtime 0.1.0 build 2 as MYCALL-1 on its own Data2G TNC
-(network audio to the Mac at MAC_LAN_IPV4:19977); the Mac ran the pinned
-Data2G 0.5.3 host and desktop Ragtime as MYCALL, started with
-`android_air_bench.py ... --listen-audio MAC_LAN_IPV4:19977 --auto-files
-MYCALL-1`, which has the desktop save MYCALL-1's session files and every
-broadcast file with no click.
-
-- `RealModemPilotTest`: the addressed message with `café 🚀` reached
-  Acknowledged 7.4 s after Send, and the Mac's broadcast log has it.
-- `RealModemFileTest` (new, opt-in like the pilot): the phone called
-  MYCALL and was connected in 4.5 s; a 1,200-byte session file was Sent
-  and checked 32 s later, and the Mac saved it in 7.7 s of transfer; the
-  phone left; a 1,200-byte broadcast file's pieces had gone 89 s after
-  that, the Mac asked for a repair ("Repairing, 1 station asked" on the
-  phone) and saved it whole. Both files on the Mac have the SHA-256 the
-  phone recorded.
-
-Evidence: `build-phone-local-bench/run-3mtfel0r/` (`received/`,
-`desktop.conf.files`, the logs and recordings) and
-`build-android-results/s26-0.1.0-real-modem-pilot.log`,
-`s26-real-modem-file.log` and `s26-real-modem-file.json`. The first run
-sent random bytes named `.bin`, which nothing can open; the test now
-sends readable `.txt`, and a second run with those passed with the same
-timings (the log and JSON are that run's; `received/` has all four
-files). Not covered: a file from the desktop to the
-phone, files over a few kilobytes, an impaired channel, and the phone
-screen off.
-
-### 0.2.0 over real modems, 2026-11-21
-
-The same bench as above (the S26 as MYCALL-1 on its own Data2G TNC, the
-Mac as MYCALL on Data2G 0.5.3 with desktop Ragtime), with build 0.2.0
-(3): the gearshift picking the mode from the thresholds the real modem
-gives, and SDK 36.
-
-- `RealModemPilotTest`: the addressed message acknowledged 7.5 s after
-  Send, on the APK that went to `dist/`.
-- `RealModemFileTest`, staying on the air 5 minutes
-  (`-e pilotSettle 300`): connected in 4.3 s, a 1,200-byte session file
-  Sent and checked at 34 s, and a 1,200-byte broadcast file saved on the
-  Mac within a minute of the ragchew ending. Both copies on the Mac have
-  the SHA-256 the phone recorded.
-
-What the first attempts taught, each now dealt with:
+### What the runs taught
 
 - **Auto with nobody heard** sat in the ladder's lowest gear, which on
   the real modems is fsk16r25 at 29 bit/s: 34 s of transmitting for one
   line, and an acknowledgement after 39 s instead of 7. The phone now
   sends in the modem's own mode until a station has been heard.
-- **A desktop left in its lowest gear** (the bench's profile had no
-  gearshift settings) takes 15 to 18 s to say anything. When the ragchew
-  ended both stations announced it at once, and the Mac's announcement
-  covered the phone's whole broadcast file. The repair exchange that
-  follows such a loss needs minutes at that speed, and the test left the
-  air after 90 s, reporting a pass with no file on the Mac. The bench's
-  desktop is now on Auto, the test's time on the air is an argument, and
-  a pass still needs the Mac's copy compared by hand: the phone cannot
-  see the far end's disk.
+- **A desktop left in its lowest gear** takes 15 to 18 s to say
+  anything. When the ragchew ended both stations announced it at once,
+  and the Mac's announcement covered the phone's whole broadcast file.
+  The repair exchange that follows such a loss needs minutes at that
+  speed, and the test left the air after 90 s, reporting a pass with no
+  file on the Mac. The bench's desktop is now on Auto, the test's time
+  on the air is an argument, and a pass still needs the Mac's copy
+  compared by hand: the phone cannot see the far end's disk.
 - **A seal from before a restart** cannot be repaired: the Mac, hearing
   seal 3, asked for the seal 2 it had never heard, and the phone refused
   it as no longer held. That is the engines' rule, the same on the
   desktop, and cost nothing here.
+- **The first file run** sent random bytes named `.bin`, which nothing
+  can open; the test now sends readable `.txt`.
 
 One thing not explained: a desktop Ragtime that had been up three
 hours, through a Hand, a toggle of its 500 Hz switch and a call that was
 refused (NOT_LISTENING), heard an addressed line and never transmitted
 its acknowledgement. A fresh instance acknowledged the same line in
-20 ms. Its flight recording is in
-`build-phone-local-bench/run-3mtfel0r/desktop.conf.flight/` (the line
-heard at 08:13:09 UTC, nothing sent after). It is the desktop's
-behaviour, not the phone's, and worth a look on the Mac port.
+20 ms. It is the desktop's behaviour, not the phone's; the flight
+recording of that run is kept.
 
-Evidence: `build-phone-local-bench/run-2o5lh6wi/` and
-`build-android-results/s26-0.2.0-real-modem-pilot.log`,
-`s26-0.2.0-real-modem-file.log` and `.json`. Still not on the air:
-pictures, a file from the desktop to the phone, and anything over an
-impaired channel.
+Still not on the air: pictures, a file from the desktop to the phone,
+files over a few kilobytes, an impaired channel, and the phone with its
+screen off.

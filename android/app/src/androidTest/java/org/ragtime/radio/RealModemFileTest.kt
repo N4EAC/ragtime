@@ -14,9 +14,10 @@ import java.util.Random
 
 /**
  * Opt-in: files over real modems. The far desktop must take files unasked
- * (android_air_bench.py --auto-files CALL). A session file counts as Sent
- * only once the far end has checked its digest; a broadcast file has no
- * acknowledgement, so the bench compares the far copy by its SHA-256.
+ * (AutoAccept and AutoReceiveBroadcast in its settings, android/README.md).
+ * A session file counts as Sent only once the far end has checked its
+ * digest; a broadcast file has no acknowledgement, so the far copy is
+ * compared by its SHA-256, by hand.
  */
 class RealModemFileTest {
     @get:Rule val app=createAndroidComposeRule<MainActivity>()
