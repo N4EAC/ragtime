@@ -4,11 +4,12 @@ Changes to the Ragtime fork with bundled Data2G for macOS. Dates use
 America/New_York. Entries summarize this fork's packaged releases; the
 upstream projects retain their own histories.
 
-## 0.4.0 — Unreleased
+## 0.4.0 beta — 2026-11-21
 
+- Show About's developers as plain names and callsigns, with no dropdowns
+  or contribution descriptions.
 - Open frequency-list editing in the default graphical macOS text editor
   instead of launching nano in Terminal.
-
 - Integrated upstream Ragtime 0.4.0, retaining the bundled Data2G modem
   and editable Enter-to-tune frequency field.
 - Added the upstream hot-frequency menu and wheel tuning. On macOS it

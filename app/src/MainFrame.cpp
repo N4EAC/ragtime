@@ -706,11 +706,9 @@ void MainFrame::buildMenus()
 #endif
         if (ragtime::image::available()) description += "\n\nPictures: " + utf8(ragtime::image::versions());
         description += "\n\nLicense: MIT";
+        description += "\n\nDevelopers\nJeff Baitis, AG7EW\nTim Vetter\nEduardo, N4EAC";
         info.SetDescription(description);
         info.SetWebSite("https://github.com/baitisj/ragtime");
-        info.AddDeveloper("Jeff Baitis, AG7EW");
-        info.AddDeveloper("Tim Vetter: the macOS port");
-        info.AddDeveloper("Eduardo, N4EAC: hot frequencies on the dial");
         wxAboutBox(info, this);
     }, wxID_ABOUT);
 }
