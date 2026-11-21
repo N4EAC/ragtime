@@ -361,6 +361,7 @@ MainFrame::MainFrame()
 #ifdef RAGTIME_EMBED_DATA2G
     modem_ = std::make_unique<EmbeddedModem>([this](const std::string& error) {
         modemError_ = error;
+        link_.setKnownHands(false);
         if (modemMonitor_) modemMonitor_->reset(utf8(error));
         host_->recorder().note(error, HostConnection::nowMs());
         host_->stop();
@@ -1020,6 +1021,7 @@ void MainFrame::applyPrefs(bool reconnect)
 
     if (reconnect)
     {
+        link_.setKnownHands(false);
         host_->stop();
         rig_->hostLost();
 #ifdef RAGTIME_EMBED_DATA2G
@@ -1040,6 +1042,7 @@ void MainFrame::applyPrefs(bool reconnect)
         }
         else
             modem_->stop();
+        link_.setKnownHands(prefs_.usesBuiltInModem() && modemError_.empty() && !prefs_.callsign.empty());
         if (!prefs_.usesBuiltInModem()) setModemMonitor(false);
         GetMenuBar()->Enable(ID_MODEM_MONITOR, prefs_.usesBuiltInModem());
         if (modemMonitor_) modemMonitor_->reset(utf8(modemError_));
@@ -2450,8 +2453,8 @@ void MainFrame::checkIn()
     std::string why = chat_.whyNoRollCall();
     if (!chat_.checkIn(broadcastMode(), HostConnection::nowMs())) return;
     host_->flush();
-    if (!why.empty()) note_ = "Checked in without a roll call: " + why;
-    else tabs_->SetSelection(TAB_BROADCAST);
+    note_ = why.empty() ? std::string() : "Checked in without a roll call: " + why;
+    if (why.empty()) tabs_->SetSelection(TAB_BROADCAST);
     showStatus();
     refreshMessages();
 }

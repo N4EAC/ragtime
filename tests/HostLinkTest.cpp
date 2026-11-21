@@ -804,6 +804,24 @@ void testHands()
     // ahead of its burst's frames: those frames carry it. Either shows
     // the host does Hands.
     CHECK(!link.handsSeen());
+    CHECK(!link.handsSupported());
+    {
+        HostLink bundled = opened(0);
+        bundled.setKnownHands(true);
+        CHECK(bundled.handsSupported());
+        CHECK(!bundled.handsSeen()); // Declaration does not invent a received burst.
+        bundled.commandDown(20);
+        CHECK(!bundled.handsSupported());
+        bundled.commandUp(30);
+        CHECK(bundled.handsSupported()); // An owned modem survives a socket reconnect.
+        bundled.setKnownHands(false); // Switching to an unknown external modem.
+        CHECK(!bundled.handsSupported());
+        say(bundled, "REF 1 1.00 0.0 0.0\r", 40);
+        CHECK(bundled.handsSupported());
+        bundled.commandDown(50);
+        bundled.commandUp(60);
+        CHECK(!bundled.handsSupported()); // External capability must be observed again.
+    }
     say(link, "REF 7 123.45 -3.5 -8.0\r", 10);
     CHECK(link.handsSeen());
     {

@@ -57,7 +57,7 @@ the Ear waterfall following the built-in Data2G modem over TCI.
 
 ## Downloads
 
-Ragtime 0.3.1 beta 4 bundles Data2G v0.5.3 and the updated sotto v3.8
+Ragtime 0.3.1 beta 5 bundles Data2G v0.5.3 and the updated sotto v3.8
 voice library. It is available as a DMG or ZIP for Apple Silicon with macOS 27 or
 later. The app is ad hoc signed and has no Apple notarization.
 [Ragtime macOS releases](https://github.com/N4EAC/ragtime-data2g/releases)
@@ -148,6 +148,11 @@ Undecoded, or Incomplete data. Undecoded can also mean the burst was not
 addressed to this station. The list keeps the newest 500 bursts; **Clear**
 clears the display while reception continues. **Help > Open session logs folder** opens the
 per-callsign chat logs.
+
+The built-in Data2G modem supports roll calls immediately after connecting;
+you do not need to receive another station first. External modems retain
+their capability check and fall back to a normal check-in until Hand support
+is confirmed.
 
 **Settings > Rig** shows all Hamlib models and can filter by manufacturer.
 For serial connections, pick your radio's `/dev/cu.*` port. The packaged app

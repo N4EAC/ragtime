@@ -448,6 +448,31 @@ bool hasHand(const Message* row, const std::string& call)
     return std::any_of(row->hands.begin(), row->hands.end(), [&](const Message::Hand& h) { return h.call == call; });
 }
 
+void testBundledCheckInBeforeReception()
+{
+    const uint64_t previousNow = now;
+    End a("W1AW", "FN31pr", 9.0);
+    End b("KC2G", "FN20", -6.0);
+    std::vector<End*> all{&a, &b};
+    a.link.setKnownHands(true);
+    CHECK(!a.chat.canCallRoll()); // Capability is not a connection.
+    up(all);
+    CHECK(!a.link.handsSeen());
+    CHECK(a.chat.canCallRoll());
+    CHECK(a.chat.whyNoRollCall().empty());
+    CHECK(a.chat.checkIn("", now));
+    const Message* row = rollRow(a);
+    CHECK(row != nullptr && row->ours && row->rollChannels == 40);
+    CHECK(!a.chat.canCallRoll()); // Still enforce one active roll call.
+    settle(all);
+    row = rollRow(a);
+    CHECK(row != nullptr && row->roll == Message::Roll::Listening);
+    CHECK(std::any_of(a.lines.begin(), a.lines.end(),
+                     [](const std::string& line) { return line.compare(0, 14, "HAND LISTEN 3.") == 0; }));
+    CHECK(b.hand.has_value());
+    now = previousNow; // Keep the existing tests' deterministic channel choices.
+}
+
 void testCheckInCallsTheRoll()
 {
     End a("W1AW", "FN31pr", 9.0);
@@ -870,6 +895,7 @@ int main()
     testHandPayload();
     testChannels();
     testRecord();
+    testBundledCheckInBeforeReception();
     testCheckInCallsTheRoll();
     testWhoStaysQuiet();
     testHashedCall();

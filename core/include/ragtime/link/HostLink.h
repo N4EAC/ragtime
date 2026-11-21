@@ -293,6 +293,10 @@ public:
     // The host has shown it does Hands: a Hand reference has come (a REF
     // line or frame, for any burst it decoded) since the link came up.
     bool handsSeen() const { return handsSeen_; }
+    // An owned modem can declare support without first receiving a burst.
+    // External modems keep using the observed REF capability check.
+    void setKnownHands(bool supported) { knownHands_ = supported; }
+    bool handsSupported() const { return commandUp_ && (knownHands_ || handsSeen_); }
     // HAND SEND: answer heard burst ref (a HandRef's or a Heard frame's
     // id) with a Hand in channel, delayS after the burst's end (Data2G's
     // advice: about 3 s), shifted by its offset; tag (0-255) and the
@@ -451,6 +455,7 @@ private:
     std::optional<Window> window_;
     void handEnded(uint64_t nowMs, bool expired);
     void handLost(uint64_t burst);
+    bool knownHands_ = false;           // declared by the owner of the bundled modem
     bool handsSeen_ = false;            // a REF since the command port came up
     std::vector<ModeInfo> modesComing_;
     std::vector<std::string> channelsComing_;  // the MODES answer's CHANNELS

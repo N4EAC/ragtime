@@ -479,7 +479,7 @@ bool BroadcastChat::canCallRoll() const
 std::string BroadcastChat::whyNoRollCall() const
 {
     if (settings_.callsign.empty()) return "no callsign set";
-    if (!link_.handsSeen()) return "data2g-host hasn't shown it does Hands yet (Data2G PR #146)";
+    if (!link_.handsSupported()) return "roll-call support has not been confirmed by the modem";
     if (link_.handChannels() <= 0) return "no Hand channels";
     for (const Message& m : messages_)
     {

@@ -324,8 +324,8 @@ wxWindow* SettingsDialog::stationPage(wxNotebook* book, const StationPrefs& pref
     answerRollCalls_->SetValue(prefs.answerRollCalls);
     answerRollCalls_->SetToolTip("A station's check-in calls the roll: every Ragtime that hears it answers with a Hand, "
                                  "10.6 s of narrow tones carrying your callsign, locator and whether you take "
-                                 "sessions, all stations at once. Not while you ragchew. Needs data2g-host with "
-                                 "Hands (Data2G PR #146).");
+                                 "sessions, all stations at once. Not while you ragchew. Requires a modem with "
+                                 "Hand support, included in the built-in Data2G modem.");
     broadcast->Add(answerRollCalls_, 0, wxLEFT | wxRIGHT | wxBOTTOM, 6);
     slowRepair_ = new wxSpinCtrl(box, wxID_ANY, wxEmptyString, wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS,
                                  SLOW_REPAIR_MIN_MINUTES, SLOW_REPAIR_MAX_MINUTES, prefs.slowRepairMinutes);
