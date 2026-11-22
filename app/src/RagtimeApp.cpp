@@ -16,6 +16,9 @@
 #include "QuitSignal.h"
 #include "Theme.h"
 #include "ragtime/Version.h"
+#ifdef __WXOSX__
+#include "StartupSplash.h"
+#endif
 
 class RagtimeApp : public wxApp
 {
@@ -35,6 +38,7 @@ public:
         frame->Show();
 #ifdef __WXOSX__
         setDockIcon();
+        showStartupSplash(frame);
 #endif
         // kill, Ctrl+C and a closed terminal close it as the close box does.
         watchQuitSignals();

@@ -7,10 +7,10 @@
 #include <string>
 #include <vector>
 
-#include <wx/combobox.h>
+#include <wx/odcombo.h>
 #include <wx/timer.h>
 
-class FrequencySelector : public wxComboBox
+class FrequencySelector : public wxOwnerDrawnComboBox
 {
 public:
     struct Hooks

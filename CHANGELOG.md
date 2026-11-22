@@ -4,6 +4,17 @@ Changes to the Ragtime fork with bundled Data2G for macOS. Dates use
 America/New_York. Entries summarize this fork's packaged releases; the
 upstream projects retain their own histories.
 
+## 0.4.0 beta 3 — 2026-11-21
+
+- Add a brief macOS startup animation with a rotating Earth and streaming
+  binary digits. It closes after 2.8 seconds, supports click/Esc to skip,
+  and uses a still frame with macOS Reduce Motion. The badge-free title reads
+  "Ragtime" with "for macOS +Data2G" underneath.
+- Keep the frequency entry at a fixed width while sizing the preset popup
+  to show full comments. File reloads wait until the popup is closed.
+- Add transparent color and monochrome Earth logos for video overlays,
+  available in the source assets folder and a separate branding ZIP.
+
 ## 0.4.0 beta 2 — 2026-11-21
 
 - Use upstream's 12 frequency defaults and show per-frequency comments in

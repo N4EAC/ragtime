@@ -1,5 +1,10 @@
 #import <AppKit/AppKit.h>
 
+bool startupMotionReduced()
+{
+    return NSWorkspace.sharedWorkspace.accessibilityDisplayShouldReduceMotion;
+}
+
 void setDockIcon()
 {
     NSBundle* bundle = NSBundle.mainBundle;

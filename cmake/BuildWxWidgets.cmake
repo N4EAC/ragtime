@@ -68,3 +68,6 @@ if(APPLE AND wxVERSION VERSION_LESS 3.2.10)
 endif()
 
 set(RAGTIME_WX_LIBS wx::html wx::net wx::core wx::base)
+if(APPLE)
+    list(APPEND RAGTIME_WX_LIBS wx::adv)
+endif()

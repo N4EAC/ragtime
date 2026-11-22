@@ -7,6 +7,7 @@
 #include <wx/filename.h>
 #include <wx/msgdlg.h>
 #include <wx/log.h>
+#include <wx/textctrl.h>
 
 #include "HostConnection.h"
 #include "Prefs.h"
@@ -76,12 +77,14 @@ wxString mhz(uint64_t hz)
 } // namespace
 
 FrequencySelector::FrequencySelector(wxWindow* parent)
-    : wxComboBox(parent, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0, nullptr,
+    : wxOwnerDrawnComboBox(parent, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, 0, nullptr,
                  wxCB_DROPDOWN | wxTE_PROCESS_ENTER)
     , timer_(this)
 {
     SetName("Radio frequency");
     SetMinSize(FromDIP(wxSize(145, -1)));
+    SetMaxSize(FromDIP(wxSize(145, -1)));
+    SetPopupAnchor(wxLEFT);
     remembered_ = parseMHz(loadString(LAST_FREQUENCY, "7.066")).value_or(7066000);
     const auto path = wxString::FromUTF8(frequencyListPath());
     wxFileName::Mkdir(wxFileName(path).GetPath(), wxS_DIR_DEFAULT, wxPATH_MKDIR_FULL);
@@ -163,7 +166,7 @@ void FrequencySelector::reset()
 bool FrequencySelector::editing() const
 {
     auto* focus = wxWindow::FindFocus();
-    return dirty_ || HasFocus() || (focus && IsDescendant(focus));
+    return dirty_ || IsPopupShown() || HasFocus() || (focus && IsDescendant(focus));
 }
 
 void FrequencySelector::submit(uint64_t hz)
@@ -190,7 +193,7 @@ void FrequencySelector::selectRemembered()
 
 void FrequencySelector::reload()
 {
-    if (pending_) return;
+    if (pending_ || IsPopupShown()) return;
     wxLogNull silent;
     wxFile file(wxString::FromUTF8(frequencyListPath()));
     wxString text;
@@ -239,7 +242,11 @@ void FrequencySelector::reload()
     const auto entry = GetValue();
     updating_ = true;
     Clear();
+    int popupWidth = FromDIP(145);
     for (const auto& label : labels) Append(label);
+    for (const auto& label : labels)
+        popupWidth = std::max(popupWidth, GetTextExtent(label).x + FromDIP(32));
+    SetPopupMinWidth(popupWidth);
     if (keepEntry) ChangeValue(entry);
     else selectRemembered();
     updating_ = false;
