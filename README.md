@@ -17,6 +17,11 @@ with our native macOS improvements and an **external Soft TNC**. It does not
 contain, start, or bundle a Data2G modem. The separately maintained
 [bundled edition](https://github.com/N4EAC/ragtime-data2g) remains available.
 
+[Download Ragtime macOS 0.4.0](https://github.com/N4EAC/ragtime/releases/tag/macos-v0.4.0-beta.1)
+— Apple Silicon, macOS 27 or later.
+
+![Ragtime macOS main window](docs/screenshots/ragtime-macos-main.png)
+
 ## Set up the Soft TNC
 
 1. Start Data2G separately, locally or on another computer.
@@ -29,6 +34,8 @@ contain, start, or bundle a Data2G modem. The separately maintained
    | KISS port | `8100` |
    | Command port | `8300` |
    | Session data port | command port + 1 (`8301`) |
+
+![External Data2G Soft TNC settings](docs/screenshots/ragtime-macos-soft-tnc.png)
 
 4. Configure radio audio and PTT in the external modem. Configure optional
    frequency readback/tuning under **Settings > Rig** in Ragtime.
