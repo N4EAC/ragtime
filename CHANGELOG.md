@@ -4,7 +4,7 @@ Changes to the Ragtime fork with bundled Data2G for macOS. Dates use
 America/New_York. Entries summarize this fork's packaged releases; the
 upstream projects retain their own histories.
 
-## Unreleased
+## 0.4.0 beta 4 — 2026-11-23
 
 - Show each component's revision code alongside its version in About.
 - Validate prebuilt macOS codec revisions and include the matching codec
