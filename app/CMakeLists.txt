@@ -79,6 +79,42 @@ add_executable(ragtime WIN32 MACOSX_BUNDLE
 )
 target_include_directories(ragtime PRIVATE ${CMAKE_CURRENT_BINARY_DIR}/generated ${RAGTIME_RESOURCE_DIR})
 
+find_package(Git QUIET)
+function(ragtime_git_revision directory output)
+    if(NOT Git_FOUND OR NOT EXISTS "${directory}/.git")
+        return()
+    endif()
+    execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse HEAD WORKING_DIRECTORY "${directory}"
+        RESULT_VARIABLE result OUTPUT_VARIABLE revision OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    if(NOT result STREQUAL "0")
+        return()
+    endif()
+    set(${output} "${revision}" PARENT_SCOPE)
+    execute_process(COMMAND "${GIT_EXECUTABLE}" symbolic-ref -q HEAD WORKING_DIRECTORY "${directory}"
+        OUTPUT_VARIABLE branch OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+    foreach(ref IN ITEMS HEAD packed-refs "${branch}")
+        if(ref STREQUAL "")
+            continue()
+        endif()
+        execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse --git-path "${ref}"
+            WORKING_DIRECTORY "${directory}" OUTPUT_VARIABLE path OUTPUT_STRIP_TRAILING_WHITESPACE ERROR_QUIET)
+        get_filename_component(path "${path}" ABSOLUTE BASE_DIR "${directory}")
+        if(EXISTS "${path}")
+            set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${path}")
+        endif()
+    endforeach()
+endfunction()
+ragtime_git_revision("${PROJECT_SOURCE_DIR}" ragtimeRevision)
+if(ragtimeRevision)
+    target_compile_definitions(ragtime PRIVATE RAGTIME_REVISION="${ragtimeRevision}")
+    if(APPLE)
+        set(revisionFile "${CMAKE_CURRENT_BINARY_DIR}/generated/Ragtime-revision.txt")
+        file(CONFIGURE OUTPUT "${revisionFile}" CONTENT "${ragtimeRevision}\n")
+        set_source_files_properties("${revisionFile}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+        target_sources(ragtime PRIVATE "${revisionFile}")
+    endif()
+endif()
+
 if(APPLE AND NOT RAGTIME_EMBED_DATA2G)
     include(${PROJECT_SOURCE_DIR}/packaging/macos/Bundle.cmake)
 endif()
@@ -165,22 +201,13 @@ if(RAGTIME_EMBED_DATA2G)
     target_link_libraries(ragtime PRIVATE ragtime_modem)
 
     # Data2G can keep the same VERSION reply after a post-release fix.
-    if(EXISTS "${RAGTIME_DATA2G_SOURCE_DIR}/.git")
-        find_package(Git QUIET)
-        if(Git_FOUND)
-            execute_process(COMMAND "${GIT_EXECUTABLE}" rev-parse HEAD
-                WORKING_DIRECTORY "${RAGTIME_DATA2G_SOURCE_DIR}"
-                RESULT_VARIABLE data2gRevisionResult
-                OUTPUT_VARIABLE data2gRevision
-                OUTPUT_STRIP_TRAILING_WHITESPACE
-                ERROR_QUIET)
-            if(data2gRevisionResult STREQUAL "0")
-                set(data2gRevisionFile "${CMAKE_CURRENT_BINARY_DIR}/generated/Data2G-revision.txt")
-                file(CONFIGURE OUTPUT "${data2gRevisionFile}" CONTENT "${data2gRevision}\n")
-                set_source_files_properties("${data2gRevisionFile}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
-                target_sources(ragtime PRIVATE "${data2gRevisionFile}")
-            endif()
-        endif()
+    ragtime_git_revision("${RAGTIME_DATA2G_SOURCE_DIR}" data2gRevision)
+    if(data2gRevision)
+        target_compile_definitions(ragtime PRIVATE RAGTIME_DATA2G_REVISION="${data2gRevision}")
+        set(data2gRevisionFile "${CMAKE_CURRENT_BINARY_DIR}/generated/Data2G-revision.txt")
+        file(CONFIGURE OUTPUT "${data2gRevisionFile}" CONTENT "${data2gRevision}\n")
+        set_source_files_properties("${data2gRevisionFile}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+        target_sources(ragtime PRIVATE "${data2gRevisionFile}")
     endif()
 
     foreach(component IN ITEMS Data2G Data2G-interface-exception Ion miniaudio pocketfft)

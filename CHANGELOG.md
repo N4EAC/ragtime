@@ -6,6 +6,9 @@ upstream projects retain their own histories.
 
 ## Unreleased
 
+- Show each component's revision code alongside its version in About.
+- Validate prebuilt macOS codec revisions and include the matching codec
+  and provenance in the app bundle.
 - Integrate Ragtime upstream through `00ac994`, retaining the macOS UI,
   startup animation, manual CAT entry, clear controls, logs, and bundled modem.
 - Update built-in Data2G to `9894b63`: receiver acquisition improvements,

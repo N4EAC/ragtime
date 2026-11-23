@@ -694,15 +694,25 @@ void MainFrame::buildMenus()
         info.SetVersion(versionString());
         wxString description = "A plain chat and file-transfer client for Data2G.\n\n";
         description += "Ragtime " + utf8(versionString());
+#ifdef RAGTIME_REVISION
+        description += " (revision " + wxString(RAGTIME_REVISION).Left(7) + ")";
+#else
+        description += " (revision unavailable)";
+#endif
 #ifdef RAGTIME_EMBED_DATA2G
         description += "\nBuilt-in Data2G " + utf8(EmbeddedModem::version());
+#ifdef RAGTIME_DATA2G_REVISION
+        description += " (revision " + wxString(RAGTIME_DATA2G_REVISION).Left(7) + ")";
+#else
+        description += " (revision unavailable)";
+#endif
 #else
         description += "\nExternal data2g-host";
 #endif
         const auto& sotto = voice::Sotto::library().info();
         description += "\n" + (sotto.available ? utf8(sotto.format) : wxString("Sotto unavailable"));
 #ifdef RAGTIME_SOTTO_REVISION
-        description += "\nBundled sotto revision " + wxString(RAGTIME_SOTTO_REVISION).Left(7);
+        description += " (revision " + wxString(RAGTIME_SOTTO_REVISION).Left(7) + ")";
 #endif
         if (ragtime::image::available()) description += "\n\nPictures: " + utf8(ragtime::image::versions());
         description += "\n\nLicense: MIT";
