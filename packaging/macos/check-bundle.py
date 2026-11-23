@@ -37,12 +37,12 @@ def check(app):
             raise ValueError(f'Missing voice codec: {name}')
     for name in ('wxWidgets', 'Hamlib', 'OpenJPEG', 'libwebp', 'libde265',
                  'libheif', 'RNNoise', 'Cool-chic', 'sotto', 'codec2'):
-        if not (contents / 'Resources' / 'licences' / f'{name}.txt').is_file():
+        if not (contents / 'Resources' / 'Licenses' / f'{name}.txt').is_file():
             raise ValueError(f'Missing licence: {name}')
     if not executable.is_file():
         raise ValueError('Missing app executable')
 
-    binaries = [executable] + sorted(frameworks.glob('*.dylib'))
+    binaries = [executable, contents / 'MacOS/rigctl', contents / 'MacOS/rigctld'] + sorted(frameworks.glob('*.dylib'))
     for binary in binaries:
         if not binary.resolve().is_relative_to(app.resolve()):
             raise ValueError(f'Library symlink leaves the bundle: {binary.name}')
