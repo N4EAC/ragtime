@@ -7,18 +7,7 @@
 # can't record or play. macOS uses Core Audio. The Ear's spectrum,
 # the graph search and the voice devices' rules are core's, and tested there.
 
-if(APPLE AND RAGTIME_EMBED_DATA2G)
-    # The bundled modem provides RX/TX samples and reserves its audio devices.
-    add_library(ragtime_audio STATIC src/CoreAudio.cpp src/HostProcess.cpp
-        ${PROJECT_SOURCE_DIR}/platform/macos/SottoPaths.cpp
-        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioDevices.cpp
-        ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioGraph.cpp
-        ${PROJECT_SOURCE_DIR}/platform/macos/MicrophonePermission.mm)
-    target_include_directories(ragtime_audio PRIVATE ${PROJECT_SOURCE_DIR}/platform/macos)
-    set_source_files_properties(src/CoreAudio.cpp PROPERTIES COMPILE_OPTIONS -fblocks)
-    target_link_libraries(ragtime_audio PRIVATE "-framework AudioToolbox" "-framework CoreAudio"
-        "-framework CoreFoundation" "-framework AVFoundation" "-framework Foundation")
-elseif(APPLE)
+if(APPLE)
     add_library(ragtime_audio STATIC
         ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioEar.mm
         ${PROJECT_SOURCE_DIR}/platform/macos/CoreAudioVoice.mm

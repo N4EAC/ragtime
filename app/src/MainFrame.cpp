@@ -49,10 +49,6 @@
 #include "DialMenu.h"
 #include "DrawnIcon.h"
 #include "EarFrame.h"
-#ifdef RAGTIME_EMBED_DATA2G
-#include "EmbeddedModem.h"
-#include "ModemMonitor.h"
-#endif
 #include "FilesPage.h"
 #include "GearshiftDialog.h"
 #include "HostConnection.h"
@@ -105,14 +101,11 @@ enum
     ID_STATION_SETTINGS,
     ID_RIG_SETTINGS,
     ID_VOICE_SETTINGS,
-    ID_MODEM_SETTINGS,
+    ID_SOFT_TNC_SETTINGS,
     ID_CLEAR_SWR_TRIP,
     ID_NARROW,
     ID_GLOBUS,
     ID_EAR,
-#ifdef RAGTIME_EMBED_DATA2G
-    ID_MODEM_MONITOR,
-#endif
     ID_VOICE_DECK,
     ID_TOOLS_ON_TOP,
     ID_MESSAGE_STATION,
@@ -376,17 +369,6 @@ MainFrame::MainFrame()
         sort = static_cast<broadcast::Column>(saved);
     stationList_->setSort(sort, loadBool(keys::SORT_ASCENDING, true));
 
-#ifdef RAGTIME_EMBED_DATA2G
-    modem_ = std::make_unique<EmbeddedModem>([this](const std::string& error) {
-        modemError_ = error;
-        link_.setKnownHands(false);
-        if (modemMonitor_) modemMonitor_->reset(utf8(error));
-        host_->recorder().note(error, HostConnection::nowMs());
-        host_->stop();
-        rig_->hostLost();
-        showConnection();
-    });
-#endif
     loadFilesLog();
     applyPrefs(true);
     applyRadioPrefs();
@@ -477,10 +459,6 @@ MainFrame::~MainFrame()
     dialMenu_.reset();
     rig_.reset();
     host_.reset();
-#ifdef RAGTIME_EMBED_DATA2G
-    delete modemMonitor_;
-    modem_.reset();
-#endif
     // The panes go now, while the engines their callbacks read are still
     // here. Left to wxFrame's own teardown, after our members have gone,
     // GTK moves the focus as it destroys them, and a message list that had
@@ -545,10 +523,6 @@ void MainFrame::buildMenus()
     viewMenu_ = new wxMenu;
     viewMenu_->AppendCheckItem(ID_GLOBUS, "&Globus\tCtrl+Shift+G");
     viewMenu_->AppendCheckItem(ID_EAR, "&Ear\tCtrl+E", "A waterfall of what the radio hears");
-#ifdef RAGTIME_EMBED_DATA2G
-    viewMenu_->AppendCheckItem(ID_MODEM_MONITOR, "Data2G modem &monitor",
-                               "Open the built-in modem's receive constellation and telemetry");
-#endif
     viewMenu_->AppendCheckItem(ID_VOICE_DECK, "&Microphone deck\tCtrl+Shift+M",
                                "Push to talk: record a voice message for the net or the session");
     auto* columns = new wxMenu;
@@ -567,9 +541,7 @@ void MainFrame::buildMenus()
 
     auto* settings = new wxMenu;
     settings->Append(ID_STATION_SETTINGS, "&Station...\tCtrl+,");
-#ifdef RAGTIME_EMBED_DATA2G
-    settings->Append(ID_MODEM_SETTINGS, "&Modem...");
-#endif
+    settings->Append(ID_SOFT_TNC_SETTINGS, "Soft &TNC...", "Connect to an external Data2G Soft TNC");
     settings->Append(ID_RIG_SETTINGS, "&Rig...");
     settings->Append(ID_VOICE_SETTINGS, "&Voice...", "The microphone and speaker for voice messages");
     settings->Append(ID_CLEAR_SWR_TRIP, "&Clear the SWR trip...",
@@ -606,9 +578,7 @@ void MainFrame::buildMenus()
     Bind(wxEVT_UPDATE_UI, [this](wxUpdateUIEvent& e) { e.Enable(!prefs_.callsign.empty()); }, ID_BROADCAST_FILE);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { showGearshift(); }, ID_GEARSHIFT);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { showSettings(); }, ID_STATION_SETTINGS);
-#ifdef RAGTIME_EMBED_DATA2G
-    Bind(wxEVT_MENU, [this](wxCommandEvent&) { showSettings(SettingsDialog::Page::Modem); }, ID_MODEM_SETTINGS);
-#endif
+    Bind(wxEVT_MENU, [this](wxCommandEvent&) { showSettings(SettingsDialog::Page::SoftTnc); }, ID_SOFT_TNC_SETTINGS);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { showSettings(SettingsDialog::Page::Rig); }, ID_RIG_SETTINGS);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { showSettings(SettingsDialog::Page::Voice); }, ID_VOICE_SETTINGS);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) { clearSwrTrip(); }, ID_CLEAR_SWR_TRIP);
@@ -616,9 +586,6 @@ void MainFrame::buildMenus()
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setNarrow(e.IsChecked()); }, ID_NARROW);
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setGlobus(e.IsChecked()); }, ID_GLOBUS);
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setEar(e.IsChecked()); }, ID_EAR);
-#ifdef RAGTIME_EMBED_DATA2G
-    Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setModemMonitor(e.IsChecked()); }, ID_MODEM_MONITOR);
-#endif
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) { setVoiceDeck(e.IsChecked()); }, ID_VOICE_DECK);
     Bind(wxEVT_MENU, [this](wxCommandEvent& e) {
         toolsOnTop_ = e.IsChecked();
@@ -690,7 +657,7 @@ void MainFrame::buildMenus()
     }, ID_OPEN_SESSION_LOGS);
     Bind(wxEVT_MENU, [this](wxCommandEvent&) {
         wxAboutDialogInfo info;
-        info.SetName("Ragtime");
+        info.SetName("Ragtime macOS");
         info.SetVersion(versionString());
         wxString description = "A plain chat and file-transfer client for Data2G.\n\n";
         description += "Ragtime " + utf8(versionString());
@@ -699,16 +666,7 @@ void MainFrame::buildMenus()
 #else
         description += " (revision unavailable)";
 #endif
-#ifdef RAGTIME_EMBED_DATA2G
-        description += "\nBuilt-in Data2G " + utf8(EmbeddedModem::version());
-#ifdef RAGTIME_DATA2G_REVISION
-        description += " (revision " + wxString(RAGTIME_DATA2G_REVISION).Left(7) + ")";
-#else
-        description += " (revision unavailable)";
-#endif
-#else
-        description += "\nExternal data2g-host";
-#endif
+        description += "\nSoft TNC: external Data2G (not bundled)";
         const auto& sotto = voice::Sotto::library().info();
         description += "\n" + (sotto.available ? utf8(sotto.format) : wxString("Sotto unavailable"));
 #ifdef RAGTIME_SOTTO_REVISION
@@ -718,7 +676,7 @@ void MainFrame::buildMenus()
         description += "\n\nLicense: MIT";
         description += "\n\nDevelopers\nJeff Baitis, AG7EW\nTim Vetter\nEduardo, N4EAC";
         info.SetDescription(description);
-        info.SetWebSite("https://github.com/baitisj/ragtime");
+        info.SetWebSite("https://github.com/N4EAC/ragtime");
         wxAboutBox(info, this);
     }, wxID_ABOUT);
 }
@@ -1023,7 +981,7 @@ void MainFrame::buildLayout()
 
 void MainFrame::applyPrefs(bool reconnect)
 {
-    autoAlc_.setMaximumDb(prefs_.usesBuiltInModem() ? 0.0 : radio::AutoAlc::LEVEL_MAX_DB);
+    autoAlc_.setMaximumDb(radio::AutoAlc::LEVEL_MAX_DB);
     link_.setCallsign(prefs_.callsign);
     applyVoicePrefs();
     broadcast::BroadcastChat::Settings s;
@@ -1052,39 +1010,14 @@ void MainFrame::applyPrefs(bool reconnect)
     globus_->setHome(prefs_.locator);
     recent_->setHome(prefs_.locator);
     bar_->setCallsign(utf8(prefs_.callsign));
-    SetTitle(prefs_.callsign.empty() ? wxString("Ragtime") : wxString::FromUTF8("Ragtime \xc2\xb7 ") + utf8(prefs_.callsign));
+    SetTitle(prefs_.callsign.empty() ? wxString("Ragtime macOS") : wxString::FromUTF8("Ragtime macOS \xc2\xb7 ") + utf8(prefs_.callsign));
 
     if (reconnect)
     {
         link_.setKnownHands(false);
         host_->stop();
         rig_->hostLost();
-#ifdef RAGTIME_EMBED_DATA2G
-        modemError_.clear();
-        if (prefs_.usesBuiltInModem() && !prefs_.callsign.empty())
-        {
-            if (voiceAudio_) voiceAudio_->stopPlaying();
-            modemError_ = modem_->start(prefs_);
-            if (!modemError_.empty())
-            {
-                host_->recorder().note("Built-in Data2G: " + modemError_, HostConnection::nowMs());
-                const wxString error = utf8(modemError_);
-                CallAfter([this, error] {
-                    if (utf8(modemError_) == error)
-                        wxMessageBox(error, "Built-in Data2G could not start", wxOK | wxICON_ERROR, this);
-                });
-            }
-        }
-        else
-            modem_->stop();
-        link_.setKnownHands(prefs_.usesBuiltInModem() && modemError_.empty() && !prefs_.callsign.empty());
-        if (!prefs_.usesBuiltInModem()) setModemMonitor(false);
-        GetMenuBar()->Enable(ID_MODEM_MONITOR, prefs_.usesBuiltInModem());
-        if (modemMonitor_) modemMonitor_->reset(utf8(modemError_));
-        if (modemError_.empty() && !prefs_.callsign.empty())
-#else
         if (!prefs_.callsign.empty())
-#endif
             host_->start(prefs_.hostAddress(), prefs_.kissPort, prefs_.commandPort);
     }
     showConnection();
@@ -1119,7 +1052,7 @@ void MainFrame::showSettings(SettingsDialog::Page page)
     if (!ok) return;
     StationPrefs next = dialog.prefs();
     bool reconnect = next.callsign != prefs_.callsign || next.hostAddress() != prefs_.hostAddress() || next.kissPort != prefs_.kissPort
-                     || next.commandPort != prefs_.commandPort || !(next.modem == prefs_.modem)
+                     || next.commandPort != prefs_.commandPort
                      || host_->state() == HostConnection::State::Off;
     prefs_ = next;
     saveStationPrefs(prefs_);
@@ -1145,7 +1078,7 @@ void MainFrame::onHostEvents(const std::vector<Event>& events)
         {
             case Event::Type::Ptt:
                 bar_->tx->setOn(e.on);
-                if (!prefs_.usesBuiltInModem() || !prefs_.modem.tci) rig_->hostPtt(e.on);
+                rig_->hostPtt(e.on);
                 if (ear_) ear_->setTransmitting(e.on);
                 break;
             case Event::Type::ModeUsed:
@@ -1359,18 +1292,9 @@ void MainFrame::showConnection()
         state = "Connected, opening D2G";
     }
     if (host_ && !host_->lastError().empty()) tip = utf8(host_->lastError());
-#ifdef RAGTIME_EMBED_DATA2G
-    if (prefs_.usesBuiltInModem() && !modemError_.empty())
-    {
-        state = "Modem stopped";
-        tip = utf8(modemError_);
-    }
-    if (tip.empty() && prefs_.usesBuiltInModem()) tip = "Built-in Data2G. Settings > Modem";
-#endif
-    if (tip.empty()) tip = "External data2g-host. Settings > Station";
+    if (tip.empty()) tip = "External data2g-host. Settings > Soft TNC";
     hostTip_ = tip;
-    wxString name = prefs_.usesBuiltInModem() ? wxString("Built-in Data2G") :
-                    "data2g-host " + utf8(prefs_.host + ":" + std::to_string(prefs_.commandPort));
+    wxString name = "data2g-host " + utf8(prefs_.host + ":" + std::to_string(prefs_.commandPort));
     wxString text = name + utf8(DOT) + state;
     if (text == hostText_) return;
     hostText_ = text;
@@ -3979,14 +3903,6 @@ void MainFrame::setEar(bool open)
         // checks), noted in the flight recorder.
         auto write = [this](const radio::RigFilter& f, const std::string& why) { setRigFilter(f, why); };
         EarFrame::ReadHostAudio readHostAudio;
-#ifdef RAGTIME_EMBED_DATA2G
-        readHostAudio = [this](audio::EarAudio& ear) {
-            if (prefs_.usesBuiltInModem())
-                modem_->readEarAudio(ear);
-            else
-                ear.hostAudio({}, nullptr, 0, 0);
-        };
-#endif
         ear_ = new EarFrame(this, filterEdit_, write, [this] {
             ear_ = nullptr;
             // Still read while Ragtime has changed the filter, so a new
@@ -4173,34 +4089,6 @@ void MainFrame::rememberDividers()
     if (left_->IsSplit()) recentHeight_ = std::max(MIN_PANE, left_->GetClientSize().y - left_->GetSashPosition());
 }
 
-#ifdef RAGTIME_EMBED_DATA2G
-void MainFrame::setModemMonitor(bool open)
-{
-    open = open && prefs_.usesBuiltInModem();
-    if (open && !modemMonitor_)
-    {
-        modemMonitor_ = new ModemMonitor(this, *modem_, toolsOnTop_);
-        modemMonitor_->reset(utf8(modemError_));
-        modemMonitor_->CentreOnParent();
-        modemMonitor_->Bind(wxEVT_CLOSE_WINDOW, [this](wxCloseEvent& e) {
-            if (e.CanVeto())
-            {
-                e.Veto();
-                setModemMonitor(false);
-            }
-            else
-            {
-                modemMonitor_->setOpen(false);
-                modemMonitor_ = nullptr;
-                GetMenuBar()->Check(ID_MODEM_MONITOR, false);
-                e.Skip();
-            }
-        });
-    }
-    if (modemMonitor_) modemMonitor_->setOpen(open);
-    GetMenuBar()->Check(ID_MODEM_MONITOR, open);
-}
-#endif
 
 void MainFrame::setGlobus(bool on)
 {
@@ -4334,7 +4222,6 @@ void MainFrame::setAutoAlc(bool on)
 
 void MainFrame::sendTxLevel(double dB, const std::string& why)
 {
-    if (prefs_.usesBuiltInModem()) dB = std::min(0.0, dB);
     uint64_t now = HostConnection::nowMs();
     if (!link_.setTxPower(dB, now)) return;
     autoAlc_.sent(dB);
@@ -4377,7 +4264,6 @@ void MainFrame::showAutoAlc()
             tip += " The ALC still wants more: raise the TX level in Settings, or check the rig's drive "
                    "and ALC.";
     }
-    if (prefs_.usesBuiltInModem()) tip += "\n\nThe built-in modem's maximum audio level is 0 dB.";
     bar_->autoAlc->Enable(host && alc);
     if (bar_->autoAlc->GetToolTipText() != utf8(tip)) bar_->autoAlc->SetToolTip(utf8(tip));
 }

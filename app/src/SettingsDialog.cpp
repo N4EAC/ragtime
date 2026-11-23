@@ -25,9 +25,6 @@
 #include <wx/tokenzr.h>
 
 #include "Html.h"
-#ifdef RAGTIME_EMBED_DATA2G
-#include "EmbeddedModem.h"
-#endif
 #include "ragtime/globus/Globe.h"
 #include "ragtime/link/HostLink.h"
 #include "ragtime/protocol/Fields.h"
@@ -127,9 +124,7 @@ SettingsDialog::SettingsDialog(wxWindow* parent, const StationPrefs& prefs,
     book->AddPage(stationPage(book, prefs, gears, txLevel), "Station");
     book->AddPage(rigPage(book, prefs), "Rig");
     book->AddPage(voicePage(book, prefs), "Voice");
-#ifdef RAGTIME_EMBED_DATA2G
-    book->AddPage(modemPage(book, prefs.modem), "Modem");
-#endif
+    book->AddPage(softTncPage(book, prefs, txLevel), "Soft TNC");
     book->SetSelection(static_cast<size_t>(page));
     // Voice's audio opens only once its tab is looked at.
     if (page == Page::Voice) CallAfter([this] { startVoice(); });
@@ -169,13 +164,9 @@ SettingsDialog::SettingsDialog(wxWindow* parent, const StationPrefs& prefs,
     autoAccept_->Bind(wxEVT_TEXT, changed);
     locator_->Bind(wxEVT_TEXT, changed);
     commandPort_->Bind(wxEVT_SPINCTRL, [this](wxSpinEvent&) { check(); });
-    repairCap_->Bind(wxEVT_CHECKBOX, changed);
-#ifdef RAGTIME_EMBED_DATA2G
     kissPort_->Bind(wxEVT_SPINCTRL, [this](wxSpinEvent&) { check(); });
-    useModem_->Bind(wxEVT_CHECKBOX, changed);
-    modemTci_->Bind(wxEVT_CHECKBOX, changed);
-    modemTciHost_->Bind(wxEVT_TEXT, changed);
-#endif
+    host_->Bind(wxEVT_TEXT, changed);
+    repairCap_->Bind(wxEVT_CHECKBOX, changed);
     for (wxRadioButton* r : {noRig_, useRigctld_, useHamlib_}) r->Bind(wxEVT_RADIOBUTTON, changed);
     maker_->Bind(wxEVT_CHOICE, [this](wxCommandEvent&) {
         fillModels(0);
@@ -212,7 +203,7 @@ SettingsDialog::~SettingsDialog()
 
 wxWindow* SettingsDialog::stationPage(wxNotebook* book, const StationPrefs& prefs,
                                       const std::vector<std::pair<std::string, std::string>>& gears,
-                                      std::optional<double> txLevel)
+                                      std::optional<double> /*txLevel*/)
 {
     auto* page = new wxPanel(book);
     // Controls go inside their static boxes, as wx wants them.
@@ -232,60 +223,6 @@ wxWindow* SettingsDialog::stationPage(wxNotebook* book, const StationPrefs& pref
     stationGrid->Add(new wxStaticText(box, wxID_ANY, "Locator"), 0, wxALIGN_CENTER_VERTICAL);
     stationGrid->Add(locator_, 1, wxEXPAND);
     station->Add(stationGrid, 0, wxEXPAND | wxALL, 6);
-
-    auto* host = new wxStaticBoxSizer(wxVERTICAL, page, "data2g-host");
-    box = host->GetStaticBox();
-    host_ = new wxTextCtrl(box, wxID_ANY, wxString::FromUTF8(prefs.host));
-    host_->SetToolTip("The computer running your external data2g-host.");
-    kissPort_ = new wxSpinCtrl(box, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 65535,
-                               prefs.kissPort);
-    commandPort_ = new wxSpinCtrl(box, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 65534,
-                                  prefs.commandPort);
-    dataPort_ = new wxStaticText(box, wxID_ANY, "");
-    dataPort_->SetForegroundColour(secondaryText());
-    auto* hostGrid = new wxFlexGridSizer(2, 6, 10);
-    hostGrid->AddGrowableCol(1);
-    hostGrid->Add(new wxStaticText(box, wxID_ANY, "Address"), 0, wxALIGN_CENTER_VERTICAL);
-    hostGrid->Add(host_, 1, wxEXPAND);
-    hostGrid->Add(new wxStaticText(box, wxID_ANY, "KISS port"), 0, wxALIGN_CENTER_VERTICAL);
-    hostGrid->Add(kissPort_, 0);
-    hostGrid->Add(new wxStaticText(box, wxID_ANY, "Command port"), 0, wxALIGN_CENTER_VERTICAL);
-    hostGrid->Add(commandPort_, 0);
-    hostGrid->AddSpacer(0);
-    hostGrid->Add(dataPort_, 0);
-    // The host's transmit level (TXPOWER, Data2G PR #122): read from the
-    // host as the dialog opens, set on it as the knob turns, put back on
-    // Cancel, never kept here.
-    hostTxLevel_ = sentTxLevel_ = txLevel;
-    txLevel_ = new wxSpinCtrlDouble(box, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS,
-                                    link::HostLink::TX_POWER_MIN_DB,
-                                    prefs.usesBuiltInModem() ? 0.0 : link::HostLink::TX_POWER_MAX_DB,
-                                    txLevel ? *txLevel : 0.0, 0.5);
-    txLevel_->SetDigits(1);
-    txLevel_->Enable(txLevel.has_value());
-    txLevel_->SetToolTip(txLevel ? "data2g-host's transmit audio level (TXPOWER), in dB: 0 puts a burst's peak at "
-                                   "full scale. It is data2g-host's own, as it answered just now. Turning it sets "
-                                   "it there at once, so you can watch the ALC meter as you go; Cancel puts back "
-                                   "the level it had, and data2g-host keeps it after Ragtime quits. With Auto "
-                                   "ALC on, it moves the level from here to keep the ALC near 55%: up to 6 dB "
-                                   "over it, up to 20 dB under."
-                                 : "data2g-host's transmit audio level (TXPOWER). It needs data2g-host connected, "
-                                   "and one from Data2G PR #122 on; until then set its --output-volume.");
-    if (prefs.usesBuiltInModem())
-        txLevel_->SetToolTip(txLevel_->GetToolTipText() + "\nThe built-in modem's maximum is 0 dB.");
-    // Sent a few times a second at most while it turns, and the last turn
-    // always.
-    txLevel_->Bind(wxEVT_SPINCTRLDOUBLE, [this](wxSpinDoubleEvent&) {
-        if (!txLevelTimer_.IsRunning()) txLevelTimer_.StartOnce(150);
-    });
-    auto* txRow = new wxBoxSizer(wxHORIZONTAL);
-    txRow->Add(txLevel_, 0, wxALIGN_CENTER_VERTICAL);
-    auto* txNote = new wxStaticText(box, wxID_ANY, txLevel ? "dB, data2g-host's own" : "dB (data2g-host can't say)");
-    txNote->SetForegroundColour(secondaryText());
-    txRow->Add(txNote, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, 6);
-    hostGrid->Add(new wxStaticText(box, wxID_ANY, "TX level"), 0, wxALIGN_CENTER_VERTICAL);
-    hostGrid->Add(txRow, 0);
-    host->Add(hostGrid, 0, wxEXPAND | wxALL, 6);
 
     auto* files = new wxStaticBoxSizer(wxVERTICAL, page, "Files");
     box = files->GetStaticBox();
@@ -325,7 +262,7 @@ wxWindow* SettingsDialog::stationPage(wxNotebook* book, const StationPrefs& pref
     answerRollCalls_->SetToolTip("A station's check-in calls the roll: every Ragtime that hears it answers with a Hand, "
                                  "10.6 s of narrow tones carrying your callsign, locator and whether you take "
                                  "sessions, all stations at once. Not while you ragchew. Requires a modem with "
-                                 "Hand support, included in the built-in Data2G modem.");
+                                 "Hand support in the external Data2G modem.");
     broadcast->Add(answerRollCalls_, 0, wxLEFT | wxRIGHT | wxBOTTOM, 6);
     notifyBroadcast_ = new wxCheckBox(box, wxID_ANY, "A notification for each message heard on D2G");
     notifyBroadcast_->SetValue(prefs.notifyBroadcast);
@@ -399,7 +336,6 @@ wxWindow* SettingsDialog::stationPage(wxNotebook* book, const StationPrefs& pref
     // station and its connection on the left, what it sends on the right.
     auto* left = new wxBoxSizer(wxVERTICAL);
     left->Add(station, 0, wxEXPAND | wxTOP, 12);
-    left->Add(host, 0, wxEXPAND | wxTOP, 12);
     auto* right = new wxBoxSizer(wxVERTICAL);
     right->Add(files, 0, wxEXPAND | wxTOP, 12);
     right->Add(broadcast, 0, wxEXPAND | wxTOP, 12);
@@ -415,6 +351,76 @@ wxWindow* SettingsDialog::stationPage(wxNotebook* book, const StationPrefs& pref
 //-------------------------------------------------------------------------
 // Rig
 //-------------------------------------------------------------------------
+
+wxWindow* SettingsDialog::softTncPage(wxNotebook* book, const StationPrefs& prefs,
+                                      std::optional<double> txLevel)
+{
+    auto* page = new wxPanel(book);
+    auto* host = new wxStaticBoxSizer(wxVERTICAL, page, "External Data2G Soft TNC");
+    wxWindow* box = host->GetStaticBox();
+    host_ = new wxTextCtrl(box, wxID_ANY, wxString::FromUTF8(prefs.host));
+    host_->SetToolTip("The computer running your external data2g-host.");
+    kissPort_ = new wxSpinCtrl(box, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 65535,
+                               prefs.kissPort);
+    commandPort_ = new wxSpinCtrl(box, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS, 1, 65534,
+                                  prefs.commandPort);
+    dataPort_ = new wxStaticText(box, wxID_ANY, "");
+    dataPort_->SetForegroundColour(secondaryText());
+    auto* hostGrid = new wxFlexGridSizer(2, 6, 10);
+    hostGrid->AddGrowableCol(1);
+    hostGrid->Add(new wxStaticText(box, wxID_ANY, "Address"), 0, wxALIGN_CENTER_VERTICAL);
+    hostGrid->Add(host_, 1, wxEXPAND);
+    hostGrid->Add(new wxStaticText(box, wxID_ANY, "KISS port"), 0, wxALIGN_CENTER_VERTICAL);
+    hostGrid->Add(kissPort_, 0);
+    hostGrid->Add(new wxStaticText(box, wxID_ANY, "Command port"), 0, wxALIGN_CENTER_VERTICAL);
+    hostGrid->Add(commandPort_, 0);
+    hostGrid->AddSpacer(0);
+    hostGrid->Add(dataPort_, 0);
+    // The host's transmit level (TXPOWER, Data2G PR #122): read from the
+    // host as the dialog opens, set on it as the knob turns, put back on
+    // Cancel, never kept here.
+    hostTxLevel_ = sentTxLevel_ = txLevel;
+    txLevel_ = new wxSpinCtrlDouble(box, wxID_ANY, "", wxDefaultPosition, wxDefaultSize, wxSP_ARROW_KEYS,
+                                    link::HostLink::TX_POWER_MIN_DB,
+                                    link::HostLink::TX_POWER_MAX_DB,
+                                    txLevel ? *txLevel : 0.0, 0.5);
+    txLevel_->SetDigits(1);
+    txLevel_->Enable(txLevel.has_value());
+    txLevel_->SetToolTip(txLevel ? "data2g-host's transmit audio level (TXPOWER), in dB: 0 puts a burst's peak at "
+                                   "full scale. It is data2g-host's own, as it answered just now. Turning it sets "
+                                   "it there at once, so you can watch the ALC meter as you go; Cancel puts back "
+                                   "the level it had, and data2g-host keeps it after Ragtime quits. With Auto "
+                                   "ALC on, it moves the level from here to keep the ALC near 55%: up to 6 dB "
+                                   "over it, up to 20 dB under."
+                                 : "data2g-host's transmit audio level (TXPOWER). It needs data2g-host connected, "
+                                   "and one from Data2G PR #122 on; until then set its --output-volume.");
+    // Sent a few times a second at most while it turns, and the last turn
+    // always.
+    txLevel_->Bind(wxEVT_SPINCTRLDOUBLE, [this](wxSpinDoubleEvent&) {
+        if (!txLevelTimer_.IsRunning()) txLevelTimer_.StartOnce(150);
+    });
+    auto* txRow = new wxBoxSizer(wxHORIZONTAL);
+    txRow->Add(txLevel_, 0, wxALIGN_CENTER_VERTICAL);
+    auto* txNote = new wxStaticText(box, wxID_ANY, txLevel ? "dB, data2g-host's own" : "dB (data2g-host can't say)");
+    txNote->SetForegroundColour(secondaryText());
+    txRow->Add(txNote, 0, wxALIGN_CENTER_VERTICAL | wxLEFT, 6);
+    hostGrid->Add(new wxStaticText(box, wxID_ANY, "TX level"), 0, wxALIGN_CENTER_VERTICAL);
+    hostGrid->Add(txRow, 0);
+    host->Add(hostGrid, 0, wxEXPAND | wxALL, 6);
+
+    host_->SetName("Soft TNC address");
+    kissPort_->SetName("Soft TNC KISS port");
+    commandPort_->SetName("Soft TNC command port");
+    auto* layout = new wxBoxSizer(wxVERTICAL);
+    auto* note = new wxStaticText(page, wxID_ANY,
+        "Start Data2G separately, then enter its address and ports.\n"
+        "The modem owns the radio audio and transmission.\n"
+        "Session data uses the command port + 1.");
+    layout->Add(note, 0, wxALL, 12);
+    layout->Add(host, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 12);
+    page->SetSizer(layout);
+    return page;
+}
 
 wxWindow* SettingsDialog::rigPage(wxNotebook* book, const StationPrefs& prefs)
 {
@@ -1252,53 +1258,6 @@ void SettingsDialog::finishTxLevel(bool ok)
     setTxLevel_(*hostTxLevel_);
 }
 
-#ifdef RAGTIME_EMBED_DATA2G
-wxWindow* SettingsDialog::modemPage(wxNotebook* book, const ModemPrefs& prefs)
-{
-    auto* page = new wxPanel(book);
-    auto* layout = new wxBoxSizer(wxVERTICAL);
-    auto* grid = new wxFlexGridSizer(2, 8, 12);
-    grid->AddGrowableCol(1);
-    useModem_ = new wxCheckBox(page, wxID_ANY, "Use the built-in Data2G modem");
-    useModem_->SetValue(prefs.enabled);
-    layout->Add(useModem_, 0, wxALL, 12);
-    auto pickDevice = [page](bool input, const std::string& saved) {
-        auto* choice = new wxChoice(page, wxID_ANY);
-        choice->Append("System default");
-        for (const auto& name : EmbeddedModem::devices(input))
-            if (choice->FindString(utf8(name), true) == wxNOT_FOUND) choice->Append(utf8(name));
-        if (saved.empty())
-            choice->SetSelection(0);
-        else
-        {
-            int index = choice->FindString(utf8(saved), true);
-            if (index == wxNOT_FOUND) index = choice->Append(utf8(saved));
-            choice->SetSelection(index);
-        }
-        return choice;
-    };
-    modemInput_ = pickDevice(true, prefs.input);
-    modemOutput_ = pickDevice(false, prefs.output);
-    modemTci_ = new wxCheckBox(page, wxID_ANY, "Use TCI for radio audio and PTT");
-    modemTci_->SetValue(prefs.tci);
-    modemTciHost_ = new wxTextCtrl(page, wxID_ANY, utf8(prefs.tciHost));
-    grid->Add(new wxStaticText(page, wxID_ANY, "Radio input"), 0, wxALIGN_CENTER_VERTICAL);
-    grid->Add(modemInput_, 1, wxEXPAND);
-    grid->Add(new wxStaticText(page, wxID_ANY, "Radio output"), 0, wxALIGN_CENTER_VERTICAL);
-    grid->Add(modemOutput_, 1, wxEXPAND);
-    grid->AddSpacer(0);
-    grid->Add(modemTci_);
-    grid->Add(new wxStaticText(page, wxID_ANY, "TCI address"), 0, wxALIGN_CENTER_VERTICAL);
-    grid->Add(modemTciHost_, 1, wxEXPAND);
-    layout->Add(grid, 0, wxEXPAND | wxLEFT | wxRIGHT | wxBOTTOM, 12);
-    layout->Add(new wxStaticText(page, wxID_ANY,
-        "The built-in modem uses the ports under Station.\n"
-        "For sound card PTT, use the keying option under Rig."),
-        0, wxLEFT | wxRIGHT | wxBOTTOM, 12);
-    page->SetSizer(layout);
-    return page;
-}
-#endif
 
 StationPrefs SettingsDialog::prefs() const
 {
@@ -1309,13 +1268,6 @@ StationPrefs SettingsDialog::prefs() const
     if (p.host.empty()) p.host = "127.0.0.1";
     p.kissPort = kissPort_->GetValue();
     p.commandPort = commandPort_->GetValue();
-#ifdef RAGTIME_EMBED_DATA2G
-    p.modem.enabled = useModem_->GetValue();
-    if (modemInput_->GetSelection() > 0) p.modem.input = std::string(modemInput_->GetStringSelection().utf8_str());
-    if (modemOutput_->GetSelection() > 0) p.modem.output = std::string(modemOutput_->GetStringSelection().utf8_str());
-    p.modem.tci = modemTci_->GetValue();
-    p.modem.tciHost = typed(modemTciHost_);
-#endif
     p.receivedFolder = std::string(received_->GetPath().Strip(wxString::both).utf8_str());
     wxStringTokenizer words(autoAccept_->GetValue(), ", ;");
     while (words.HasMoreTokens())
@@ -1344,15 +1296,6 @@ void SettingsDialog::check()
 {
     dataPort_->SetLabel(wxString::Format("Session data on %d", commandPort_->GetValue() + 1));
     repairCapMinutes_->Enable(repairCap_->GetValue());
-#ifdef RAGTIME_EMBED_DATA2G
-    const bool useModem = useModem_->GetValue();
-    const bool useTci = useModem && modemTci_->GetValue();
-    host_->Enable(!useModem);
-    modemInput_->Enable(useModem && !useTci);
-    modemOutput_->Enable(useModem && !useTci);
-    modemTci_->Enable(useModem);
-    modemTciHost_->Enable(useTci);
-#endif
 
     bool rigctld = useRigctld_->GetValue();
     bool hamlib = useHamlib_->GetValue();
@@ -1374,11 +1317,7 @@ void SettingsDialog::check()
     backend_->Enable(hamlib);
     poll_->Enable(hamlib);
     testButton_->Enable(hamlib && !testRig_);
-#ifdef RAGTIME_EMBED_DATA2G
-    keyRig_->Enable(hamlib && !useTci);
-#else
     keyRig_->Enable(hamlib);
-#endif
     earFilters_->Enable(hamlib || rigctld);
     swrTrip_->Enable(hamlib || rigctld);
     bool keying = keyRig_->IsEnabled() && keyRig_->GetValue();
@@ -1389,12 +1328,9 @@ void SettingsDialog::check()
     usSegmentsOnly_->Enable(rigctld || hamlib);
 
     wxString problem;
-#ifdef RAGTIME_EMBED_DATA2G
-    if (useModem && (kissPort_->GetValue() == commandPort_->GetValue()
-                     || kissPort_->GetValue() == commandPort_->GetValue() + 1))
+    if (typed(host_).empty()) problem = "Enter the external Soft TNC address.";
+    if (kissPort_->GetValue() == commandPort_->GetValue() || kissPort_->GetValue() == commandPort_->GetValue() + 1)
         problem = "The KISS, command and session data ports must be distinct.";
-    if (useTci && typed(modemTciHost_).empty()) problem = "Enter the TCI address.";
-#endif
     std::string call = typed(callsign_);
     std::string locator = typed(locator_);
     if (!call.empty() && protocol::normalCallsign(call).empty())

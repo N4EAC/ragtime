@@ -13,12 +13,11 @@ target_sources(ragtime PRIVATE "${RAGTIME_MACOS_ICON}")
 set_source_files_properties("${RAGTIME_MACOS_ICON}" PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
 set_target_properties(ragtime PROPERTIES
     MACOSX_BUNDLE TRUE
-    OUTPUT_NAME Ragtime
+    OUTPUT_NAME "Ragtime macOS"
     MACOSX_BUNDLE_INFO_PLIST "${RAGTIME_MACOS_PACKAGING}/Info.plist.in"
-    MACOSX_BUNDLE_GUI_IDENTIFIER "io.github.baitisj.ragtime"
-    MACOSX_BUNDLE_BUNDLE_NAME Ragtime
+    MACOSX_BUNDLE_GUI_IDENTIFIER "io.github.n4eac.ragtime.macos"
+    MACOSX_BUNDLE_BUNDLE_NAME "Ragtime macOS"
     MACOSX_BUNDLE_ICON_FILE ragtime.icns
     MACOSX_BUNDLE_SHORT_VERSION_STRING "${PROJECT_VERSION}"
     MACOSX_BUNDLE_BUNDLE_VERSION "${PROJECT_VERSION}")
-ragtime_macos_sotto(ragtime)
 install(TARGETS ragtime BUNDLE DESTINATION .)

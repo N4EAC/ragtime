@@ -84,7 +84,7 @@ private:
     {
         if (binaryColours_[0].IsNull())
             for (size_t i = 0; i < binaryColours_.size(); ++i)
-                binaryColours_[i] = gc.CreateFont(binaryFont_, wxColour(105, 249, 222, int(i * 32 + 31)));
+                binaryColours_[i] = gc.CreateFont(binaryFont_, wxColour(105, 195, 255, int(i * 32 + 31)));
         gc.SetFont(binaryColours_[size_t(std::clamp(alpha / 32, 0, 7))]);
     }
 
@@ -119,9 +119,9 @@ private:
         const double seconds = reduced_ ? 0 : std::min(clock_.Time(), long(DURATION_MS)) / 1000.0;
         stream(*gc, seconds, false);
 
-        gc->SetPen(gc->CreatePen(wxGraphicsPenInfo(wxColour(83, 240, 220), 1.4)));
+        gc->SetPen(gc->CreatePen(wxGraphicsPenInfo(wxColour(83, 175, 250), 1.4)));
         gc->SetBrush(gc->CreateRadialGradientBrush(164, 127, 210, 181, 134,
-                                                  wxColour(41, 170, 160), wxColour(6, 37, 49)));
+                                                  wxColour(31, 115, 215), wxColour(6, 22, 58)));
         gc->DrawEllipse(78, 49, 264, 264);
         using namespace ragtime::globus;
         View view;
@@ -136,8 +136,8 @@ private:
             for (size_t i = 1; i < outline.size(); ++i) land.AddLineToPoint(outline[i].x, outline[i].y);
             land.CloseSubpath();
         }
-        gc->SetBrush(wxBrush(wxColour(79, 221, 196, 115)));
-        gc->SetPen(gc->CreatePen(wxGraphicsPenInfo(wxColour(120, 255, 227, 180), 0.6)));
+        gc->SetBrush(wxBrush(wxColour(68, 165, 246, 115)));
+        gc->SetPen(gc->CreatePen(wxGraphicsPenInfo(wxColour(130, 218, 255, 180), 0.6)));
         gc->DrawPath(land, wxWINDING_RULE);
         auto grid = gc->CreatePath();
         for (const auto& line : graticule(view, window, 30))
@@ -146,7 +146,7 @@ private:
             grid.MoveToPoint(line.front().x, line.front().y);
             for (size_t i = 1; i < line.size(); ++i) grid.AddLineToPoint(line[i].x, line[i].y);
         }
-        gc->SetPen(gc->CreatePen(wxGraphicsPenInfo(wxColour(111, 240, 218, 45), 0.6)));
+        gc->SetPen(gc->CreatePen(wxGraphicsPenInfo(wxColour(111, 180, 250, 45), 0.6)));
         gc->StrokePath(grid);
 
         // Digits follow the sphere's surface; their opacity fades towards its right rim.
@@ -169,7 +169,7 @@ private:
         stream(*gc, seconds, true);
 
         centred(*gc, "Ragtime", 338, GetFont().Larger().Larger().Bold(), wxColour(239, 255, 253));
-        centred(*gc, "for macOS +Data2G", 376, GetFont(), wxColour(161, 226, 216));
+        centred(*gc, "for macOS", 376, GetFont(), wxColour(161, 206, 250));
     }
 
     std::array<wxGraphicsFont, 8> binaryColours_;

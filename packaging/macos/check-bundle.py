@@ -26,8 +26,8 @@ def check(app):
     contents = app / 'Contents'
     with (contents / 'Info.plist').open('rb') as source:
         info = plistlib.load(source)
-    if info.get('LSMinimumSystemVersion') != '14.2':
-        raise ValueError('The release bundle must declare macOS 14.2')
+    if info.get('LSMinimumSystemVersion') != '27.0':
+        raise ValueError('The release bundle must declare macOS 27.0')
     if not info.get('NSMicrophoneUsageDescription'):
         raise ValueError('Missing microphone usage description')
     executable = contents / 'MacOS' / info['CFBundleExecutable']
@@ -50,7 +50,7 @@ def check(app):
             raise ValueError(f'Expected an {ARCH} binary: {binary.name}')
         loads = output('otool', '-l', str(binary))
         minimum = re.search(r'\bminos\s+(\S+)', loads)
-        if minimum is None or version(minimum[1]) > version('14.2'):
+        if minimum is None or version(minimum[1]) > version('27.0'):
             raise ValueError(f'Binary requires a newer macOS: {binary.name}')
         for path in re.findall(r'\bpath (.*?) \(offset \d+\)', loads):
             if not path.startswith(('@loader_path', '@executable_path')):
@@ -70,7 +70,7 @@ def check(app):
             if not target.resolve().is_relative_to(app.resolve()) or not target.is_file():
                 raise ValueError(f'Unresolved dependency in {binary.name}: {dependency}')
     subprocess.run(['codesign', '--verify', '--deep', '--strict', str(app)], check=True)
-    print(f'Bundle verified: {ARCH}, macOS 14.2, bundled codecs and licences, no external libraries.')
+    print(f'Bundle verified: {ARCH}, macOS 27.0, bundled codecs and licences, no external libraries.')
 
 
 if __name__ == '__main__':

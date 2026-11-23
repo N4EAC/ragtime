@@ -335,9 +335,6 @@ private:
 
     // Globus on or off, and the toggle on the tab strip.
     void setGlobus(bool on);
-#ifdef RAGTIME_EMBED_DATA2G
-    void setModemMonitor(bool open);
-#endif
     // The Ear, opened or closed (the ear button, View > Ear).
     void setEar(bool open);
     // The microphone deck, opened or closed (the microphone buttons, View >
@@ -364,11 +361,6 @@ private:
     ragtime::broadcast::Stations stations_;
     ragtime::gearbox::Gearshift gearshift_;
     std::unique_ptr<HostConnection> host_;
-#ifdef RAGTIME_EMBED_DATA2G
-    std::unique_ptr<class EmbeddedModem> modem_;
-    std::string modemError_;
-    class ModemMonitor* modemMonitor_ = nullptr;
-#endif
     std::unique_ptr<RigControl> rig_;
     std::unique_ptr<DialMenu> dialMenu_;
     ragtime::radio::PathLog pathLog_;

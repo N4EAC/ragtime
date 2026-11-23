@@ -33,7 +33,7 @@ class wxSpinCtrlDouble;
 class wxStaticText;
 class wxTextCtrl;
 
-// Settings for the station, rig, voice and built-in modem.
+// Settings for the station, rig, voice and external Soft TNC.
 //
 // Station: the callsign and locator Ragtime sends, where data2g-host is,
 // where files go (the received folder, and the stations whose files are
@@ -62,7 +62,7 @@ public:
         Station,
         Rig,
         Voice,
-        Modem,
+        SoftTnc,
     };
 
     // gears: the gearshift's ladder, most robust first, as (Data2G's mode,
@@ -87,6 +87,7 @@ public:
     void finishTxLevel(bool ok);
 
 private:
+    wxWindow* softTncPage(wxNotebook* book, const StationPrefs& prefs, std::optional<double> txLevel);
     wxWindow* stationPage(wxNotebook* book, const StationPrefs& prefs,
                           const std::vector<std::pair<std::string, std::string>>& gears,
                           std::optional<double> txLevel);
@@ -116,14 +117,6 @@ private:
     wxTextCtrl* callsign_ = nullptr;
     wxTextCtrl* locator_ = nullptr;
     wxTextCtrl* host_ = nullptr;
-#ifdef RAGTIME_EMBED_DATA2G
-    wxWindow* modemPage(wxNotebook* book, const ModemPrefs& prefs);
-    wxCheckBox* useModem_ = nullptr;
-    wxChoice* modemInput_ = nullptr;
-    wxChoice* modemOutput_ = nullptr;
-    wxCheckBox* modemTci_ = nullptr;
-    wxTextCtrl* modemTciHost_ = nullptr;
-#endif
     wxSpinCtrl* kissPort_ = nullptr;
     wxSpinCtrl* commandPort_ = nullptr;
     wxStaticText* dataPort_ = nullptr;

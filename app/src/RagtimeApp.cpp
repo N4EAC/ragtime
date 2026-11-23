@@ -6,9 +6,6 @@
 #include <wx/socket.h>
 #include <wx/wx.h>
 
-#ifdef RAGTIME_EMBED_DATA2G
-#include "EmbeddedModem.h"
-#endif
 
 #include "AppIcon.h"
 #include "MainFrame.h"
@@ -25,7 +22,8 @@ class RagtimeApp : public wxApp
 public:
     bool OnInit() override
     {
-        SetAppName("Ragtime");
+        SetAppName("RagtimeMacOS");
+        SetAppDisplayName("Ragtime macOS");
         if (!wxApp::OnInit())
             return false;
 
@@ -95,10 +93,6 @@ int main(int argc, char** argv)
             return 0;
         }
     }
-#ifdef RAGTIME_EMBED_DATA2G
-    return EmbeddedModem::runWithRuntime(argc, argv, [](int count, char** args) { return wxEntry(count, args); });
-#else
     return wxEntry(argc, argv);
-#endif
 }
 #endif

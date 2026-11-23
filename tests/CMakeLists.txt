@@ -197,10 +197,6 @@ endif()
 # Voice cards: the play queue, voice through the file machinery and the
 # chat logs.
 ragtime_test(ragtime_voice_cards_test VoiceCardsTest.cpp)
-if(APPLE AND RAGTIME_EMBED_DATA2G)
-    ragtime_test(ragtime_embedded_ear_test CoreAudioEarTest.cpp)
-    target_link_libraries(ragtime_embedded_ear_test PRIVATE ragtime_audio)
-endif()
 # The Ear without its window, for the bench and checking a station by hand
 # (it only records). Run with a working audio input.
 add_executable(ragtime_ear_probe EarProbe.cpp)
@@ -237,12 +233,3 @@ target_link_libraries(ragtime_denoise_test PRIVATE ragtime_denoise)
 add_executable(ragtime_voice_chain VoiceChainMain.cpp)
 target_link_libraries(ragtime_voice_chain PRIVATE ragtime_denoise)
 ragtime_warnings(ragtime_voice_chain)
-
-if(RAGTIME_EMBED_DATA2G AND TARGET data2g_station)
-    ragtime_test(ragtime_embedded_settings_test EmbeddedModemSettingsTest.cpp)
-    target_compile_features(ragtime_embedded_settings_test PRIVATE cxx_std_20)
-    target_link_libraries(ragtime_embedded_settings_test PRIVATE data2g_station Qt6::Core)
-    set_target_properties(ragtime_embedded_settings_test PROPERTIES
-        RUNTIME_OUTPUT_DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/settings-probe")
-    set_tests_properties(ragtime_embedded_settings_test PROPERTIES SKIP_RETURN_CODE 77)
-endif()
