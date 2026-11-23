@@ -36,6 +36,13 @@ with the code when the seal rules change.
 picture kind beside JPEG 2000 (its reference code is `tools/codecs/rcc/`,
 its test vectors `tests/data/coolchic/`). `docs/MACOS.md` is the Mac
 port: building, testing, the release zip and what differs there.
+`docs/ANDROID.md` is the Android port: its views, what it does and
+does not do yet, how it is built, and demo mode;
+`android/README.md` has its build and tests. `docs/ANDROID_LICENSES.md`
+is what is in the APK and which notices it owes, with what Google Play
+asks for;
+`docs/ANDROID_PRIVACY.md` and `docs/ANDROID_RELEASE_NOTES.md` are copied
+into the APK, so rebuild it after changing them.
 
 ## Status
 
@@ -126,6 +133,37 @@ port: building, testing, the release zip and what differs there.
   release zip for the Mac it runs on (signed ad hoc, Hamlib and the
   picture libraries built statically), and the full CI run's `macos`
   jobs build, test and keep it for Apple Silicon and Intel. He is credited in the README's Contributors and the About box.
+- The Android port (2026-11-21) is Tim Vetter's too: a phone app in
+  Kotlin and Compose (`android/`) over the same core, with none of the
+  wx app in it. `platform/android/` is its socket-free adapter
+  (`android::AndroidClient`: `HostLink`, `BroadcastChat`, `SessionChat`,
+  `Seals`, `BroadcastFiles`, `FileTraffic`, `Stations` and the
+  gearshift, giving the screen one JSON snapshot and taking actions as
+  strings), reached through JNI; the Kotlin side has the three TCP
+  streams on one worker thread (`HostTransport`, `RadioModel`) and a
+  foreground service that keeps the connection while the app is out of
+  sight (`RadioService`). Four views share that one connection:
+  Stations, Conversations, Field desk and Files (`docs/ANDROID.md`,
+  "The four views"). It has Broadcast with `@` and
+  acknowledgements, ragchews, session and broadcast files with seals
+  and repair, inline pictures (JPEG 2000 sent, Cool-chic shown too; the
+  picked picture is read by Android), the gearshift from the host's
+  `MODES` thresholds alone (no thresholds file), Request roll call,
+  and notifications of calls, `@` lines and file offers. Not yet: voice
+  (clips arrive as files), reactions, edits, refusing a call, the dial
+  and rig, the Ear, Globus and Recent work. Its Hello says what it
+  takes: `takes` in `BroadcastChat`'s and `SessionChat`'s settings, the
+  desktop's still `TAKES_ALL_V0`. Demo mode (a switch in Settings, for
+  trying it, and for a store reviewer with no modem) runs
+  `android::DemoAir` in the app: the tests' fake host and four made-up
+  stations on loopback ports, which the app connects to as to a real
+  host, so nothing on the screen is faked. The app never bundles or
+  starts Data2G: the modem is a `data2g-host` on the network, or
+  Data2G's own Android TNC, a separate app on the phone. It has its own
+  `versionName` and `versionCode` (`android/app/build.gradle.kts`,
+  0.2.0 build 3), not the project's version; it is debug-signed, built
+  for ARM64 only, tested on one phone so far, in no CI job and not on
+  Google Play.
 - Data2G PR #118 (CLEANTXBUFFER, DATA2G ON) gives cuts, for 0.2.0:
   `HostLink` asks for DATA2G ON (WRONG from an older host is fine),
   `SessionChat` cuts and mends the stream from `session::StreamLog`,
@@ -492,14 +530,16 @@ port: building, testing, the release zip and what differs there.
 | `denoise/` | `ragtime_denoise`: RNNoise as the voice chain's `voice::Denoiser` (`denoise::makeRnNoise`). RNNoise 0.1.1 (BSD-3) is fetched with git at configure time and its C built here without our warning flags; `-DFETCHCONTENT_SOURCE_DIR_RNNOISE=<checkout>` builds offline, and `-DRAGTIME_RNNOISE=OFF` gives a stand-in that makes none |
 | `audio/` | `ragtime_audio`: `audio::VoiceAudio`, voice's microphone and speaker (PipeWire or WASAPI, never the radio's card); `audio::EarAudio`, the Ear's listener, PipeWire loaded with `dlopen` (never linked) on its own thread, or on Windows WASAPI in shared mode (`WasapiEar.cpp`) on a thread of its own; `processListeningOn` (the host's process by its port: /proc, or Windows' TCP table); on macOS Core Audio, from `platform/macos/`; with `-DRAGTIME_PIPEWIRE=OFF` stand-ins that say the Ear can't listen and voice can't record |
 | `platform/macos/` | The Mac's own code (Tim Vetter's port): Core Audio voice and Ear (`CoreAudioVoice.mm`, `CoreAudioEar.mm`, devices, the radio's devices left out by the modem processes using them), the microphone permission, `/dev/cu.*` serial ports and where sotto's dylib is looked for. The audio and rig libraries pick these sources only on Apple (`docs/MACOS.md`) |
+| `platform/android/` | The Android app's native half (Tim Vetter's port), socket-free: `AndroidClient` (the engines behind one snapshot and string actions; `AndroidFiles.cpp`, `AndroidGear.cpp` and `AndroidPictures.*` are its files, gearshift and picture coding) and `DemoAir` (demo mode's net: `tests/FakeHost.*` and made-up stations, stepped on a thread of its own). Built into `libragtime_jni.so` by `android/app/src/main/cpp/`, and into the `tests/android/` tests on the desktop |
 | `image/` | `ragtime_image`: the picture codecs, `image::load` (JPEG 2000, WebP, HEIF from disk), `image::encode` and `image::decode` (JPEG 2000 only, from the air). Kept out of core (no codecs there); with `-DRAGTIME_PICTURES=OFF` a stand-in that says pictures can't be made or shown. `cmake/BuildImageLibs.cmake` builds the four libraries statically for Windows (`-DRAGTIME_BUILD_IMAGE_LIBS=ON`) |
 | `rig/` | `ragtime_rig`: `rig::HamlibRig`, the rig opened with Hamlib on a thread of its own, Hamlib's rig list and the serial ports. Kept out of core (no ports there); with `-DRAGTIME_HAMLIB=OFF` a stand-in that says Hamlib is missing |
 | `app/` | The wxWidgets app (`app/src/`). It draws and wires; logic goes in core. `MainFrame` is the one main window and owns the engines; `HostConnection` (data2g-host) and `RigConnection` (rigctld: questions, and the Ear's filter settings) are the only code with sockets, and `RigControl` holds the rig as Settings > Rig has it; `Prefs` holds every wxConfig key, and `appDataDir()` is where Ragtime keeps its own files (never wx's `GetUserDataDir()`: on Linux that is `~/.Ragtime`, the settings file); `app/src/globus/` is the Globus pane (`GlobusPanel`, `GlobusView`, `GlobusToggle`) |
-| `tests/` | ctest unit tests for core, plain executables on `tests/Check.h` (`CHECK`, `CHECK_EQ`). Add one with `ragtime_test(<name> <source>)` in `tests/CMakeLists.txt`. `FakeHost.*` is a fake data2g-host on loopback sockets (POSIX, so its test and the bench build only `if(UNIX)`); `FakeAirMain.cpp` is the bench `ragtime_fake_air`, and `ReplayHost.*` its `--replay`; `VoiceSynth.h` makes synthetic voices for the voice tests, and `VoiceChainMain.cpp` is `ragtime_voice_chain` (a WAV through the voice chain); `ChatListTest.cpp` and `RecentWorkPaneTest.cpp` are the wx tests, on real windows (`ragtime_widget_test` in `app/CMakeLists.txt`); `macos/` has the Mac's own tests (Core Audio, sotto in a bundle, the app quitting cleanly) |
-| `tools/` | Reference scripts: `icon/` (`make_leaf_svg.py` draws the icon, the Maple Leaf Rag's leaf going digital, as `app/res/ragtime.svg`; `make_icons.sh` renders its PNG and ICO), `globe/` (sunlit globe renderer, and the generators of the map tables in `core/src/globus/`: coasts and borders from Natural Earth, the big lakes from `ne_110m_lakes.geojson`, state and province lines from Natural Earth's 1:10m admin-1 lines, fetched for the run, for the countries in `gen_admin1_lines.py`), `gearbox/` (ladders), `ear/` (`pretend_radio.sh`, a pretend radio and data2g-host recorder in PipeWire for the Ear, and `make_radio_noise.py`, its audio), `ham_table/` (text table 0 generator and corpus: `gen_table.py --check`), `gcc16/check.py` (GCC 16 check), `codecs/` (the 2026-10-29 test of Ragtime's JPEG 2000 against JPEG XL, CompressAI and Cool-chic at 1.6 and 4 kB: scripts, bitstreams and results, its README says how to run them; not built) |
-| `cmake/` | CMake helpers. `ragtime_warnings(<target>)` gives every target `-Wall -Wextra` and, with `RAGTIME_WERROR` (on by default), `-Werror`; `Toolchain-mingw64.cmake` (the Windows cross build), `BuildWxWidgets.cmake` (wxWidgets 3.2.9, 3.2.11 on the Mac, cloned and built statically with `-DRAGTIME_BUILD_WX=ON`), `BuildHamlib.cmake` (Hamlib 4.5.5 cloned and built statically with autotools, `-DRAGTIME_BUILD_HAMLIB=ON`), `BuildImageLibs.cmake` (OpenJPEG 2.5.3, libwebp 1.4.0, libde265 1.0.15 and libheif 1.18.2 cloned and built statically, `-DRAGTIME_BUILD_IMAGE_LIBS=ON`), `EmbedFile.cmake` (the window icon built in), `BuildSotto.cmake` (libsotto built when configuring, if missing) |
+| `android/` | The Android app, a Gradle project of its own (`android/README.md`): Kotlin and Compose in `app/src/main/java/org/ragtime/radio/` (`MainActivity` draws the four views, `RadioModel` owns the worker and the state, `HostTransport` the sockets, `RadioService` the foreground service, `NativeCore` the JNI calls), the JNI library in `app/src/main/cpp/` (`Jni.cpp`, with a CMake of its own over core, `ragtime_image` and `platform/android/`), device tests in `app/src/androidTest/` and JVM tests in `app/src/test/`. The top-level CMake build never enters it |
+| `tests/` | ctest unit tests for core, plain executables on `tests/Check.h` (`CHECK`, `CHECK_EQ`). Add one with `ragtime_test(<name> <source>)` in `tests/CMakeLists.txt`. `FakeHost.*` is a fake data2g-host on loopback sockets (POSIX, so its test and the bench build only `if(UNIX)`); `FakeAirMain.cpp` is the bench `ragtime_fake_air`, and `ReplayHost.*` its `--replay`; `VoiceSynth.h` makes synthetic voices for the voice tests, and `VoiceChainMain.cpp` is `ragtime_voice_chain` (a WAV through the voice chain); `ChatListTest.cpp` and `RecentWorkPaneTest.cpp` are the wx tests, on real windows (`ragtime_widget_test` in `app/CMakeLists.txt`); `macos/` has the Mac's own tests (Core Audio, sotto in a bundle, the app quitting cleanly); `android/` has the Android adapter's tests (`ragtime_android_*_test`: the client, files, the gearshift, pictures and demo mode on fake hosts, with no phone; `Phone.h` is their pretend phone), built `if(UNIX)` |
+| `tools/` | Reference scripts: `icon/` (`make_leaf_svg.py` draws the icon, the Maple Leaf Rag's leaf going digital, as `app/res/ragtime.svg`; `make_icons.sh` renders its PNG and ICO; `make_android_icon.py` makes the Android app's vector icons from the same SVG), `globe/` (sunlit globe renderer, and the generators of the map tables in `core/src/globus/`: coasts and borders from Natural Earth, the big lakes from `ne_110m_lakes.geojson`, state and province lines from Natural Earth's 1:10m admin-1 lines, fetched for the run, for the countries in `gen_admin1_lines.py`), `gearbox/` (ladders), `ear/` (`pretend_radio.sh`, a pretend radio and data2g-host recorder in PipeWire for the Ear, and `make_radio_noise.py`, its audio), `ham_table/` (text table 0 generator and corpus: `gen_table.py --check`), `gcc16/check.py` (GCC 16 check), `android-smoke.sh` (builds the Android app and runs its device tests against a `ragtime_fake_air` you started), `codecs/` (the 2026-10-29 test of Ragtime's JPEG 2000 against JPEG XL, CompressAI and Cool-chic at 1.6 and 4 kB: scripts, bitstreams and results, its README says how to run them; not built) |
+| `cmake/` | CMake helpers. `ragtime_warnings(<target>)` gives every target `-Wall -Wextra` and, with `RAGTIME_WERROR` (on by default), `-Werror`; `Toolchain-mingw64.cmake` (the Windows cross build), `BuildWxWidgets.cmake` (wxWidgets 3.2.9, 3.2.11 on the Mac, cloned and built statically with `-DRAGTIME_BUILD_WX=ON`), `BuildHamlib.cmake` (Hamlib 4.5.5 cloned and built statically with autotools, `-DRAGTIME_BUILD_HAMLIB=ON`), `BuildImageLibs.cmake` (OpenJPEG 2.5.3, libwebp 1.4.0, libde265 1.0.15 and libheif 1.18.2 cloned and built statically, `-DRAGTIME_BUILD_IMAGE_LIBS=ON`), `EmbedFile.cmake` (the window icon built in), `BuildSotto.cmake` (libsotto built when configuring, if missing), `FetchOpenJpeg.cmake` (OpenJPEG 2.5.3 alone, cloned and built in, `-DRAGTIME_FETCH_OPENJPEG=ON`: JPEG 2000 with no WebP or HEIF, as the Android app builds its pictures) |
 | `packaging/` | Release recipes: `linux/make-appimage.sh` (with `ragtime.desktop`), `windows/make-zip.sh` (with the zip's `README.txt`), `macos/make-zip.sh` (on a Mac; the bundle's CMake, `Info.plist.in`, the icon, `check-bundle.py`, `entitlements.plist` and `build-sotto.sh` for the dylibs are beside it; Developer ID signing and notarization with `MACOS_SIGN_IDENTITY` and `MACOS_NOTARY_PROFILE`). All write to `dist/`, named by `release-name.sh`. `sotto.sh` pins sotto's commit and `build-sotto.sh` builds libsotto with its Codec 2 |
-| `docs/` | The specs and how-tos: the protocol, Data2G, the gearshift, seals, Cool-chic, the flight recorder and the Mac. Change them in the same PR as the code they describe. `docs/images/readme/` holds the README's screenshots, taken on the bench (`ragtime_fake_air`) at 1366×768 and squeezed with `pngquant`; retake one when its screen changes much |
+| `docs/` | The specs and how-tos: the protocol, Data2G, the gearshift, seals, Cool-chic, the flight recorder, the Mac and Android. Change them in the same PR as the code they describe. `docs/images/readme/` holds the README's screenshots, taken on the bench (`ragtime_fake_air`) at 1366×768 and squeezed with `pngquant`; retake one when its screen changes much |
 
 The version is `project(ragtime VERSION ...)` in the top-level
 `CMakeLists.txt`; core gets it from the generated `ragtime/Version.h`.
@@ -547,7 +587,9 @@ Apple Silicon and Intel runners. The last three keep the zips and the
 AppImage as the run's artifacts. Start a full run on a PR that
 changes CMake, packaging or platform code, and always on a release PR.
 Before pushing C++, run `tools/gcc16/check.py` (needs Docker): it
-compiles every source in `gcc:16` at both levels without apt.
+compiles every source in `gcc:16` at both levels without apt. No CI
+job builds the Android app; the Ubuntu jobs do build and run its
+adapter's tests (`tests/android/`).
 
 **The bench.** `build/tests/ragtime_fake_air` runs two fake data2g-hosts
 on one shared air (A: KISS 8100, commands 8300; B: 8110 and 8310) and a
@@ -617,6 +659,19 @@ ignore case: a test that saves `two.bin` beside `TWO.BIN` overwrites it.
 The bench's fake hosts are POSIX, but `wine ragtime.exe` talks to a Linux
 `ragtime_fake_air` on loopback.
 
+**Android.** The app builds with Gradle, apart from the CMake build
+above: JDK 17, Android SDK 36 and NDK 28.2 (`JAVA_HOME`, `ANDROID_HOME`;
+the pins are in `android/README.md`), then `cd android && ./gradlew
+:app:assembleDebug :app:lintDebug`. The first configure clones OpenJPEG
+from GitHub. Three kinds of test: the adapter's, under ctest with the
+rest (`ctest -R android`, no phone needed); the JVM's,
+`./gradlew :app:testDebugUnitTest`; and the device's, which need a phone
+or emulator on adb and a `ragtime_fake_air` running:
+`tools/android-smoke.sh SERIAL [PORT_OFFSET]` builds, installs, forwards
+the bench's ports and runs them (an offset of 10000 for a phone whose
+own Data2G TNC holds 8100 and 8300), then puts the app's saved settings
+back. Never point them at a modem that is on a radio.
+
 ## Releases
 
 1. A PR sets the version, `project(ragtime VERSION ...)`, and gets a full
@@ -646,7 +701,8 @@ The bench's fake hosts are POSIX, but `wine ragtime.exe` talks to a Linux
   and the Windows zip follow Glissando's recipes (its `docs/APP.md`),
   simpler for having no audio or codec2. The Mac build (Apple Silicon
   and Intel, a zip each) is in `docs/MACOS.md`; there is no Linux ARM
-  build yet.
+  build yet. The Android app is Kotlin and Compose over the same core
+  (`docs/ANDROID.md`).
 - Engines worth porting from Glissando (logic and tests, adapted to the
   new records): `Data2GLink` (KISS, command lines, `MODES`, session
   stream), `Data2GFileTransfer`, `Data2GBroadcast`, `Sha256`, `HamText`

@@ -4,7 +4,7 @@
 # It also has sotto 1200, 600 and 400 with the hiss band, float, both
 # ways (sotto_lr_enc16 / _dec16, sotto_vlr_enc16 / _dec16): codecs 3, 4
 # and 5. This pin includes the creak and pitch-line fixes for low rates,
-# the peak-weighted v3.8 shape search, and the short pitch-run fold.
+# the peak-weighted v3.8 shape search, and the v3.10 pitch corrections.
 # Frame layouts and the default decoder delay remain compatible.
 # Ragtime needs a library whose sotto_format() says "sotto v3.8, shape
 # 9-9-8-8", so the variant is named here rather than left to sotto's
@@ -13,5 +13,5 @@
 # links it (LGPL through Codec 2); the packages carry it beside ragtime with
 # its licences. Sourced by build-sotto.sh.
 SOTTO_REPO=${SOTTO_REPO:-https://github.com/baitisj/sotto.git}
-SOTTO_COMMIT=598f1bce87c22ebada2b9d0d1fcfd89107b33a09
+SOTTO_COMMIT=e707134fd7f9e2721b55b9d983b77a8aa5593552
 SOTTO_VARIANT=v3.8

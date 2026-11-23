@@ -4,6 +4,15 @@ Changes to the Ragtime fork with bundled Data2G for macOS. Dates use
 America/New_York. Entries summarize this fork's packaged releases; the
 upstream projects retain their own histories.
 
+## Unreleased
+
+- Integrate Ragtime upstream through `00ac994`, retaining the macOS UI,
+  startup animation, manual CAT entry, clear controls, logs, and bundled modem.
+- Update built-in Data2G to `9894b63`: receiver acquisition improvements,
+  noise/SNR estimation fixes, and session turnaround/control-reply fixes.
+- Update sotto to `e707134`, with v3.10 encoder pitch improvements while
+  retaining v3.8 voice frame formats. The TTS prototype is not bundled.
+
 ## 0.4.0 beta 3 — 2026-11-21
 
 - Add a brief macOS startup animation with a rotating Earth and streaming

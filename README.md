@@ -96,12 +96,12 @@ On Fedora 44:
 
 ### macOS
 
-The integrated modem uses Data2G v0.5.3 plus upstream settings fixes at commit
-`759ea35f3877910c18e1edf1ab2ec72303592fe9`. Use a separate checkout for
+The integrated modem uses Data2G v0.5.3 plus upstream receiver and session fixes at commit
+`9894b6366cfe7f5bd4d30555c3327a808840e248`. Use a separate checkout for
 this build. [Data2G v0.5.3](https://github.com/arodland/Data2G/releases/tag/v0.5.3)
 
     git clone https://github.com/arodland/Data2G.git ../Data2G-ragtime
-    git -C ../Data2G-ragtime checkout 759ea35f3877910c18e1edf1ab2ec72303592fe9
+    git -C ../Data2G-ragtime checkout 9894b6366cfe7f5bd4d30555c3327a808840e248
 
 Install the build dependencies with Homebrew:
 
@@ -208,6 +208,11 @@ sotto format, and bundled sotto revision.
 Recent Work has a **Clear** button. Clearing persists across restarts and
 keeps the archived path and session logs; stations appear again as new
 activity arrives.
+
+For Android, [android/README.md](android/README.md) has the development
+APK, its setup and the fake-host tests. The phone app has a native UI of
+its own over the same C++ core: chat, files, pictures and the gearshift,
+with voice still to come.
 
 ### Libraries
 
@@ -419,10 +424,10 @@ Original Ragtime by Jeff Baitis (AG7EW). Upstream macOS port by Tim Vetter.
 This fork adds the built-in Data2G modem and its macOS integration.
 
 The packaged sotto library is pinned to commit
-`598f1bce87c22ebada2b9d0d1fcfd89107b33a09`. It retains the v3.8 frame
-formats and pitch/shape improvements. The upstream revision adds a slim
-1200 encoder and table hooks for embedded hardware. Ragtime continues
-using the existing desktop encoders and decoders.
+`e707134fd7f9e2721b55b9d983b77a8aa5593552`. It retains the v3.8 frame
+formats with upstream v3.10 encoder pitch improvements. Ragtime continues
+using the desktop encoders and decoders; the new text-to-speech prototype
+is not bundled.
 
 Voice messages are coded with [sotto](https://github.com/baitisj/sotto),
 by Jeff Baitis (AG7EW). Ragtime loads it at run time as a shared library

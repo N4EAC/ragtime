@@ -5,3 +5,8 @@ __pycache__/
 /packaging/linux/tools/
 /dist/
 .DS_Store
+/android/.gradle/
+/android/.kotlin/
+/android/local.properties
+/android/app/build/
+/android/app/.cxx/
