@@ -17,7 +17,7 @@ with our native macOS improvements and an **external Soft TNC**. It does not
 contain, start, or bundle a Data2G modem. The separately maintained
 [bundled edition](https://github.com/N4EAC/ragtime-data2g) remains available.
 
-[Download Ragtime macOS 0.4.0](https://github.com/N4EAC/ragtime/releases/tag/macos-v0.4.0-beta.1)
+[Download Ragtime macOS 0.4.0](https://github.com/N4EAC/ragtime/releases/tag/macos-v0.4.0-beta.2)
 — Apple Silicon, macOS 27 or later.
 
 ![Ragtime macOS main window](docs/screenshots/ragtime-macos-main.png)
